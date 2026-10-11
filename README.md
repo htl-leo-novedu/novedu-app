@@ -99,6 +99,8 @@ work but the answers are not real.
   `NOVEDU_FAKE_LLM_IMAGE` replace the images (e.g. a local `docker build`).
 - **Apple silicon:** the app image is amd64-only and runs under emulation — slower to
   start, otherwise the same.
+- **Update:** download `compose.yaml` again (the `curl` above overwrites it), then
+  `docker compose pull` and `docker compose up -d --wait`; the data stays.
 - **Reset:** `docker compose down -v` deletes the database and the uploaded images.
 
 ## Prerequisites

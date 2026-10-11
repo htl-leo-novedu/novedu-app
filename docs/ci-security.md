@@ -82,8 +82,12 @@ run untrusted PR code.**
   only `build-and-push`, and `promote.yml`'s version check rejects a suffixed
   version. It triggers **only** on `push` to `main` (a maintainer merge) and
   manual `workflow_dispatch`. A fork PR cannot produce a push to `main`, so it
-  can never obtain the package-write token. It reuses `qa.yml` via
-  `workflow_call` as a gate, then builds/publishes/deploys.
+  can never obtain the package-write token. A manual run needs write access to
+  the repo and may name any branch: it then publishes that branch's images
+  under the same tags — `:latest`, `:demo` and `:fake-llm` included, which
+  `compose.yaml` users pull — while `deploy-dev` still deploys only from
+  `main`. It reuses `qa.yml` via `workflow_call` as a gate, then
+  builds/publishes/deploys.
   - The **`deploy-dev`** job hands the same image to the dev stage
     (`docs/azure-runtime-env.md`). It is **secret-free**: it reads the image
     from GHCR with a `packages: read` token and reaches Azure by OIDC (below).
