@@ -21,6 +21,7 @@ export const SECTIONS: DocsSection[] = [
   { dir: "20-building-activities", label: "Building activities" },
   { dir: "30-sharing-activities", label: "Sharing activities" },
   { dir: "40-ai-llms", label: "Working with AI agents" },
+  { dir: "50-develop-and-evaluate", label: "Develop and evaluate" },
 ];
 
 /** Section directory of a chapter id ("00-introduction/01-what-is-novedu"). */

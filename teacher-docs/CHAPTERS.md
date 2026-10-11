@@ -73,6 +73,14 @@ _Using Novedu together with AI assistants and agents: the CLI skill, and the gui
 | 02 | The guide for AI agents (llms.txt) | `docs/teacher-docs.md` (the llms.txt surface), `teacher-docs/README.md`, `https://llmstxt.org` |
 | 03 | Learning from real conversations | `cli/README.md` (`codes export`), `.agents/skills/novedu-tutor-cli/SKILL.md` (the improve-from-conversations job), `docs/codes.md` |
 
+## 50: Develop and evaluate
+_Running Novedu yourself: a local Novedu for evaluators, and a development setup for contributors. Written for a technical reader, so commands, settings, and file names are in scope here (see `docs/teacher-docs-notes.md`)._
+
+| # | Chapter | Where to look (hints) |
+| --- | --- | --- |
+| 01 | Trying Novedu locally | `compose.yaml`, `README.md` ("Try Novedu locally"), `docs/auth.md` ("Demo mode"), `docs/testing.md` ("Fake LLM"), `lib/llm/presets.ts`, `https://openrouter.ai/docs` |
+| 02 | Local development | `README.md` (prerequisites, "Demo login and the `:demo` image", scripts), `docs/testing.md` (scripts, "Demo login `@demo`", CI), `.github/workflows/qa.yml` (what CI runs), `playwright.config.ts` |
+
 > Scope reminder for every chapter: the "Where to look" entries are engineer
 > references. Document only teacher-facing behavior, not how the app works inside
 > (see the skill's `references/scope.md`). Per-chapter guardrails — each chapter's

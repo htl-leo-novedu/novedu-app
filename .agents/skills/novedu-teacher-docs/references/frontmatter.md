@@ -31,8 +31,9 @@ Field notes:
 - **sidebar.order**: position within the section; mirrors the chapter's numeric
   prefix. Section grouping comes from the folder. The published site sorts both
   its sidebar and the machine-readable table of contents by this key.
-- **audience**: always `teacher` for this corpus. Present so a future mixed corpus
-  can filter.
+- **audience**: `teacher` for every chapter except the `50-develop-and-evaluate`
+  section, whose readers are `evaluator` (trying Novedu locally) and `developer`
+  (local development). Present so readers and tools can filter.
 - **keywords**: the words a teacher would actually search or ask. Useful for any
   search or retrieval layer. Use teacher words first; an internal alias
   (`imageInput`) may follow only if a teacher would plausibly paste it from a

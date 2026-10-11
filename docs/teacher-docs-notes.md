@@ -21,6 +21,28 @@ prose carries everything an editor needs.
 - The **`00-introduction/**` chapters are concept level**: no YAML field names
   and no configuration steps, those belong to the later chapters.
 
+## 50-develop-and-evaluate (both chapters)
+
+- Readers: an evaluator (a teacher or school IT person trying Novedu before a
+  school sets it up) and a contributor working on the code. They run commands,
+  so commands, settings, and file names are in scope, unlike the rest of the
+  guide. Each chapter is still self-contained and in the guide's voice.
+- Test every command before changing it: the chapters are step-by-step and a
+  reader copies them verbatim. Both chapters were written against a fresh clone
+  with no `.env`.
+- The local Novedu is ALWAYS the demo login: anyone who reaches it signs in as
+  anyone. Never suggest exposing it beyond the reader's own computer, and never
+  suggest real student data.
+- One database per sign-in mode: the Compose database is a demo database. The
+  Entra-mode e2e suite needs a second database (placeholders for the Entra
+  settings, sessions minted in the database, no real Entra).
+- The fake model answers every model id, lists itself as `novedu-fake`, and
+  grades every quiz answer as correct. OpenRouter is the only real-model path
+  offered here (an env passthrough); SCCH is geo-blocked and Foundry needs an
+  Azure identity.
+- No OpenRouter prices or minimums as facts: OpenRouter changes them. Name
+  concepts (credit, a per-key credit limit, `:free` variants with a daily cap).
+
 ## 00-introduction/03-tutors-overview
 
 - "Start over" clears the student's conversation, it does not delete it. The

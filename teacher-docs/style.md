@@ -21,6 +21,10 @@ the teacher, not the reviewer.
 - Prefer real examples from `activities/examples/` over invented YAML.
 - Prefer "activity" and "code" as the two core nouns; introduce module names
   (tutor, quiz, writing, coding) as *kinds of activity*.
+- The **`50-develop-and-evaluate`** section is the one exception to "never an
+  internal name": its readers run Novedu themselves, so commands, settings, file
+  names, and test names are its subject. Voice and the hard writing rules still
+  apply.
 - SCCH is the school's **Austrian LLM hosting partner**, a company the school buys
   hosting from, not hardware the school runs. Expand it that way the first time a
   chapter needs it, then use "SCCH" or "the school's hosting partner". Never write

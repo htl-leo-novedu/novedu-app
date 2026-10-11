@@ -354,11 +354,13 @@ AZURE_CLIENT_ID=
 AZURE_CLIENT_SECRET=
 AZURE_TENANT_ID=
 TEACHER_GROUP_ID=
+# Any random string of 32+ characters, for example from `openssl rand -base64 32`.
+AUTH_SECRET=your-random-secret
 # Port 5432 unless NOVEDU_PG_PORT moves it.
 DATABASE_URL=postgresql://novedu:novedu-demo-not-a-secret@localhost:5432/novedu
 SCCH_BASE_URL=http://127.0.0.1:4010/v1
 SCCH_API_KEY=fake-llm
-# Provision it once with `npm run images:init-root`.
+# Provision it once with `npm run images:init-root -- <the same path>`.
 IMAGE_STORAGE_ROOT=/absolute/path/outside/the/repo
 ```
 
