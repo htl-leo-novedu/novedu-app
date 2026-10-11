@@ -10,7 +10,7 @@ Like `validate`, it is **offline and sign-in-free**: a local path or a `file:` /
 `http(s)` URL, no server, no database, no LLM call.
 
 ```
-novedu-cli prompts <pathOrUrl> [--kind tutor|quiz|writing|coding] [--json]
+novedu-cli prompts <pathOrUrl> [--kind tutor|quiz|writing|coding|cloze] [--json]
 ```
 
 `--kind` is caller-declared (default `tutor`), exactly like `validate`. There is
@@ -28,6 +28,7 @@ up **rendered in place** inside whichever activity places them.
 | `quiz` | `loadQuizFrom` (`lib/quiz-resolve.ts`) → `buildGradingPrompt` (`lib/quiz-grading-prompt.ts`) per question + `buildDiscussionInstructions` (`lib/quiz-discussion-prompt.ts`) |
 | `writing` | `loadWritingFrom` (`lib/writing-resolve.ts`) |
 | `coding` | `loadCodingFrom` (`lib/coding-resolve.ts`) + `buildUpstreamChatBody` (`lib/coding-proxy.ts`) |
+| `cloze` | `loadClozeFrom` (`lib/cloze-resolve.ts`) → `buildClozeGradingPrompt` (`lib/cloze-grading-prompt.ts`) + `buildClozeFeedbackPrompt` (`lib/cloze-feedback-prompt.ts`), schemas from `lib/cloze-output-schemas.ts` |
 
 Two guards keep it that way, both in `lib/prompt-dump.unit.test.ts`:
 
@@ -61,7 +62,8 @@ FileKind ──┬─► fileValidators[kind].validate(url, fetcher)   "is it va
            └─► promptDumpers[kind].dump(url, fetcher, opts)  "which prompts does it produce"
 ```
 
-`PromptKind = Exclude<FileKind, "fragment">`. The CLI command
+`PromptKind = Exclude<FileKind, "fragment">` — a fragment library produces no
+prompt of its own. The CLI command
 (`cli/src/commands/prompts.ts`) stays generic over kinds: it picks a kind,
 calls `dumpPrompts`, and renders — the human summary walks the kind-agnostic
 `promptSections(dump)` list, so a new kind needs no renderer change.
@@ -84,6 +86,7 @@ Each runtime loader is split in two:
 | `lib/quiz-resolve.ts` (`resolveQuiz`, `loadQuizFrom`) | `lib/quiz-fetch.ts` (`loadQuiz`) |
 | `lib/writing-resolve.ts` | `lib/writing-fetch.ts` |
 | `lib/coding-resolve.ts` | `lib/coding-fetch.ts` |
+| `lib/cloze-resolve.ts` (`resolveCloze`, `loadClozeFrom`) | `lib/cloze-fetch.ts` (`loadCloze`) |
 
 The `*-fetch.ts` modules keep owning `loadAppHostedYaml` + `appHostedFetcher`
 (the loopback-avoiding app-hosted resolution — `docs/files.md`); the `*-resolve.ts`
@@ -121,6 +124,13 @@ dump describes a file, and a file has no code.
   agent sends no system message the proxy prepends one carrying exactly this text;
   when it does, the same text is **appended to the client's last system message**
   so the teacher keeps the final word (`docs/coding.md`).
+- **cloze** → `gapCount` plus one block per call of the pipeline, `grading` and
+  `feedback`, each with `system` (the full system prompt — preamble, frame, the
+  server-only `evaluation` and the text with every reference as
+  `⟦N · reference "…"⟧`), `userMessageTemplate` (`{answers}` is the JSON list the
+  action fills in: the undecided gaps' answers for grading, every gap's answer and
+  final verdict for feedback) and `responseSchema` (the call's structured output as
+  JSON Schema). See `docs/cloze.md`.
 - **quiz** → the biggest dump, and the one an eval harness wants:
 
 ```json

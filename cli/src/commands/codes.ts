@@ -200,7 +200,7 @@ export function registerCodes(program: Command): void {
   codes
     .command("create")
     .description("Create a code for an activity YAML (validated server-side before storing)")
-    .requiredOption("--module <module>", "activity module: tutor, quiz, writing or coding")
+    .requiredOption("--module <module>", "activity module: tutor, quiz, writing, coding or cloze")
     .requiredOption("--file <url>", "public http(s) URL of the activity YAML")
     .option(
       "--start <iso>",

@@ -31,7 +31,7 @@ export function precheckHintText(key: PrecheckLabelKey): string {
   return `Live hint: ${PRECHECK_LABELS[key]} — a quick check while you type, not the final verdict.`;
 }
 
-// Same colour tokens as the verdict card's VERDICT_VARS in quiz-runner.tsx, so a
+// Same colour tokens as the verdict card's VERDICT_VARS (components/ui/verdict.ts), so a
 // hint and the grade it anticipates never disagree on colour — which is why this
 // is not a `Badge` (its palette is the list cells' emerald/orange/red, not the
 // quiz's success/warning/destructive). `unsure` and `checking` stay neutral:

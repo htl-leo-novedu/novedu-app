@@ -37,6 +37,7 @@ const day = (date: string, extra: Partial<UsageDay> = {}): UsageDay => ({
   quizAnswers: 0,
   writingSaves: 0,
   codingRequests: 0,
+  clozeSubmissions: 0,
   codingHours: 0,
   ...extra,
 });
@@ -585,7 +586,7 @@ describe("buildTeacherHome — badges", () => {
     ]);
     expect(reach?.shown[0]).toMatchObject({ earned: true, isNew: true, xp: 0 });
     // Two kinds shared so far (quiz, tutor).
-    expect(reach?.shown[1]).toMatchObject({ earned: false, current: 2, target: 4 });
+    expect(reach?.shown[1]).toMatchObject({ earned: false, current: 2, target: 5 });
     expect(reach?.more.map((b) => b.id)).toEqual([
       "crowd-30",
       "crowd-100",

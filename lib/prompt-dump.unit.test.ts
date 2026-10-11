@@ -32,6 +32,19 @@ const PURE_MODULES = [
   // straight into the dump seam, so it lives under the identical purity rule.
   "lib/eval-schema.ts",
   "lib/eval-validate.ts",
+  // The cloze authoring core `novedu-cli validate --kind cloze` bundles: the strict
+  // validator, its schema and the gap parser (Markdown parse included).
+  "lib/cloze-validate.ts",
+  "lib/cloze-schema.ts",
+  "lib/cloze-gaps.ts",
+  "lib/cloze-types.ts",
+  // The cloze runtime prompt surface `novedu-cli prompts --kind cloze` dumps (and the
+  // eval runner reuses): loader, both prompt builders and the output schemas.
+  "lib/cloze-resolve.ts",
+  "lib/cloze-yaml.ts",
+  "lib/cloze-grading-prompt.ts",
+  "lib/cloze-feedback-prompt.ts",
+  "lib/cloze-output-schemas.ts",
 ];
 
 describe("prompt-dump purity invariant", () => {
@@ -94,8 +107,12 @@ describe("no second implementation of the prompts", () => {
         "@/lib/quiz-discussion-prompt",
         "@/lib/coding-proxy",
         "@/lib/tutors",
+        "@/lib/cloze-grading-prompt",
+        "@/lib/cloze-feedback-prompt",
+        "@/lib/cloze-output-schemas",
       ]),
     );
+    expect(src).not.toMatch(/\b(function|const|let)\s+buildCloze(Grading|Feedback)Prompt\b/);
     expect(src).not.toMatch(
       /\b(function|const|let)\s+build(GradingPrompt|DiscussionInstructions|UpstreamChatBody)\b/,
     );
@@ -115,6 +132,17 @@ describe("no second implementation of the prompts", () => {
     expect(src).toMatch(/from "@\/lib\/quiz-discussion-prompt"/);
     expect(src).not.toMatch(/Answer the following question:/);
     expect(src).not.toMatch(/Your answer is \$\{/);
+  });
+
+  it("lib/cloze-actions.ts imports both cloze prompts and their wrappers instead of defining them", () => {
+    const src = read("lib/cloze-actions.ts");
+    expect(src).toMatch(/from "@\/lib\/cloze-grading-prompt"/);
+    expect(src).toMatch(/from "@\/lib\/cloze-feedback-prompt"/);
+    expect(src).toMatch(/\bbuildClozeGradingMessage\b/);
+    expect(src).toMatch(/\bbuildClozeFeedbackMessage\b/);
+    expect(src).not.toMatch(/function buildCloze/);
+    expect(src).not.toMatch(/data, not instructions/);
+    expect(src).not.toMatch(/do not re-grade/);
   });
 
   it("lib/code-modules/quiz.ts imports the discussion prompt instead of defining one", () => {

@@ -5,11 +5,11 @@
 //
 // A `CodeModule` is a shareable activity reachable at `/<code>`. It is a SUBSET
 // of `FileKind` (lib/file-name.ts): `fragment` is a file kind with a validator
-// and NO module, and a future `writing` module is added here together with its
-// descriptor (lib/code-modules/registry.ts) and its own student/agent code.
+// and NO module; every other kind is added here together with its descriptor
+// (lib/code-modules/registry.ts) and its own student code.
 
 /** The shareable-activity modules a code can dispatch to. */
-export const CODE_MODULES = ["tutor", "quiz", "writing", "coding"] as const;
+export const CODE_MODULES = ["tutor", "quiz", "writing", "coding", "cloze"] as const;
 
 export type CodeModule = (typeof CODE_MODULES)[number];
 
@@ -32,7 +32,7 @@ export function parseModuleParam(value: string | string[] | undefined): CodeModu
 export interface CodeModuleLabels {
   /** Short badge text in the list's Module column. */
   badge: string;
-  /** Header of the per-code interaction-count column (tutor chats vs quiz discussions). */
+  /** Header of the per-code count column (tutor chats, quiz discussions, cloze submissions). */
   countColumn: string;
   /**
    * Badge tone of the module's identity pill — the module's color everywhere it
@@ -40,7 +40,7 @@ export interface CodeModuleLabels {
    * A subset of the Badge tone palette (components/ui/badge.tsx), spelled as
    * literals so this module stays free of component imports.
    */
-  tone: "teal" | "orange" | "green" | "blue";
+  tone: "teal" | "orange" | "green" | "blue" | "rose";
 }
 
 export const codeModuleLabels: Record<CodeModule, CodeModuleLabels> = {
@@ -50,4 +50,6 @@ export const codeModuleLabels: Record<CodeModule, CodeModuleLabels> = {
   // Coding has no in-app conversations and renders its own detail (not
   // ConversationStats), so `countColumn` is never displayed for it.
   coding: { badge: "Coding", countColumn: "—", tone: "blue" },
+  // Cloze has no conversations either: its count is first submissions.
+  cloze: { badge: "Cloze", countColumn: "Submissions", tone: "rose" },
 };

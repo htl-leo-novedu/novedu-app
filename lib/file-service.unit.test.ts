@@ -132,7 +132,7 @@ describe("createFileForUser", () => {
     expect(result).toMatchObject({
       ok: false,
       reason: "invalid",
-      message: expect.stringMatching(/tutor, fragment, quiz, writing or coding/i),
+      message: expect.stringMatching(/tutor, fragment, quiz, writing, coding or cloze/i),
     });
     expect(mocks.createFile).not.toHaveBeenCalled();
   });
@@ -167,7 +167,7 @@ describe("createFileForUser", () => {
       kind: "tutor",
       content: "id: t",
     });
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, summary: null });
     expect(mocks.createFile).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "my-tutor",
@@ -191,7 +191,7 @@ describe("createFileForUser", () => {
       kind: "quiz",
       content: "id: q\n",
     });
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, summary: null });
     // The quiz path runs the quiz validator, NOT the tutor/fragment loaders …
     expect(mocks.loadAndCheckQuiz).toHaveBeenCalled();
     expect(mocks.loadAndBuildTutorPrompt).not.toHaveBeenCalled();
@@ -285,7 +285,7 @@ describe("updateFileForUser", () => {
 
   it("stores a new version under the given user id on success", async () => {
     const result = await updateFileForUser("teacher-1", "my-file", "id: f\n");
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, summary: null });
     expect(mocks.updateFile).toHaveBeenCalledWith(
       "my-file",
       expect.objectContaining({ content: "id: f\n" }),
@@ -310,13 +310,13 @@ describe("upsertFileForUser", () => {
     expect(mocks.updateFile).not.toHaveBeenCalled();
   });
 
-  it("requires a kind when creating, naming the five kinds", async () => {
+  it("requires a kind when creating, naming the six kinds", async () => {
     mocks.getActiveFile.mockResolvedValue(null);
     const result = await upsertFileForUser("teacher-1", { name: "new-file", content: "id: f\n" });
     expect(result).toMatchObject({
       ok: false,
       reason: "invalid",
-      message: expect.stringMatching(/tutor, fragment, quiz, writing or coding/i),
+      message: expect.stringMatching(/tutor, fragment, quiz, writing, coding or cloze/i),
     });
     expect(mocks.createFile).not.toHaveBeenCalled();
   });

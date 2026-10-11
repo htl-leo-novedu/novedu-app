@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cardVariants } from "@/components/ui/card";
 import { DialogShell } from "@/components/ui/dialog-shell";
 import { FieldError } from "@/components/ui/field";
+import { VERDICT_VARS } from "@/components/ui/verdict";
 import { MAX_IMAGES_PER_ANSWER } from "@/lib/answer-images";
 import {
   IMAGE_ACCEPT_WITH_EXTENSIONS,
@@ -48,16 +49,6 @@ const PROGRESS = "text-foreground/55 text-sm";
 const CARD = cardVariants({ pad: "compact" });
 const LABEL = "mb-1.5 block font-semibold text-sm";
 const ACTIONS = "flex flex-wrap items-center gap-2";
-
-// Verdict accent: the card/tile sets a local --verdict var per result;
-// descendants (left border, heading, summary number, tile top border) consume
-// it, so each verdict color lives in one place. (Named --verdict, not --accent:
-// the global shadcn token block defines --accent.)
-const VERDICT_VARS: Record<QuizVerdict, string> = {
-  correct: "[--verdict:var(--color-success)]",
-  partial: "[--verdict:var(--color-warning)]",
-  incorrect: "[--verdict:var(--color-destructive)]",
-};
 
 // The student-facing quiz runner. Walks the attempt's question sequence one at a
 // time: render the markdown question, take a free-text answer, grade it via

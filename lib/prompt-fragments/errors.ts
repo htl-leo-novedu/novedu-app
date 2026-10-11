@@ -55,13 +55,22 @@ export type ErrorCode =
   // variable the fragment never declares. Surfaced by the standalone fragment
   // check and by thorough tutor validation (whole-library check).
   | "FRAGMENT_TEMPLATE_ERROR"
-  // The quiz / writing / coding YAML does not match its schema (a missing/misspelled
-  // field, a wrong type, no `llm.model`, no questions / no instructions). The
-  // quiz/writing/coding validators are strict authoring gates, exactly like the
-  // tutor/fragment ones.
+  // The quiz / writing / coding / cloze YAML does not match its schema (a
+  // missing/misspelled field, a wrong type, no `llm.model`, no questions / no
+  // instructions / no text). These validators are strict authoring gates, exactly
+  // like the tutor/fragment ones.
   | "QUIZ_SCHEMA_ERROR"
   | "WRITING_SCHEMA_ERROR"
   | "CODING_SCHEMA_ERROR"
+  | "CLOZE_SCHEMA_ERROR"
+  // The cloze `text`'s gap markup (`lib/cloze-gaps.ts`), the located ones carrying the
+  // 1-based `line`/`column` of the offending spot: a malformed marker (an unclosed
+  // `[[`, a stray `]]`, an empty hint or a second `|`, a reserved character), a
+  // reference over the answer cap, no gap at all, or more gaps than the limit.
+  | "CLOZE_GAP_SYNTAX"
+  | "CLOZE_GAP_TOO_LONG"
+  | "CLOZE_NO_GAPS"
+  | "CLOZE_TOO_MANY_GAPS"
   // The same quiz question `id` is declared on more than one question (per-question
   // stats key must be unique).
   | "DUPLICATE_QUIZ_QUESTION_ID"

@@ -21,6 +21,7 @@ const day = (date: string, activeHours = 1, extra: Partial<UsageDay> = {}): Usag
   quizAnswers: 0,
   writingSaves: 0,
   codingRequests: 0,
+  clozeSubmissions: 0,
   codingHours: 0,
   ...extra,
 });
@@ -163,14 +164,20 @@ describe("heatmap", () => {
 });
 
 describe("allKindsInAWeek", () => {
-  it("dates the first week that completed all four kinds, and reports the best week otherwise", () => {
+  it("dates the first week that completed all five kinds, and reports the best week otherwise", () => {
     const days = [
       day("2026-09-07", 1, { userMessages: 1, quizAnswers: 1 }),
       day("2026-09-09", 1, { writingSaves: 1 }),
-      // Next week: all four on one day.
-      day("2026-09-15", 1, { userMessages: 1, quizAnswers: 1, writingSaves: 1, codingRequests: 1 }),
+      // Next week: all five on one day.
+      day("2026-09-15", 1, {
+        userMessages: 1,
+        quizAnswers: 1,
+        writingSaves: 1,
+        codingRequests: 1,
+        clozeSubmissions: 1,
+      }),
     ];
-    expect(allKindsInAWeek(days)).toEqual({ qualifiedOn: "2026-09-15", best: 4 });
+    expect(allKindsInAWeek(days)).toEqual({ qualifiedOn: "2026-09-15", best: 5 });
     expect(allKindsInAWeek(days.slice(0, 2))).toEqual({ qualifiedOn: undefined, best: 3 });
     expect(allKindsInAWeek([])).toEqual({ qualifiedOn: undefined, best: 0 });
   });
@@ -178,8 +185,8 @@ describe("allKindsInAWeek", () => {
   it("a week crossing New Year is one week", () => {
     const days = [
       day("2026-12-30", 1, { userMessages: 1, quizAnswers: 1 }),
-      day("2027-01-02", 1, { writingSaves: 1, codingRequests: 1 }),
+      day("2027-01-02", 1, { writingSaves: 1, codingRequests: 1, clozeSubmissions: 1 }),
     ];
-    expect(allKindsInAWeek(days)).toEqual({ qualifiedOn: "2027-01-02", best: 4 });
+    expect(allKindsInAWeek(days)).toEqual({ qualifiedOn: "2027-01-02", best: 5 });
   });
 });

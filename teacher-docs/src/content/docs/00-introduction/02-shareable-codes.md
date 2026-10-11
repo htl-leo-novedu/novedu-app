@@ -20,7 +20,7 @@ When an activity is ready for your class, you hand it out as a code. A code is a
 
 A code is a short, random combination of letters and digits. You don't choose the text yourself; Novedu generates it when you create the code, and it is long enough that nobody can guess it. The full link looks like `https://<your Novedu address>/<code>`, and the code alone works too.
 
-Each code belongs to one activity of one kind (tutor, quiz, writing, or coding). The kind is fixed when the code is created and never changes. You can create several codes for the same activity, for example one per class, each with its own settings.
+Each code belongs to one activity of one kind (tutor, quiz, writing, coding, or cloze). The kind is fixed when the code is created and never changes. You can create several codes for the same activity, for example one per class, each with its own settings.
 
 ## How you get a code
 
@@ -28,7 +28,7 @@ You create a code from an activity you have already written. In the Codes area y
 
 ## What students do with a code
 
-Students open the link in a browser and sign in with their school account. They then land directly in the activity: a tutor chat, a quiz, or a writing editor, depending on the kind.
+Students open the link in a browser and sign in with their school account. They then land directly in the activity: a tutor chat, a quiz, a writing editor, a coding activity's key page, or a gap text, depending on the kind.
 
 If a student only has the code text, they can open the Novedu start page and type or paste it there. The start page also remembers codes a student used recently, so returning to yesterday's activity is one click.
 

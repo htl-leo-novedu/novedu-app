@@ -1,4 +1,14 @@
 import { z } from "zod";
+import {
+  buildClozeFeedbackPrompt,
+  CLOZE_FEEDBACK_MESSAGE_TEMPLATE,
+} from "@/lib/cloze-feedback-prompt";
+import {
+  buildClozeGradingPrompt,
+  CLOZE_GRADING_MESSAGE_TEMPLATE,
+} from "@/lib/cloze-grading-prompt";
+import { CLOZE_FEEDBACK_SCHEMA, CLOZE_GRADING_SCHEMA } from "@/lib/cloze-output-schemas";
+import { loadClozeFrom } from "@/lib/cloze-resolve";
 import { buildUpstreamChatBody } from "@/lib/coding-proxy";
 import { loadCodingFrom } from "@/lib/coding-resolve";
 import type { FileKind } from "@/lib/file-name";
@@ -38,6 +48,7 @@ import { loadWritingFrom } from "@/lib/writing-resolve";
 //   quiz     loadQuizFrom + buildGradingPrompt / buildDiscussionInstructions
 //   writing  loadWritingFrom
 //   coding   loadCodingFrom + buildUpstreamChatBody (lib/coding-proxy)
+//   cloze    loadClozeFrom + buildClozeGradingPrompt / buildClozeFeedbackPrompt
 //
 // The activity's OWN `llm` block is reported. A code's per-code LLM override pair
 // (`effectiveLlm`, docs/ai-models.md) is deliberately out of scope: a dump describes a
@@ -49,13 +60,13 @@ import { loadWritingFrom } from "@/lib/writing-resolve";
 // `lib/llm/model.ts`), no DB, no `lib/llm/model.ts`.
 
 /**
- * The kinds that produce prompts — every `FileKind` except `fragment`, which is a
+ * The kinds with a prompt dump — every `FileKind` except `fragment`, which is a
  * library, not an activity (it has no `llm`, and its fragments only ever appear inline
- * in some activity's host text, where the four dumps below already show them rendered).
+ * in some activity's host text, where the dumps below already show them rendered).
  */
 export type PromptKind = Exclude<FileKind, "fragment">;
 
-export const PROMPT_KINDS: readonly PromptKind[] = ["tutor", "quiz", "writing", "coding"];
+export const PROMPT_KINDS: readonly PromptKind[] = ["tutor", "quiz", "writing", "coding", "cloze"];
 
 /** The activity's own model + provider (per-code overrides are out of scope). */
 export interface PromptDumpLlm {
@@ -148,7 +159,32 @@ export interface CodingPromptDump extends PromptDumpBase {
   upstreamSystemMessage: string;
 }
 
-export type PromptDump = TutorPromptDump | QuizPromptDump | WritingPromptDump | CodingPromptDump;
+/** One call of the cloze pipeline: its system prompt, user-message wrapper and output. */
+export interface ClozeCallDump {
+  /** The FULL system prompt, exactly as the server action builds it. */
+  system: string;
+  /** The user message; `{answers}` is the JSON list the action fills in. */
+  userMessageTemplate: string;
+  /** The call's structured output as plain JSON Schema. */
+  responseSchema: Record<string, unknown>;
+}
+
+export interface ClozePromptDump extends PromptDumpBase {
+  kind: "cloze";
+  /** How many gaps the text has (the grading call sees only the undecided ones). */
+  gapCount: number;
+  /** Step 1 — one verdict per gap the pre-pass left undecided (`gradeCloze`). */
+  grading: ClozeCallDump;
+  /** Step 2 — patterns + per-gap notes over the final verdicts (`explainCloze`). */
+  feedback: ClozeCallDump;
+}
+
+export type PromptDump =
+  | TutorPromptDump
+  | QuizPromptDump
+  | WritingPromptDump
+  | CodingPromptDump
+  | ClozePromptDump;
 
 export type PromptDumpResult =
   | { ok: true; dump: PromptDump }
@@ -164,15 +200,17 @@ function loadFailed(message: string, url: string): PromptDumpResult {
 }
 
 /**
- * The verdict schema as plain JSON Schema, generated from the zod source of truth with
- * zod 4's native converter — the same mechanism `lib/schema-gen` uses for the authoring
- * schemas, so there is no second conversion story in the repo.
+ * A structured-output schema as plain JSON Schema, generated from the zod source of
+ * truth with zod 4's native converter — the same mechanism `lib/schema-gen` uses for the
+ * authoring schemas, so there is no second conversion story in the repo.
  */
+export function toResponseJsonSchema(schema: z.ZodType): Record<string, unknown> {
+  return z.toJSONSchema(schema, { target: "draft-2020-12" }) as Record<string, unknown>;
+}
+
+/** The quiz verdict schema as plain JSON Schema. */
 export function verdictResponseJsonSchema(): Record<string, unknown> {
-  return z.toJSONSchema(QUIZ_VERDICT_SCHEMA, { target: "draft-2020-12" }) as Record<
-    string,
-    unknown
-  >;
+  return toResponseJsonSchema(QUIZ_VERDICT_SCHEMA);
 }
 
 // tutor: the tutor core IS the runtime path (the agent calls the same function per
@@ -302,12 +340,47 @@ const codingDumper: PromptDumper = {
   },
 };
 
+// cloze: the runtime load (preamble rendered once), then the two real prompt builders —
+// the grading call's and the feedback call's — with their user-message wrappers and
+// output schemas.
+const clozeDumper: PromptDumper = {
+  async dump(url, fetcher, opts = {}) {
+    const loaded = await loadClozeFrom(url, fetcher, { allowedSchemes: opts.allowedSchemes });
+    if (!loaded.ok) return loadFailed(loaded.message, url);
+    const cloze = loaded.cloze;
+    return {
+      ok: true,
+      dump: {
+        kind: "cloze",
+        id: cloze.id,
+        llm: {
+          provider: cloze.provider,
+          model: cloze.model,
+          ...(cloze.reasoning ? { reasoning: cloze.reasoning } : {}),
+        },
+        gapCount: cloze.gaps.length,
+        grading: {
+          system: buildClozeGradingPrompt(cloze),
+          userMessageTemplate: CLOZE_GRADING_MESSAGE_TEMPLATE,
+          responseSchema: toResponseJsonSchema(CLOZE_GRADING_SCHEMA),
+        },
+        feedback: {
+          system: buildClozeFeedbackPrompt(cloze),
+          userMessageTemplate: CLOZE_FEEDBACK_MESSAGE_TEMPLATE,
+          responseSchema: toResponseJsonSchema(CLOZE_FEEDBACK_SCHEMA),
+        },
+      },
+    };
+  },
+};
+
 /** The seam: one dumper per prompt-producing `FileKind`. */
 export const promptDumpers: Record<PromptKind, PromptDumper> = {
   tutor: tutorDumper,
   quiz: quizDumper,
   writing: writingDumper,
   coding: codingDumper,
+  cloze: clozeDumper,
 };
 
 /** Dump the prompts of ONE activity file — the single entry point callers use. */
@@ -333,6 +406,11 @@ export function promptSections(dump: PromptDump): { name: string; text: string }
       ];
     case "coding":
       return [{ name: "system (injected upstream)", text: dump.system }];
+    case "cloze":
+      return [
+        { name: "grading", text: dump.grading.system },
+        { name: "feedback", text: dump.feedback.system },
+      ];
     default:
       return [{ name: "system", text: dump.system }];
   }

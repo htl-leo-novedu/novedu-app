@@ -41,12 +41,17 @@ export type FileActionFailure =
   | { ok: false; message: string }
   | { ok: false; errors: ValidationError[] };
 
-export type SaveFileResult = { ok: true } | FileActionFailure;
+// A successful save carries the validator's one-line content summary (cloze: the
+// gap inventory; null for kinds without one) for the form to show beside "Saved".
+export type SaveFileResult = { ok: true; summary: string | null } | FileActionFailure;
 
 // Result of a validate-only action (the standalone "Validate" button): a pass
-// carries the non-blocking warnings to surface; a failure reuses the same shape
-// as a rejected save (a short message or the full structured error list).
-export type ValidateFileResult = { ok: true; warnings: ValidationWarning[] } | FileActionFailure;
+// carries the non-blocking warnings and the content summary to surface; a failure
+// reuses the same shape as a rejected save (a short message or the full structured
+// error list).
+export type ValidateFileResult =
+  | { ok: true; warnings: ValidationWarning[]; summary: string | null }
+  | FileActionFailure;
 
 // The shared teacher-gate refusal for these file actions — only the verb
 // (create/edit/delete) differs between the call sites.
@@ -99,7 +104,7 @@ export async function updateFileAction(name: string, content: string): Promise<S
 
   revalidatePath("/files");
   revalidatePath(`/files/edit/${name}`);
-  return { ok: true };
+  return { ok: true, summary: result.summary };
 }
 
 /**
@@ -124,7 +129,7 @@ export async function validateNewFileAction(input: {
   if (!isFileKind(input.kind)) {
     return {
       ok: false,
-      message: "Choose whether this is a tutor, fragment, quiz, writing or coding file.",
+      message: "Choose whether this is a tutor, fragment, quiz, writing, coding or cloze file.",
     };
   }
   if (typeof input.content !== "string" || input.content.trim() === "") {
@@ -133,7 +138,7 @@ export async function validateNewFileAction(input: {
 
   const validation = await validateFileContent(name, input.kind, input.content);
   if (!validation.ok) return { ok: false, errors: validation.errors };
-  return { ok: true, warnings: validation.warnings };
+  return { ok: true, warnings: validation.warnings, summary: validation.summary };
 }
 
 /**
@@ -162,7 +167,7 @@ export async function validateExistingFileAction(
 
   const validation = await validateFileContent(name, active.kind, content);
   if (!validation.ok) return { ok: false, errors: validation.errors };
-  return { ok: true, warnings: validation.warnings };
+  return { ok: true, warnings: validation.warnings, summary: validation.summary };
 }
 
 /** The uniform shape every list's "Delete Selected" action returns. */

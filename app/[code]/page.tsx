@@ -7,6 +7,7 @@ import { recordRecentCode, removeRecentCode } from "@/lib/recent-code-store";
 import { getSession } from "@/lib/session";
 import { getThreadTokenSecret, signThreadToken } from "@/lib/thread-token";
 import { CodeError } from "../code-error";
+import { RenderCloze } from "./render-cloze";
 import { RenderCoding } from "./render-coding";
 import { RenderQuiz } from "./render-quiz";
 import { RenderTutor } from "./render-tutor";
@@ -92,6 +93,10 @@ export default async function CodePage({ params }: { params: Promise<{ code: str
       // design's view-as-student behavior (a teacher testing this page mints a key
       // under their own user id, never a fabricated student row).
       return <RenderCoding entry={entry} code={code} userId={userId} />;
+    case "cloze":
+      // No thread either: the exercise is graded by its own server actions, which
+      // re-verify the code on every submission.
+      return <RenderCloze entry={entry} code={code} userId={userId} />;
     default: {
       const exhaustive: never = entry.module;
       return exhaustive;

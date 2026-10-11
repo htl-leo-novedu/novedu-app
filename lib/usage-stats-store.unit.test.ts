@@ -185,10 +185,11 @@ describe("getTokensByProvider", () => {
 
 describe("getDashboardKpis", () => {
   it("maps the single aggregate row, coercing string counts", async () => {
-    fake.state.rows = [{ chats: "3", quizAnswers: 12 }];
+    fake.state.rows = [{ chats: "3", quizAnswers: 12, clozeSubmissions: "4" }];
     await expect(getDashboardKpis({ range: "24h", now: NOW })).resolves.toEqual({
       chats: 3,
       quizAnswers: 12,
+      clozeSubmissions: 4,
     });
   });
 
@@ -197,6 +198,7 @@ describe("getDashboardKpis", () => {
     await expect(getDashboardKpis({ range: "24h", now: NOW })).resolves.toEqual({
       chats: 0,
       quizAnswers: 0,
+      clozeSubmissions: 0,
     });
   });
 

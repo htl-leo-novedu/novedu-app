@@ -1,3 +1,4 @@
+import { loadAndCheckCloze } from "@/lib/cloze-validate";
 import { loadAndCheckCoding } from "@/lib/coding-validate";
 import type { FileKind } from "@/lib/file-name";
 import { providerUnavailableReason } from "@/lib/llm/availability";
@@ -40,6 +41,11 @@ export type FileValidationResult =
       description: string | null;
       /** The activity YAML's privacy flag — code-create freezes this onto the row. */
       anonymous: boolean;
+      /**
+       * A one-line summary of the validated content, shown beside "Validation passed"
+       * (cloze: the gap inventory); null for kinds without one.
+       */
+      summary: string | null;
     }
   | { ok: false; errors: ValidationError[] };
 
@@ -71,6 +77,7 @@ const tutorValidator: FileValidator = {
       title: result.title ?? null,
       description: result.description ?? null,
       anonymous: result.anonymous ?? true,
+      summary: null,
     };
   },
 };
@@ -82,7 +89,14 @@ const fragmentValidator: FileValidator = {
   async validate(url, fetcher) {
     const result = await loadAndCheckFragmentFile(url, fetcher);
     if (!result.ok) return { ok: false, errors: result.errors };
-    return { ok: true, warnings: result.warnings, title: null, description: null, anonymous: true };
+    return {
+      ok: true,
+      warnings: result.warnings,
+      title: null,
+      description: null,
+      anonymous: true,
+      summary: null,
+    };
   },
 };
 
@@ -103,6 +117,7 @@ const quizValidator: FileValidator = {
       title: result.title,
       description: null,
       anonymous: result.anonymous,
+      summary: null,
     };
   },
 };
@@ -122,6 +137,7 @@ const writingValidator: FileValidator = {
       title: result.title,
       description: null,
       anonymous: result.anonymous,
+      summary: null,
     };
   },
 };
@@ -144,6 +160,30 @@ const codingValidator: FileValidator = {
       title: result.title,
       description: null,
       anonymous: true,
+      summary: null,
+    };
+  },
+};
+
+// cloze: a strict authoring gate exactly like coding (bad YAML, missing field, no
+// `llm.model`, no `evaluation`/`text`, broken gap markup → ok:false, BLOCKS the save).
+// Cloze is ALWAYS anonymous — nothing links a submission to a student — so the seam
+// FREEZES `anonymous: true` (the schema has no `anonymous` field to read). On
+// success it carries the gap inventory as its summary, which the /files editor
+// shows. The lenient runtime read lives in lib/cloze-yaml.ts.
+const clozeValidator: FileValidator = {
+  async validate(url, fetcher) {
+    const result = await loadAndCheckCloze(url, fetcher);
+    if (!result.ok) return { ok: false, errors: result.errors };
+    const gated = providerGate(result.provider);
+    if (gated) return gated;
+    return {
+      ok: true,
+      warnings: result.warnings,
+      title: result.title,
+      description: null,
+      anonymous: true,
+      summary: result.inventory,
     };
   },
 };
@@ -154,6 +194,7 @@ export const fileValidators: Record<FileKind, FileValidator> = {
   quiz: quizValidator,
   writing: writingValidator,
   coding: codingValidator,
+  cloze: clozeValidator,
 };
 
 // Runtime-light read of just the activity YAML's `anonymous` flag, keyed by
@@ -184,9 +225,10 @@ export async function readAnonymousFlag(
       // own flag, which `parseWriting` already defaults to `false` when absent.
       const loaded = await loadWriting(fileUrl);
       if (loaded.ok) return { anonymous: loaded.writing.anonymous, definitive: true };
-    } else if (kind === "coding") {
-      // Coding is ALWAYS anonymous (no in-app conversations to attribute), so
-      // this is definitive without reading the YAML.
+    } else if (kind === "coding" || kind === "cloze") {
+      // Coding (no in-app conversations to attribute) and cloze (nothing links a
+      // submission to a student) are ALWAYS anonymous, so this is definitive
+      // without reading the YAML.
       return { anonymous: true, definitive: true };
     }
   } catch (error) {

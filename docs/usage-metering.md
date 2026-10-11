@@ -10,7 +10,7 @@ read surface — the teacher usage dashboard at `/usage` (`docs/dashboard.md`);
 Read before touching: `lib/usage-store.ts`, `app/mastra/usage-exporter.ts`,
 `lib/usage-context-keys.ts`, the `observability` block in `app/mastra/index.ts`, and
 the capture points in `app/api/copilotkit/[[...slug]]/route.ts`, `lib/quiz-actions.ts`,
-`lib/writing-actions.ts`, and `app/api/coding/v1/chat/completions/route.ts` +
+`lib/writing-actions.ts`, `lib/cloze-actions.ts`, and `app/api/coding/v1/chat/completions/route.ts` +
 `lib/coding-proxy.ts`.
 
 ## The two tables (and why two)
@@ -31,9 +31,9 @@ bucket). Trade-off: "student X's usage on code Y" is unanswerable, by design.
 
 Columns: `input_tokens_new` / `input_tokens_cached` / `output_tokens` are `bigint`
 token sums (`output_tokens` already includes reasoning tokens); `tool_calls` /
-`user_messages` / `quiz_answers` / `writing_saves` / `coding_requests` are `int`
-counts — the last three reveal only the *kind* of activity in an hour, never which
-activity. `hour` is the
+`user_messages` / `quiz_answers` / `writing_saves` / `coding_requests` /
+`cloze_submissions` are `int` counts — the last four reveal only the *kind* of
+activity in an hour, never which activity. `hour` is the
 UTC top-of-hour bucket. `usage_by_code` additionally carries two nullable
 attribution columns — `provider` (the LLM provider label: `SCCH`,
 `Azure Foundry` or `OpenRouter`) and `model` (the raw model id / deployment name) — which only the
@@ -59,8 +59,9 @@ the response path** (the exporter is async; the route/action counters use
   present** (every current caller passes one). `provider`/`model` feed
   `usage_by_code` alone; `codingRequests` (the coding proxy passes `1`) counts the
   request in the same increment as its tokens.
-- `recordUserMessage` / `recordQuizAnswer` / `recordWritingSave` — `+1` on their
-  counter in both tables; they carry no provider/model.
+- `recordUserMessage` / `recordQuizAnswer` / `recordWritingSave` /
+  `recordClozeSubmission` — `+1` on their counter in both tables; they carry no
+  provider/model.
 
 Each write is a **single `INSERT … ON CONFLICT … DO UPDATE`** statement: the
 `INSERT` supplies the deltas as the bucket's initial values, and on a
@@ -81,18 +82,20 @@ keeps its first-seen value — negligible for a cost aggregate).
 
 | Metric(s) | Where | How |
 |---|---|---|
-| tokens + tool calls — tutor, quiz discussion, writing, quiz grader | Mastra observability exporter | `MODEL_GENERATION` + tool-call spans, attributed via `requestContext` |
+| tokens + tool calls — tutor, quiz discussion, writing, quiz grader, cloze grading + feedback | Mastra observability exporter | `MODEL_GENERATION` + tool-call spans, attributed via `requestContext` |
 | tokens + coding requests — coding proxy | the coding route | taps the passthrough response for the `usage` chunk; both tables, `coding_requests` `+1` per metered response |
 | tokens — CLI evals | `POST /api/eval/grade`, `POST /api/eval/respond` and `POST /api/eval/judge` | the same exporter path (they run `quizEvaluator` / `evalTutor` / `evalJudge`), all tagged with the `cli-eval` sentinel keys below — grading, tutor-generation and judging tokens land in the SAME buckets on purpose (`docs/cli-eval.md`) |
 | user messages | CopilotKit route (`run`) | `after()` → `recordUserMessage` |
 | quiz answers | `submitAnswer` (`lib/quiz-actions.ts`) | `after()` → `recordQuizAnswer` on a successful grade |
 | writing saves | `saveWriting` (`lib/writing-actions.ts`) | `after()` → `recordWritingSave` after a successful save |
+| cloze submissions | `gradeCloze` (`lib/cloze-actions.ts`) | `after()` → `recordClozeSubmission` after every successful grading, practice rounds included |
 | quiz pre-checks | `precheckAnswer` (`lib/quiz-actions.ts`) | **not metered** (experimental; the `(code, hour)` buckets cannot separate classifier tokens from grader tokens without new columns — a content-free `quiz.precheck` event carries the experiment's use and latency instead, `docs/telemetry.md`) |
 
 Agent attribution rides three RequestContext keys — `usageCode`, `usageUserId`,
 `usageModule` (`lib/usage-context-keys.ts`) — set on the per-request RequestContext:
 the CopilotKit route sets them on `built.context` before `getLocalAgent`; the quiz
-grader sets them on the RequestContext it builds for `submitAnswer`. `usageUserId` is
+grader sets them on the RequestContext it builds for `submitAnswer`, and the cloze
+actions on the one they build for each `clozeEvaluator` call. `usageUserId` is
 set for **all** codes including anonymous ones (it only ever reaches `usage_by_user`).
 
 **CLI evals** (`novedu-cli eval`, `docs/cli-eval.md`) ride the identical

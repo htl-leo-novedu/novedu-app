@@ -51,7 +51,7 @@ activities:
 
 The example is the real registry shape used by the Creative Coding book, a TypeScript course where most chapters end with a quiz.
 
-**The groups decide the kind of activity.** There are four, and each one may be left out: `quizzes` for quizzes, `tutors` for tutors, `writing` for writing activities, and `coding` for coding activities. A group name that is not one of these four is an error, so a typo can never silently drop half your course.
+**The groups decide the kind of activity.** There are five, and each one may be left out: `quizzes` for quizzes, `tutors` for tutors, `writing` for writing activities, `coding` for coding activities, and `cloze` for cloze exercises. A group name that is not one of these five is an error, so a typo can never silently drop half your course.
 
 **Each entry says where the activity file is**, in one of two ways: `file` for a path relative to `base-url`, or `url` for a complete address. Use one or the other, not both. If you use `file` anywhere, `base-url` must be set and must end with a slash.
 
@@ -75,7 +75,7 @@ You can also add your own extra lines to an entry, for example a chapter number.
 The name in front of each entry (`welcome`, `number-systems`, `sorting` in the example) is yours to pick, and it is what your material will refer to. Two rules apply:
 
 - Lowercase letters, digits, and hyphens only, up to 64 characters.
-- Unique across the whole file, not just within a group. One list of names covers all four groups.
+- Unique across the whole file, not just within a group. One list of names covers all five groups.
 
 Pick names that will still make sense next year: a chapter slug usually beats a number.
 

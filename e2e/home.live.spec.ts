@@ -109,6 +109,7 @@ test("the start page shows seeded activity, pins a badge on its day, and clears 
       quizAnswers: 0,
       writingSaves: 0,
       codingRequests: 0,
+      clozeSubmissions: 0,
       codingHours: 0,
     });
     expect(usage?.some((d) => d.date === addDays(today, -3))).toBe(false);

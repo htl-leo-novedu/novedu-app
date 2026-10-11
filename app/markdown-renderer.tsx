@@ -1,6 +1,6 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -23,7 +23,22 @@ import { CodeBlock } from "./code-block";
 // puts real ones back. Colors are re-mapped to the app foreground in globals.css;
 // the `content-none` modifiers drop the plugin's backticks around inline code;
 // fenced code opts out entirely via `not-prose` (CodeBlock owns its chrome).
-export function MarkdownRenderer({ content, className }: { content: string; className?: string }) {
+//
+// `rehypePlugins` / `components` EXTEND the pipeline (appended after / merged over
+// the defaults) for a surface that swaps marked text for widgets — the cloze
+// runner's gap inputs (app/[code]/_cloze/cloze-text.tsx). Pass module-level
+// constants: a new component function per render would remount every widget.
+export function MarkdownRenderer({
+  content,
+  className,
+  rehypePlugins,
+  components,
+}: {
+  content: string;
+  className?: string;
+  rehypePlugins?: Options["rehypePlugins"];
+  components?: Components;
+}) {
   return (
     <div
       className={cn(
@@ -33,12 +48,13 @@ export function MarkdownRenderer({ content, className }: { content: string; clas
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[rehypeKatex, ...(rehypePlugins ?? [])]}
         components={{
           code: CodeBlock,
           // CodeBlock renders its own styled container, so drop react-markdown's
           // default <pre> wrapper (CopilotKit styles bare <pre> with a dark frame).
           pre: ({ children }) => <>{children}</>,
+          ...components,
         }}
       >
         {content}

@@ -77,7 +77,7 @@ image:
 - `credit` is optional here: without it, the credit stored at upload is shown.
 
 Image blocks work in quizzes only, one optional image per question. Tutor,
-fragment, writing, and coding files have no image block.
+fragment, writing, coding, and cloze files have no image block.
 
 ## Replace or delete an image
 

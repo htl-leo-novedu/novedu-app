@@ -17,7 +17,7 @@ Needs a signed-in teacher.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/registry/registry-yaml.schema.json
 # ddp-activities.yaml — hand-written, committed
 base-url: "https://raw.githubusercontent.com/acme/course/refs/heads/main/"
-activities:          # groups: quizzes | tutors | writing | coding
+activities:          # groups: quizzes | tutors | writing | coding | cloze
   quizzes:
     welcome:         # the KEY the material references; unique across all groups
       file: 0010-introduction/0010-welcome-quiz.yaml
@@ -59,7 +59,7 @@ npx @novedu/cli codes sync ddp-activities.yaml             # writes the lock fil
   usually the YAML at the URL. The other entries still synced, and the lock kept
   that entry's previous code. Fix the YAML, push, re-run.
 - **Registry errors abort before ANY minting**, reported as JSON on stderr with
-  the exact YAML path. Common ones: a group name other than the four above; a
+  the exact YAML path. Common ones: a group name other than the five above; a
   key that is not lowercase-kebab; a duplicate key across groups; `file:` without
   a `base-url` ending in `/`; a naive datetime; a window bound with milliseconds
   (the server stores whole seconds); and an entry with no fields at all — the

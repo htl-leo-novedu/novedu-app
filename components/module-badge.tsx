@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CodeIcon, EditIcon, FlagIcon, HelpCircleIcon } from "@/components/icons";
+import { CodeIcon, EditIcon, FlagIcon, HelpCircleIcon, TextGapIcon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { type CodeModule, codeModuleLabels } from "@/lib/code-modules/types";
 
@@ -12,6 +12,7 @@ const MODULE_ICONS: Record<CodeModule, ReactNode> = {
   quiz: <HelpCircleIcon className="size-3" />,
   writing: <EditIcon className="size-3" />,
   coding: <CodeIcon className="size-3" />,
+  cloze: <TextGapIcon className="size-3" />,
 };
 
 export function ModuleBadge({ module }: { module: CodeModule }) {

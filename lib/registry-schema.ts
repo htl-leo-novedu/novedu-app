@@ -20,6 +20,7 @@ export const GROUP_MODULES = {
   tutors: "tutor",
   writing: "writing",
   coding: "coding",
+  cloze: "cloze",
 } as const satisfies Record<string, CodeModule>;
 
 export type RegistryGroup = keyof typeof GROUP_MODULES;

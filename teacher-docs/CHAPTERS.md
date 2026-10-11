@@ -47,6 +47,7 @@ _What makes each activity, field by field, the YAML reference backbone._
 | 06 | Building a coding activity | `activities/coding/README.md`, `activities/examples/**` |
 | 07 | Reusable fragments | `activities/tutors/README.md` (fragment sections), `activities/fragments/README.md`, module `README.md`s (fragment sections), `activities/examples/shared/**` |
 | 08 | Hosting images | `docs/images.md` (behavior), `cli/README.md` (`images`), the image sections of module `README.md`s |
+| 09 | Building a cloze exercise | `activities/cloze/README.md`, `docs/cloze.md` (behavior: student flow, results page, saved results), `activities/examples/future-forms/**` |
 
 ## 30: Sharing activities
 _Turning an activity into a code and handing it to a class._

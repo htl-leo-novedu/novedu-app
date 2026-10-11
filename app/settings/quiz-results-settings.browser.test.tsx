@@ -22,7 +22,7 @@ test("the switch reflects the setting, carries the notice, and saves a flip", as
     <QuizResultsSettings initialSaveQuizResults={false} initialSaved={0} />,
   );
   const toggle = screen.getByRole("switch", {
-    name: "Save my quiz results for my personal statistics",
+    name: "Save my quiz and exercise results for my personal statistics",
   });
   await expect.element(toggle).toHaveAttribute("aria-checked", "false");
   await expect.element(toggle).toHaveAccessibleDescription(/your teacher cannot/);
@@ -43,14 +43,14 @@ test("a failed save rolls the switch back and says why", async () => {
 
 test("deleting the saved results is confirmed first, then the count resets", async () => {
   const screen = await render(<QuizResultsSettings initialSaveQuizResults initialSaved={4} />);
-  await expect.element(screen.getByText("You have 4 saved quiz results.")).toBeVisible();
+  await expect.element(screen.getByText("You have 4 saved results.")).toBeVisible();
 
   await screen.getByRole("button", { name: "Delete my saved results" }).click();
   await expect.element(screen.getByText(/Badges you have already earned stay/)).toBeVisible();
   expect(deleteMyQuizResults).not.toHaveBeenCalled();
   await screen.getByRole("button", { name: "Delete", exact: true }).click();
 
-  await expect.element(screen.getByText("You have no saved quiz results.")).toBeVisible();
+  await expect.element(screen.getByText("You have no saved results.")).toBeVisible();
   expect(deleteMyQuizResults).toHaveBeenCalledTimes(1);
   await expect
     .element(screen.getByRole("button", { name: "Delete my saved results" }))
@@ -69,7 +69,7 @@ test("Cancel deletes nothing; a failed delete keeps the dialog with its message"
   await screen.getByRole("button", { name: "Delete my saved results" }).click();
   await screen.getByRole("button", { name: "Delete", exact: true }).click();
   await expect.element(screen.getByText("Could not delete.")).toBeVisible();
-  await expect.element(screen.getByText("You have 2 saved quiz results.")).toBeInTheDocument();
+  await expect.element(screen.getByText("You have 2 saved results.")).toBeInTheDocument();
 });
 
 test("a lost call (rejected action) never leaves a control stuck", async () => {

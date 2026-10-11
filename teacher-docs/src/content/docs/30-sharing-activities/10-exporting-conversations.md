@@ -32,7 +32,7 @@ The export never names a student, not even for a per-user code. The file carries
 
 Photos stay out as well. Where a student sent a photo, the export only notes that a photo of a certain type and size was there.
 
-The texts students saved in a writing activity are not exported as texts of their own; only the writing activity's feedback chats are. A feedback chat can still contain parts of a student's draft, because the AI reads the draft while it gives feedback and sometimes quotes it. A coding activity has no conversations to export, because conversations in a student's own coding tool are never stored, so its export is empty.
+The texts students saved in a writing activity are not exported as texts of their own; only the writing activity's feedback chats are. A feedback chat can still contain parts of a student's draft, because the AI reads the draft while it gives feedback and sometimes quotes it. A coding activity has no conversations to export, because conversations in a student's own coding tool are never stored, so its export is empty. The same holds for a cloze exercise: it has no chat, and students' answers are never stored.
 
 ## Exporting with the CLI
 

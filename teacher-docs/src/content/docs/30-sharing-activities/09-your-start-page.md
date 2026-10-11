@@ -34,7 +34,7 @@ Six numbers sum up your codes over the last 30 days:
 
 ## Top activities
 
-Your five codes with the most interactions in the last 30 days. An interaction is a chat message, a quiz answer, a saved text, or a request from a coding tool. Your own test runs count too.
+Your five codes with the most interactions in the last 30 days. An interaction is a chat message, a quiz answer, a saved text, a request from a coding tool, or a graded cloze submission (practice rounds included). Your own test runs count too.
 
 **Outside school hours** shows how much of that happened on weekends, or on weekdays before 8:00 or from 17:00 (Austrian time). A high share suggests students use the activity as homework. School holidays aren't known, so a weekday in the holidays still counts as school time.
 
@@ -47,7 +47,7 @@ At the bottom of the page you collect badges for your work with Novedu. Each one
 **Reach**
 
 - **First Code**: share your first activity.
-- **Full Toolkit**: share a tutor, a quiz, a writing and a coding activity.
+- **Full Toolkit**: share a tutor, a quiz, a writing, a coding and a cloze activity.
 - **Small Crowd**, **Full Class**, **Packed House**: 10, 30 or 100 identified students on one activity. Students in anonymous activities can't be counted.
 - **Busy**, **Buzzing**, **Hive of Activity**: 100, 1,000 or 5,000 interactions on one activity.
 

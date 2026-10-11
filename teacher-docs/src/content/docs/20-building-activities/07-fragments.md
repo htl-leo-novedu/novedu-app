@@ -10,22 +10,23 @@ related:
   - 20-building-activities/04-quizzes
   - 20-building-activities/05-writing
   - 20-building-activities/06-coding
+  - 20-building-activities/09-cloze
   - 20-building-activities/01-handling-yaml
   - 10-yaml-for-teachers/04-cli-validation
 ---
 
 A fragment is a named piece of prompt (a teaching style, a safety policy, a language rule) that lives in a fragment library, a YAML file of its own. Write the rule once, place it in as many activities as you like, and fix it in one place when it needs a change. The chapter on building a tutor shows how to *use* fragments; this chapter shows how to *write* a library of your own, and how the same library serves every kind of activity. It also covers the simpler sibling of a fragment library: embedding a plain-text file (course material, a sample solution) straight into your instructions with a text-file marker.
 
-## One library, four kinds of activity
+## One library, every kind of activity
 
-Fragments aren't a tutor feature. A tutor, a quiz, a writing activity, and a coding activity can all draw fragments from the same library, so a school-wide safety policy written once really does cover everything you build. Using fragments takes two steps in the activity file:
+Fragments aren't a tutor feature. A tutor, a quiz, a writing activity, a coding activity, and a cloze exercise can all draw fragments from the same library, so a school-wide safety policy written once really does cover everything you build. Using fragments takes two steps in the activity file:
 
 1. **List the libraries** you want to draw from under `fragment_files:`, each with a short `id` (an alias) and the library's `url`.
 2. **Place each fragment** by writing a marker directly in the activity's own instructions, wherever you want that piece to appear.
 
-Where `fragment_files:` goes depends on the kind. A tutor declares it inside its `prompt:` section. A quiz, writing, or coding activity declares it at the top level of the file, next to `id` and `name`.
+Where `fragment_files:` goes depends on the kind. A tutor declares it inside its `prompt:` section. A quiz, a writing or coding activity, and a cloze exercise declare it at the top level of the file, next to `id` and `name`.
 
-The instructions text that holds the markers also depends on the kind: a tutor's `tutor_instructions`, a writing or coding activity's `instructions`, and for a quiz two fields, its top-level `instructions` and its `discussion.instructions`. A quiz's `instructions` field is special: that text applies both to how answers are graded and to the follow-up discussion chat, so a persona or safety rule you place there shapes grading and conversation alike. `discussion.instructions` steers only the discussion chat and takes the same markers; the per-question `evaluation` texts stay plain.
+The instructions text that holds the markers also depends on the kind: a tutor's `tutor_instructions`, a writing or coding activity's `instructions`, and for a quiz two fields, its top-level `instructions` and its `discussion.instructions`. A quiz's `instructions` field is special: that text applies both to how answers are graded and to the follow-up discussion chat, so a persona or safety rule you place there shapes grading and conversation alike. `discussion.instructions` steers only the discussion chat and takes the same markers; the per-question `evaluation` texts stay plain. A cloze exercise's `instructions` field works the same way for grading and for the feedback students read, while its `evaluation` and `text` stay plain.
 
 ## Placing a fragment with a marker
 
@@ -190,7 +191,7 @@ instructions: |
   {{file "solution"}}
 ```
 
-`text_files:` sits in the same place as `fragment_files:` for each kind (inside `prompt:` for a tutor, at the top level for a quiz, writing, or coding activity), and the entries have the same shape: a short `id` alias plus a `url`, absolute or relative to the activity file. The two lists share one set of aliases, so an id you use under `text_files:` must not also name a fragment library.
+`text_files:` sits in the same place as `fragment_files:` for each kind (inside `prompt:` for a tutor, at the top level for every other kind), and the entries have the same shape: a short `id` alias plus a `url`, absolute or relative to the activity file. The two lists share one set of aliases, so an id you use under `text_files:` must not also name a fragment library.
 
 A few things make text files simpler than fragments:
 

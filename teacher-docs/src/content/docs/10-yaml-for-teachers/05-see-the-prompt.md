@@ -67,9 +67,10 @@ The `prompts` command assumes a tutor unless you say otherwise with `--kind`:
 npx @novedu/cli prompts ./my-quiz.yaml --kind quiz
 npx @novedu/cli prompts ./my-writing.yaml --kind writing
 npx @novedu/cli prompts ./my-coding.yaml --kind coding
+npx @novedu/cli prompts ./my-cloze.yaml --kind cloze
 ```
 
-`--kind` accepts `tutor` (the default), `quiz`, `writing`, or `coding`. There's no `fragment` kind, because a fragment library has no prompt of its own: its fragments appear inside whichever activity places them, already filled in.
+`--kind` accepts `tutor` (the default), `quiz`, `writing`, `coding`, or `cloze`. There's no `fragment` kind, because a fragment library has no prompt of its own: its fragments appear inside whichever activity places them, already filled in.
 
 ## What each kind of activity gives you
 
@@ -98,7 +99,9 @@ A quiz built from other quizzes lists every imported question too, each one carr
 
 A coding activity gives you your own instructions and, as `upstreamSystemMessage`, the system message the server passes on to the student's coding agent, with your text appended last so you have the final word.
 
-One thing to keep in mind: a quiz's grading prompts contain your evaluation criteria, the notes on what counts as a correct answer. Students never see them. The output of the command is teacher material, just like the file it came from.
+A cloze exercise gives you two prompts: one for grading the gaps, with your whole text and every reference answer, and one for writing the feedback the student reads. Each comes with the wording that wraps the student's answers and the shape the AI must answer in.
+
+One thing to keep in mind: a quiz's grading prompts and a cloze exercise's prompts contain your evaluation criteria, the notes on what counts as a correct answer. Students never see them. The output of the command is teacher material, just like the file it came from.
 
 ## Find out why an activity behaves oddly
 

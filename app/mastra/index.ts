@@ -6,6 +6,7 @@ import { Observability } from "@mastra/observability";
 import { PostgresStore } from "@mastra/pg";
 import { getPool } from "@/lib/db/pool";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { clozeEvaluatorAgent } from "./cloze-agents";
 import { evalJudgeAgent, evalTutorAgent } from "./eval-agents";
 import { quizDiscussionAgent, quizEvaluatorAgent } from "./quiz-agents";
 import { tutorAgent } from "./tutor-agent";
@@ -102,6 +103,10 @@ export const mastra = new Mastra({
   // ONE tutor turn a tutor eval measures for `POST /api/eval/respond`
   // (docs/cli-eval.md). Like `quizEvaluator`, the runtime route never allows their ids,
   // so neither is ever web-reachable by students.
+  //
+  // `clozeEvaluator` grades a cloze exercise and writes its feedback, invoked
+  // server-side by the `gradeCloze` / `explainCloze` actions only; the cloze module
+  // has no runtime, so the route never allows its id either.
   agents: {
     tutor: tutorAgent,
     quizDiscussion: quizDiscussionAgent,
@@ -109,6 +114,7 @@ export const mastra = new Mastra({
     evalJudge: evalJudgeAgent,
     evalTutor: evalTutorAgent,
     writing: writingAgent,
+    clozeEvaluator: clozeEvaluatorAgent,
   },
   // Persistent storage is Postgres via `@mastra/pg`, on the app's shared pool
   // (schema `mastra`); the pool decides password-vs-Entra auth from `DATABASE_URL`

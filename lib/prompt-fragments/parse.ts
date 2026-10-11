@@ -26,7 +26,8 @@ export function validate<T>(
     | "FRAGMENT_FILE_SCHEMA_ERROR"
     | "QUIZ_SCHEMA_ERROR"
     | "WRITING_SCHEMA_ERROR"
-    | "CODING_SCHEMA_ERROR",
+    | "CODING_SCHEMA_ERROR"
+    | "CLOZE_SCHEMA_ERROR",
   url?: string,
 ): { ok: true; data: T } | { ok: false; error: ValidationError } {
   const result = schema.safeParse(value);

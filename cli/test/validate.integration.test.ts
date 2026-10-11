@@ -21,6 +21,7 @@ const writingsDir = fileURLToPath(
   new URL("../../test-fixtures/activities/writings/", import.meta.url),
 );
 const codingDir = fileURLToPath(new URL("../../test-fixtures/activities/coding/", import.meta.url));
+const clozeDir = fileURLToPath(new URL("../../test-fixtures/activities/cloze/", import.meta.url));
 
 // The served-URL cases point the CLI at a local fixtures server, reachable by
 // the spawned child on 127.0.0.1 — fully offline.
@@ -178,6 +179,33 @@ describe("novedu-cli validate — local files", () => {
 
     expect(code).toBe(1);
     expect(stdout).toContain("CODING_SCHEMA_ERROR");
+  });
+
+  it("exits 0 and prints the gap inventory for a valid cloze exercise (--kind cloze)", async () => {
+    const { code, stdout } = await runCli([
+      "validate",
+      `${clozeDir}test-cloze.yaml`,
+      "--kind",
+      "cloze",
+    ]);
+
+    expect(code).toBe(0);
+    expect(stdout).toContain("Valid cloze exercise");
+    expect(stdout).toContain("gaps: 3");
+    expect(stdout).toMatch(/2 {2}"starts".*\(start\)/);
+  });
+
+  it("exits 1 with located gap errors for the committed broken cloze exercise", async () => {
+    const { code, stdout } = await runCli([
+      "validate",
+      `${clozeDir}broken-cloze.yaml`,
+      "--kind",
+      "cloze",
+    ]);
+
+    expect(code).toBe(1);
+    expect(stdout).toContain("CLOZE_GAP_SYNTAX");
+    expect(stdout).toContain("Text line 1, column 5");
   });
 
   // Document-level prompt fragments over a `file:` scheme with a RELATIVE ref, proving

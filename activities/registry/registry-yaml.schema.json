@@ -88,6 +88,25 @@
               "type": "null"
             }
           ]
+        },
+        "cloze": {
+          "description": "Activities minted as `cloze` codes, keyed by the name your material references.",
+          "anyOf": [
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/registryEntry"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false,

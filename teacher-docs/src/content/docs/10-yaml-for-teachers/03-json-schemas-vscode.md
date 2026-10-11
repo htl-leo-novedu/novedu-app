@@ -77,6 +77,12 @@ For a coding activity:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/coding/coding-yaml.schema.json
 ```
 
+For a cloze exercise:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/cloze/cloze-yaml.schema.json
+```
+
 Two more schemas cover files that are not activities. The first is for the **activity registry**, the list of activities you keep next to a book or a course repository. If you write one, it takes this line:
 
 ```yaml

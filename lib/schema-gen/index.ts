@@ -1,10 +1,10 @@
 // The single source that turns the zod authoring schemas into the JSON Schemas
 // teachers point their editors at. zod is the source of truth (`lib/tutors/schemas.ts`,
 // `lib/prompt-fragments/schemas.ts`, `lib/quiz-schema.ts`, `lib/writing-schema.ts`,
-// `lib/coding-schema.ts`, `lib/registry-schema.ts`); the teacher prose lives in inline
-// `.meta({ description })`.
+// `lib/coding-schema.ts`, `lib/cloze-schema.ts`, `lib/registry-schema.ts`); the teacher
+// prose lives in inline `.meta({ description })`.
 //
-// `npm run generate:schemas` (scripts/generate-activity-schemas.ts) writes the seven
+// `npm run generate:schemas` (scripts/generate-activity-schemas.ts) writes the eight
 // files below; the hermetic drift-guard test (`generated-schemas.unit.test.ts`)
 // deep-equals a fresh in-memory generation against the committed files, so an
 // edited zod schema committed WITHOUT regenerating fails CI. Nothing in `app/` or
@@ -12,6 +12,7 @@
 // solely by teachers' `# yaml-language-server: $schema=<github-raw-url>` modeline.
 
 import { z } from "zod";
+import { ClozeYamlSchema } from "@/lib/cloze-schema";
 import { CodingYamlSchema } from "@/lib/coding-schema";
 import { EvalYamlSchema } from "@/lib/eval-schema";
 import { FragmentFileSchema } from "@/lib/prompt-fragments";
@@ -97,6 +98,16 @@ export const schemaRegistry: readonly SchemaRegistryEntry[] = [
     description:
       "Schema for a coding activity: an OpenAI-compatible coding endpoint an external coding agent (e.g. little-coder) points at.",
     sourceFile: "lib/coding-schema.ts",
+  },
+  {
+    kind: "cloze",
+    root: ClozeYamlSchema,
+    outPath: "activities/cloze/cloze-yaml.schema.json",
+    id: `${RAW_BASE}/cloze/cloze-yaml.schema.json`,
+    title: "Cloze Exercise YAML",
+    description:
+      'Schema for a cloze exercise ("Fill the gaps"): one text whose gaps students complete, graded per gap with consolidated feedback.',
+    sourceFile: "lib/cloze-schema.ts",
   },
   {
     kind: "registry",

@@ -170,7 +170,7 @@ describe("updateFileAction", () => {
 
   it("revalidates on success", async () => {
     const result = await updateFileAction("my-file", "id: f\n");
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, summary: null });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/files");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/files/edit/my-file");
   });
@@ -189,6 +189,7 @@ describe("validateNewFileAction", () => {
     expect(result).toEqual({
       ok: true,
       warnings: [{ code: "UNDECLARED_VARIABLE", message: "heads up" }],
+      summary: null,
     });
     expect(mocks.createFile).not.toHaveBeenCalled();
   });
@@ -210,6 +211,21 @@ describe("validateNewFileAction", () => {
     expect(mocks.loadAndCheckFragmentFile).not.toHaveBeenCalled();
   });
 
+  it("validates a cloze buffer with the REAL cloze validator and returns its gap inventory", async () => {
+    const result = await validateNewFileAction({
+      name: "my-cloze",
+      kind: "cloze",
+      content:
+        "id: c\nllm: { model: m }\nevaluation: e\ntext: She [[is going to]] start at [[nine|time]].\n",
+    });
+    expect(result).toEqual({
+      ok: true,
+      warnings: [],
+      summary: '2 gaps · 1 "is going to" · 2 "nine" (time)',
+    });
+    expect(mocks.createFile).not.toHaveBeenCalled();
+  });
+
   it("validates a quiz via loadAndCheckQuiz and never stores", async () => {
     mocks.loadAndCheckQuiz.mockResolvedValue({
       ok: true,
@@ -222,7 +238,7 @@ describe("validateNewFileAction", () => {
       kind: "quiz",
       content: "id: q\n",
     });
-    expect(result).toEqual({ ok: true, warnings: [] });
+    expect(result).toEqual({ ok: true, warnings: [], summary: null });
     expect(mocks.loadAndCheckQuiz).toHaveBeenCalled();
     expect(mocks.loadAndBuildTutorPrompt).not.toHaveBeenCalled();
     expect(mocks.loadAndCheckFragmentFile).not.toHaveBeenCalled();
@@ -291,7 +307,7 @@ describe("validateExistingFileAction", () => {
   it("returns warnings on a valid buffer (kind from the active row) and never stores", async () => {
     mocks.loadAndCheckFragmentFile.mockResolvedValue({ ok: true, warnings: [] });
     const result = await validateExistingFileAction("my-file", "id: f\n");
-    expect(result).toEqual({ ok: true, warnings: [] });
+    expect(result).toEqual({ ok: true, warnings: [], summary: null });
     expect(mocks.loadAndCheckFragmentFile).toHaveBeenCalled();
     expect(mocks.updateFile).not.toHaveBeenCalled();
   });

@@ -40,6 +40,10 @@ export const VALID_QUIZ_URL = `${FIXTURES_BASE}/quizzes/test-quiz.yaml`;
 export const VISION_QUIZ_URL = `${FIXTURES_BASE}/quizzes/vision-quiz.yaml`;
 // A valid WRITING activity URL (attributed, real model) for the full round-trip.
 export const VALID_WRITING_URL = `${FIXTURES_BASE}/writings/test-writing.yaml`;
+// A valid CLOZE exercise (three gaps, the fake `test-model`) for the cloze flow.
+export const VALID_CLOZE_URL = `${FIXTURES_BASE}/cloze/test-cloze.yaml`;
+// A cloze exercise with a real model id for the @live-llm structured-output round-trip.
+export const LIVE_CLOZE_URL = `${FIXTURES_BASE}/cloze/live-cloze.yaml`;
 
 // Rows minted here are attributed to a recognizable fake teacher, so they are
 // easy to tell apart in the table. Specs leave their codes behind: the auth
@@ -152,6 +156,7 @@ export async function purgeCodes(codes: string[]): Promise<void> {
     "novedu_recent_codes",
     "novedu_writing_submissions",
     "novedu_quiz_results",
+    "novedu_cloze_gap_counts",
     "novedu_coding_keys",
     "novedu_codes",
   ]) {

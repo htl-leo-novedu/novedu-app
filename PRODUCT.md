@@ -10,7 +10,7 @@ Scope: the Next.js web app at the repo root. The CLI and the teacher guide (docs
 
 ## Users
 
-What Novedu is and its four kinds of activity: [What is Novedu](teacher-docs/src/content/docs/00-introduction/01-what-is-novedu.md). How students get in: [What is a shareable code](teacher-docs/src/content/docs/00-introduction/02-shareable-codes.md).
+What Novedu is and its five kinds of activity: [What is Novedu](teacher-docs/src/content/docs/00-introduction/01-what-is-novedu.md). How students get in: [What is a shareable code](teacher-docs/src/content/docs/00-introduction/02-shareable-codes.md).
 
 - **Students come first.** Students at an Austrian technical secondary school (HTL) arrive mid-lesson or on an assignment, through a link their teacher shared, with a task to finish. They didn't choose the tool and owe it no attention, so every student screen has to make the activity obvious and get out of the way.
 - **The start page is the one playful surface.** A student's own home (`/`) rewards coming back: XP, levels, a weekly streak, a 26-week calendar and badges, visible only to that student and never compared with anyone ([docs/home.md](docs/home.md)). Getting back into an activity still comes first on it. A teacher's `/` is a back-office dashboard over their own codes, with their own badges (no XP) at its foot.
@@ -24,13 +24,13 @@ Success for a student: opening a code gives them a focused, trustworthy learning
 
 - **The teacher controls the AI.** Activities run on readable, revisable instructions the teacher writes ([Why YAML](teacher-docs/src/content/docs/10-yaml-for-teachers/01-why-yaml.md)).
 - **Pedagogy over answers.** Tutors guide instead of solving; the writing coach can read but never edit the draft ([Writing overview](teacher-docs/src/content/docs/00-introduction/05-writing-overview.md)).
-- **School-specific activity kinds.** Graded open-answer quizzes, assisted writing, and teacher-configured coding help, not just a chat.
+- **School-specific activity kinds.** Graded open-answer quizzes, assisted writing, teacher-configured coding help, and gap texts (cloze) whose feedback connects related mistakes, not just a chat.
 
 ## Operating Context
 
 - **Mixed devices.** Students use phones too (photos of handwritten quiz answers), but laptops and desktops are the main screens for chat and writing. Teacher tools are desktop-first.
 - **Two environments.** Production for class use, dev for trying things out. An environment ribbon marks which one you're on ([Environments](teacher-docs/src/content/docs/00-introduction/07-environments.md)).
-- **One vocabulary.** "Activity" and "code" are the core nouns; tutor, quiz, writing, and coding are *kinds of activity*. Use the same terms in the UI as in the teacher guide.
+- **One vocabulary.** "Activity" and "code" are the core nouns; tutor, quiz, writing, coding, and cloze are *kinds of activity*. Use the same terms in the UI as in the teacher guide.
 
 ## Capabilities and Constraints
 

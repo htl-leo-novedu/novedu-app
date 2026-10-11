@@ -129,8 +129,8 @@ export async function TopActivitiesSection({ userId }: { userId: string }) {
       {body}
       <div className="mt-3.5 flex flex-wrap justify-between gap-x-4 gap-y-1.5 border-foreground/15 border-t pt-3">
         <span className={HOME_CAPTION}>
-          Interactions = chat messages, quiz answers, writing saves and coding requests. Your own
-          test runs count too.
+          Interactions = chat messages, quiz answers, writing saves, coding requests and cloze
+          submissions. Your own test runs count too.
           <span className="sm:hidden">
             {" "}
             Outside school hours: weekends, or Monday to Friday before 8:00 or from 17:00.

@@ -10,6 +10,7 @@ const tutorsDir = `${activitiesDir}tutors/`;
 const quizzesDir = `${activitiesDir}quizzes/`;
 const writingsDir = `${activitiesDir}writings/`;
 const codingDir = `${activitiesDir}coding/`;
+const clozeDir = `${activitiesDir}cloze/`;
 
 describe("runPrompts — the common envelope", () => {
   it.each([
@@ -22,6 +23,7 @@ describe("runPrompts — the common envelope", () => {
       "RedHatAI/gemma-4-31B-it-FP8-Dynamic",
     ],
     ["coding", `${codingDir}test-coding.yaml`, "test-coding", "test-model"],
+    ["cloze", `${clozeDir}test-cloze.yaml`, "test-cloze", "test-model"],
   ] as const)("reports kind/id/llm for a %s", async (kind, path, id, model) => {
     const result = await runPrompts(path, kind);
 
@@ -144,6 +146,22 @@ describe("runPrompts — writing", () => {
     assert(result.dump.kind === "writing");
     expect(result.dump.system).not.toContain("{{fragment");
     expect(result.dump.system).toContain("essay writing");
+  });
+});
+
+describe("runPrompts — cloze", () => {
+  it("dumps both calls' system prompts, user-message wrappers and output schemas", async () => {
+    const result = await runPrompts(`${clozeDir}test-cloze.yaml`, "cloze");
+
+    assert(result.ok);
+    assert(result.dump.kind === "cloze");
+    expect(result.dump.gapCount).toBe(3);
+    expect(result.dump.grading.system).toContain('⟦2 · reference "starts" · hint "start"⟧');
+    expect(result.dump.feedback.system).toContain("never re-grade");
+    expect(result.dump.grading.userMessageTemplate).toContain("{answers}");
+    expect(result.dump.feedback.userMessageTemplate).toContain("{answers}");
+    expect(result.dump.grading.responseSchema).toMatchObject({ properties: { gaps: {} } });
+    expect(result.dump.feedback.responseSchema).toMatchObject({ properties: { patterns: {} } });
   });
 });
 

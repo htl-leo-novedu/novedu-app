@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/cloze/cloze-yaml.schema.json
+# Cloze exercise ("Fill the gaps") for the English unit on future forms: will,
+# be going to, the present continuous for arrangements, the present simple for
+# timetables, the future continuous and the future perfect. Target group:
+# 15- to 16-year-old students learning English (roughly A2–B1).
+#
+# The whole text is written out; each gap is marked around its reference answer.
+# Students never see the references — only numbered gaps and the hints in
+# brackets. `evaluation` decides how far an answer may deviate from the reference.
+
+id: future-forms-sue
+name: "Cloze: Future forms — Sue's fresh start"
+
+title: "Sue's fresh start"
+description: |
+  Complete the text with suitable **future forms**. Use the verb in brackets
+  where one is given. Contractions are welcome.
+
+llm:
+  model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
+
+# Shared rules from ../shared/general-fragments.yaml. The rendered `instructions`
+# are prepended to BOTH the grading prompt and the feedback prompt.
+fragment_files:
+  - id: general_fragments
+    url: "../shared/general-fragments.yaml"
+
+instructions: |
+  {{fragment "general_fragments.language_policy" natural_language="English — simple and clear, suitable for A2–B1 learners" code_language="English"}}
+
+  {{fragment "general_fragments.teenager_safety"}}
+
+# SERVER-ONLY: the goal of the exercise and what counts as correct, partly correct
+# and wrong — for every gap at once.
+evaluation: |
+  Goal: the student chooses the future form that matches the speaker's intention
+  in context:
+  - a plan decided before the moment of speaking → be going to
+  - a prediction based on present evidence → be going to
+  - a timetable or schedule → present simple
+  - a fixed arrangement with another person → present continuous
+  - a decision made at the moment of speaking, a promise → will
+  - an action in progress at a future time → future continuous
+  - an action completed before a future time → future perfect
+
+  Correct: the intended form. Contractions ("'ll", "'m going to") and equivalent
+  forms that keep the meaning count as correct.
+  Partly correct: the intended construction with a wrong verb ending or a missing
+  auxiliary (e.g. "am meet", "will have complete").
+  Wrong: a different future form, or a form that changes the meaning.
+
+text: |
+  ## A plan for next week
+
+  Sue has already decided on her new fitness routine. She [[is going to]] start it
+  next week. She has also made up her mind about getting to the gym: she
+  [[is going to]] walk rather than drive.
+
+  It is Saturday, and her first workout is tomorrow. According to the published
+  timetable, the beginners' class [[starts|start]] at nine on Sunday. Her coach has
+  confirmed an appointment in his calendar. "I [[am meeting|meet]] him at reception
+  at 8:45," Sue tells her mum.
+
+  That afternoon, Sue looks out of the window. "Look at those dark clouds! It
+  [[is going to]] rain soon." Just then, the phone rings. "I [[will]] answer it," she
+  says, deciding at that moment. Her mum asks her to call from the gym tomorrow.
+  "I promise I [[will]] call you when I arrive," Sue replies.
+
+  Sue pictures herself in the middle of the workout. "At 9:30 tomorrow, I
+  [[will be training|train]] with the group." By the end of her first month, she
+  [[will have completed|complete]] twelve classes.
+
+  She chose Friday as her rest day yesterday. When her friend asks about her plans,
+  Sue says, "I [[am going to]] rest that day."

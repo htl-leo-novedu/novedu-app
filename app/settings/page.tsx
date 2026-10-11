@@ -10,7 +10,7 @@ import { QuizResultsSettings } from "./quiz-results-settings";
 // The Settings page (docs/home.md → Settings page): the one home of per-user
 // preferences, reached from the user menu, for every signed-in user in either
 // role. A list of sections, each backed by a column of `novedu_user_settings`;
-// today only "Quiz results". Gated by the session like every page — the page
+// today only "Quiz and exercise results". Gated by the session like every page — the page
 // and its actions (lib/user-settings-actions.ts) act only on the session
 // user's own row. No teacher gate, no bearer route.
 
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           <section aria-labelledby="settings-quiz" className={cardVariants({ pad: "section" })}>
             <h2 id="settings-quiz" className="mb-3 font-semibold text-base tracking-tight">
-              Quiz results
+              Quiz and exercise results
             </h2>
             {settings === undefined || saved === undefined ? (
               <DataUnavailable />

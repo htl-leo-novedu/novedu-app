@@ -147,6 +147,7 @@ describe("student-facts-store", () => {
         quizAnswers: "5",
         writingSaves: "0",
         codingRequests: "7",
+        clozeSubmissions: "2",
         codingHours: "1",
       },
     ];
@@ -158,6 +159,7 @@ describe("student-facts-store", () => {
         quizAnswers: 5,
         writingSaves: 0,
         codingRequests: 7,
+        clozeSubmissions: 2,
         codingHours: 1,
       },
     ]);

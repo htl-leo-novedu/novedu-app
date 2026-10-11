@@ -442,6 +442,8 @@ export const usageByCode = pgTable(
     writingSaves: integer("writing_saves").notNull().default(0),
     // Requests through the coding proxy (the coding route's usage tap).
     codingRequests: integer("coding_requests").notNull().default(0),
+    // Graded cloze submissions (every successful `gradeCloze`, practice rounds included).
+    clozeSubmissions: integer("cloze_submissions").notNull().default(0),
   },
   (t) => [
     // Per-code cost-over-time is the PK's natural read; the extra index serves the
@@ -469,6 +471,8 @@ export const usageByUser = pgTable(
     writingSaves: integer("writing_saves").notNull().default(0),
     // Requests through the coding proxy (the coding route's usage tap).
     codingRequests: integer("coding_requests").notNull().default(0),
+    // Graded cloze submissions (every successful `gradeCloze`, practice rounds included).
+    clozeSubmissions: integer("cloze_submissions").notNull().default(0),
   },
   // The PK `(user_id, hour)` doubles as the per-user range-scan index: the quota
   // window and the start page's usage facts (docs/home.md).
@@ -531,6 +535,29 @@ export const quizResults = pgTable(
     // The code-delete path.
     index("ix_novedu_quiz_results_code").on(t.code),
   ],
+);
+
+// Per-gap verdict counts of a cloze code (docs/cloze.md → Teacher view): how many
+// FIRST submissions (practice rounds never count) answered each gap correctly,
+// partly or wrongly. Anonymous by construction — no user id, no answer text, no
+// time buckets; the only text is the teacher's own reference. Keyed by the
+// reference too, so an edited or renumbered gap starts a fresh row and stale rows
+// are never mixed in. `lib/cloze-counts-store.ts` is the only access (one
+// multi-row increment-upsert per first-round grading); rows are dropped with
+// their code (lib/code-stats-store.ts). No foreign keys.
+export const clozeGapCounts = pgTable(
+  "novedu_cloze_gap_counts",
+  {
+    code: varchar("code", { length: 32 }).notNull(),
+    gap: integer("gap").notNull(),
+    reference: text("reference").notNull(),
+    correct: integer("correct").notNull().default(0),
+    partial: integer("partial").notNull().default(0),
+    incorrect: integer("incorrect").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  // The PK's leading `code` also serves the per-code read and the delete.
+  (t) => [primaryKey({ columns: [t.code, t.gap, t.reference] })],
 );
 
 // Per-user preferences (the Settings page, docs/home.md). A table of its own

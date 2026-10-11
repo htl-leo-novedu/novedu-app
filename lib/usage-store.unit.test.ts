@@ -32,6 +32,7 @@ vi.mock("@/lib/telemetry", () => ({ recordError: mocks.recordError }));
 
 import {
   hourBucket,
+  recordClozeSubmission,
   recordLlmUsage,
   recordQuizAnswer,
   recordUserMessage,
@@ -59,6 +60,7 @@ const COUNTER_KEYS = [
   "quizAnswers",
   "writingSaves",
   "codingRequests",
+  "clozeSubmissions",
 ];
 
 beforeEach(() => {
@@ -250,7 +252,7 @@ describe("discrete counters", () => {
     );
   });
 
-  it("the by-code ON CONFLICT set carries the 8 counters plus provider/model; by-user carries only the 8", async () => {
+  it("the by-code ON CONFLICT set carries the 9 counters plus provider/model; by-user carries only the 9", async () => {
     await recordUserMessage({ code: CODE, module: "writing", userId: USER });
     expect(Object.keys(setOf(0)).sort()).toEqual([...COUNTER_KEYS, "provider", "model"].sort());
     expect(Object.keys(setOf(1)).sort()).toEqual([...COUNTER_KEYS].sort());
@@ -261,6 +263,18 @@ describe("discrete counters", () => {
     expect(mocks.insertValues).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ module: "quiz", quizAnswers: 1 }),
+    );
+  });
+
+  it("recordClozeSubmission bumps cloze_submissions with module 'cloze'", async () => {
+    await recordClozeSubmission({ code: CODE, userId: USER });
+    expect(mocks.insertValues).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ module: "cloze", clozeSubmissions: 1 }),
+    );
+    expect(mocks.insertValues).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ userId: USER, clozeSubmissions: 1 }),
     );
   });
 

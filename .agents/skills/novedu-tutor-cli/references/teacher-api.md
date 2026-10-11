@@ -7,7 +7,7 @@ instead — see its section). Read the stderr JSON — the server's
 structured validation detail names the exact problem.
 
 ```
-codes create --module <tutor|quiz|writing|coding> --file <url>
+codes create --module <tutor|quiz|writing|coding|cloze> --file <url>
              [--start <iso>] [--end <iso>] [--note <text>]
              [--llm-provider <p> --llm-model <m>] [--llm-reasoning <level>]
 codes list   [--search <q>] [--module <m>] [--all]

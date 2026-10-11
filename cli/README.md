@@ -5,7 +5,7 @@ requires Node >= 22 — `eval`'s glob expansion uses the built-in `fs.globSync`,
 and Node 20 is end-of-life). It covers two jobs:
 
 - **Validate activity YAML** — tutors, fragment libraries, quizzes, writing
-  activities, coding activities, and eval files — with the app's exact
+  activities, coding activities, cloze exercises, and eval files — with the app's exact
   validation pipeline, offline and without signing in. `prompts` dumps the exact
   system prompts an activity produces, the same way.
 - **Manage the app as a teacher** — sign in (`login` prints a link to approve in
@@ -29,9 +29,10 @@ npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-tutor.
 # Validate a published activity by URL
 npx @novedu/cli validate https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/examples/sorting-algorithms/sorting-tutor.yaml
 
-# Other kinds: fragment library, quiz, writing activity, coding activity
+# Other kinds: fragment library, quiz, writing activity, coding activity, cloze exercise
 npx @novedu/cli validate ./activities/examples/shared/general-fragments.yaml --kind fragment
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-quiz.yaml --kind quiz
+npx @novedu/cli validate ./activities/examples/future-forms/sue-fresh-start.yaml --kind cloze
 
 # An eval file, quiz or tutor (also strict-checks the activity it targets)
 npx @novedu/cli validate ./sorting-quiz.eval.yaml --kind eval
@@ -40,11 +41,13 @@ npx @novedu/cli validate ./sorting-quiz.eval.yaml --kind eval
 npx @novedu/cli validate ./my-quiz.yaml --kind quiz --json
 ```
 
-- `--kind` accepts `tutor` (default), `fragment`, `quiz`, `writing`, `coding`, or
-  `eval`; it is caller-declared, not auto-detected.
+- `--kind` accepts `tutor` (default), `fragment`, `quiz`, `writing`, `coding`,
+  `cloze`, or `eval`; it is caller-declared, not auto-detected.
+- A valid cloze exercise prints its **gap inventory** (every gap's number, reference
+  answer and hint); a gap error names its line and column within `text`.
 - The CLI reuses the app's exact validation pipeline (`lib/prompt-fragments`,
   `lib/tutors`, `lib/quiz-validate`, `lib/writing-validate`,
-  `lib/coding-validate`), so an activity that passes here is the same one the
+  `lib/coding-validate`, `lib/cloze-validate`), so an activity that passes here is the same one the
   app accepts — no separate, drifting rules. Validating a tutor also fully
   validates every fragment library it references.
 - Exit code `0` = valid, `1` = errors found — usable as a pre-commit / CI gate.
@@ -66,6 +69,9 @@ npx @novedu/cli prompts ./sorting-quiz.yaml --kind quiz --json
 npx @novedu/cli prompts ./my-writing.yaml --kind writing
 npx @novedu/cli prompts ./my-coding.yaml --kind coding
 
+# A cloze exercise: the grading and feedback prompts with both output schemas
+npx @novedu/cli prompts ./my-cloze.yaml --kind cloze --json
+
 # A published activity by URL (same argument as `validate`)
 npx @novedu/cli prompts https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/examples/sorting-algorithms/sorting-tutor.yaml
 
@@ -78,8 +84,8 @@ npx @novedu/cli prompts ./sorting-quiz.yaml --kind quiz --json \
   `validate`'s; relative `fragment_files` / `quiz_files` / `text_files` resolve
   against the activity's own location (sibling file, or sibling URL). "Offline"
   means no app server, no database and no LLM call — not "no network".
-- `--kind` accepts `tutor` (default), `quiz`, `writing` or `coding` — the same
-  caller-declared flag as `validate`. There is no `fragment` kind: a library has
+- `--kind` accepts `tutor` (default), `quiz`, `writing`, `coding` or `cloze` — the
+  same caller-declared flag as `validate`. There is no `fragment` kind: a library has
   no prompt of its own; its fragments appear **rendered in place** inside the
   activity that places them.
 - Every dump comes out of the app's own prompt builders and runtime loaders (no
@@ -312,13 +318,13 @@ server runs the identical validation pipeline as the web forms and is
 authoritative — the CLI sends your input as-is and relays the server's answer.
 
 ```
-codes create  --module <tutor|quiz|writing|coding> --file <url>
+codes create  --module <tutor|quiz|writing|coding|cloze> --file <url>
               [--start <iso>] [--end <iso>] [--note <text>]
               [--llm-provider <p> --llm-model <m>] [--llm-reasoning <level>]
 codes list    [--search <q>] [--module <m>] [--all]
 codes sync    <registry-file> [--lock <path>] [--dry-run] [--json]
 codes export  <code> [--out <file>]
-files upload  <name> [--kind <tutor|fragment|quiz|writing|coding>]
+files upload  <name> [--kind <tutor|fragment|quiz|writing|coding|cloze>]
               (--file <path> | reads stdin)
 files list    [--search <q>] [--all]
 images upload <name> --file <path> [--credit <text>]
@@ -402,7 +408,7 @@ students struggle with, and how should I improve this activity?").
 - **No student identity**, for any code — no user id, name or pseudonym. Photos
   arrive as placeholders `{ "type": "image", "mimeType", "bytes" }`; the image
   itself never leaves the server. Writing submissions are not included, and a
-  coding code exports a header and no conversations (coding stores none).
+  coding or cloze code exports a header and no conversations (neither stores any).
 - **Format** (`novedu-conversations/1`): line 1 is a header
   `{ "type": "export", "format", "code", "module", "note", "fileUrl", "anonymous", "exportedAt" }`;
   every further line is one conversation
@@ -474,7 +480,7 @@ activity-codes:
   welcome: cu4afwoa23
 ```
 
-- **Groups decide the module:** `quizzes`, `tutors`, `writing`, `coding`. Each
+- **Groups decide the module:** `quizzes`, `tutors`, `writing`, `coding`, `cloze`. Each
   entry gives either `file` (relative to `base-url`, which must end in `/`) or
   an absolute `url`, plus any of `start`/`end` (ISO 8601 **with an offset or
   `Z`**, whole seconds), `note`, and an `llm: {provider, model, reasoning?}`

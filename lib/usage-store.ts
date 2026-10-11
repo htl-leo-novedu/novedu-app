@@ -19,7 +19,7 @@ import { reportStoreFailure } from "@/lib/store-failure";
 //
 // SERVER-ONLY: uses the database. Never import from client components.
 
-/** The eight metric deltas; any omitted field defaults to 0 (a no-op increment). */
+/** The nine metric deltas; any omitted field defaults to 0 (a no-op increment). */
 interface UsageDeltas {
   inputTokensNew?: number;
   inputTokensCached?: number;
@@ -29,6 +29,7 @@ interface UsageDeltas {
   quizAnswers?: number;
   writingSaves?: number;
   codingRequests?: number;
+  clozeSubmissions?: number;
 }
 
 /**
@@ -89,6 +90,7 @@ async function bumpByCode(
       quizAnswers: d.quizAnswers ?? 0,
       writingSaves: d.writingSaves ?? 0,
       codingRequests: d.codingRequests ?? 0,
+      clozeSubmissions: d.clozeSubmissions ?? 0,
     })
     .onConflictDoUpdate({
       target: [usageByCode.code, usageByCode.hour],
@@ -101,6 +103,7 @@ async function bumpByCode(
         quizAnswers: sql`${usageByCode.quizAnswers} + excluded.quiz_answers`,
         writingSaves: sql`${usageByCode.writingSaves} + excluded.writing_saves`,
         codingRequests: sql`${usageByCode.codingRequests} + excluded.coding_requests`,
+        clozeSubmissions: sql`${usageByCode.clozeSubmissions} + excluded.cloze_submissions`,
         provider: sql`COALESCE(${usageByCode.provider}, excluded.provider)`,
         model: sql`COALESCE(${usageByCode.model}, excluded.model)`,
       },
@@ -124,6 +127,7 @@ async function bumpByUser(userId: string, hour: Date, d: UsageDeltas): Promise<v
       quizAnswers: d.quizAnswers ?? 0,
       writingSaves: d.writingSaves ?? 0,
       codingRequests: d.codingRequests ?? 0,
+      clozeSubmissions: d.clozeSubmissions ?? 0,
     })
     .onConflictDoUpdate({
       target: [usageByUser.userId, usageByUser.hour],
@@ -136,6 +140,7 @@ async function bumpByUser(userId: string, hour: Date, d: UsageDeltas): Promise<v
         quizAnswers: sql`${usageByUser.quizAnswers} + excluded.quiz_answers`,
         writingSaves: sql`${usageByUser.writingSaves} + excluded.writing_saves`,
         codingRequests: sql`${usageByUser.codingRequests} + excluded.coding_requests`,
+        clozeSubmissions: sql`${usageByUser.clozeSubmissions} + excluded.cloze_submissions`,
       },
     });
 }
@@ -245,5 +250,17 @@ export function recordWritingSave(input: { code: string; userId: string }): Prom
     new Date(),
     { writingSaves: 1 },
     "recordWritingSave",
+  );
+}
+
+/** +1 graded cloze submission for a cloze code and its student. Never throws. */
+export function recordClozeSubmission(input: { code: string; userId: string }): Promise<void> {
+  return record(
+    input.code,
+    "cloze",
+    input.userId,
+    new Date(),
+    { clozeSubmissions: 1 },
+    "recordClozeSubmission",
   );
 }

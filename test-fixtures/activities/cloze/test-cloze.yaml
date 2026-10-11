@@ -1,0 +1,13 @@
+id: test-cloze
+name: "Functional Test Cloze"
+title: "Test Cloze"
+description: Fill in the missing words.
+llm:
+  model: test-model
+evaluation: |
+  Correct: the reference word. Partly correct: the right word, misspelled.
+text: |
+  ## A short story
+
+  Sue [[is going to]] start next week. The class [[starts|start]] at nine.
+  Yes[[]] she said.

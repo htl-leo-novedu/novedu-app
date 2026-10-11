@@ -6,4 +6,4 @@
 export const GUIDE_TITLE = "Novedu teacher guide";
 
 export const GUIDE_DESCRIPTION =
-  "How teachers author Novedu activities — AI tutors, quizzes, writing tasks and coding assistants — as YAML files, and share them with students as codes.";
+  "How teachers author Novedu activities — AI tutors, quizzes, writing tasks, coding assistants and cloze exercises — as YAML files, and share them with students as codes.";

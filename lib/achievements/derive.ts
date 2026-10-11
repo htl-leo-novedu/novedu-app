@@ -15,6 +15,8 @@ export interface UsageDay {
   writingSaves: number;
   /** Requests through the coding proxy. */
   codingRequests: number;
+  /** Graded cloze submissions (practice rounds included). */
+  clozeSubmissions: number;
   /** Distinct Vienna-local hours of the day with a coding request. */
   codingHours: number;
 }
@@ -102,16 +104,20 @@ export function totalReaching(
   return { total, reachedOn };
 }
 
-/** The four kinds of activity a usage day can show. */
+/** The kinds of activity a usage day can show. */
 const KINDS: readonly ((day: UsageDay) => boolean)[] = [
   (d) => d.userMessages > 0,
   (d) => d.quizAnswers > 0,
   (d) => d.writingSaves > 0,
   (d) => d.codingRequests > 0,
+  (d) => d.clozeSubmissions > 0,
 ];
 
+/** How many kinds of activity {@link allKindsInAWeek} asks for. */
+export const USAGE_KIND_COUNT = KINDS.length;
+
 /**
- * All four kinds of activity (chat, quiz, writing, coding) in one ISO week:
+ * All kinds of activity (chat, quiz, writing, coding, cloze) in one ISO week:
  * the date the first such week completed the set, and the most kinds any week
  * reached.
  */

@@ -16,7 +16,7 @@ import {
   plural,
 } from "./home-ui";
 
-// "Time to refresh": the saved quizzes worth retaking (at most three, oldest
+// "Time to refresh": the saved quizzes and cloze exercises worth retaking (at most three, oldest
 // last attempt first) and the medal count, from the student's OWN saved
 // results — never shown to anyone else. Needs only the quiz fact group.
 
@@ -41,7 +41,8 @@ export async function RefreshSection({ userId }: { userId: string }) {
   } else if (quiz.quizzes === 0) {
     body = (
       <p className={HOME_MUTED}>
-        Save a result on a quiz's summary page, and your medals and retake reminders show up here.
+        Save a result on a quiz's summary page or an exercise's results, and your medals and retake
+        reminders show up here.
       </p>
     );
   } else {
@@ -81,7 +82,7 @@ export async function RefreshSection({ userId }: { userId: string }) {
         <h2 id="home-refresh" className={HOME_SECTION_TITLE}>
           Time to refresh
         </h2>
-        <span className={HOME_MUTED}>from your saved quizzes</span>
+        <span className={HOME_MUTED}>from your saved quizzes and exercises</span>
       </div>
       <p className={cn(HOME_CAPTION, "mb-2.5")}>
         Your practice results, not grades. Gold = every answer fully correct.

@@ -56,7 +56,7 @@ learns which provider answered.
 
 - `lib/llm/provider.ts` — pure, client-safe: the `LlmProvider` type, the three
   literals, `DEFAULT_PROVIDER`, the zod `providerSchema` (default `"SCCH"`) all
-  four activity schemas embed, `parseLenientProvider` for the lenient runtime
+  five activity schemas embed, `parseLenientProvider` for the lenient runtime
   parsers, the reasoning-level counterparts (`REASONING_LEVELS`,
   `reasoningLevelSchema`, `parseLenientReasoningLevel` — below), and the ai-sdk
   **provider names** (`"scch"` / `"azure-foundry"` / `"openrouter"`) with

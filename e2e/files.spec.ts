@@ -75,4 +75,31 @@ test.describe("as a teacher", () => {
     await expect(page.getByText("WRITING_SCHEMA_ERROR")).toBeVisible();
     await expect(page).toHaveURL(/\/files\/new$/);
   });
+
+  // Hermetic: a cloze exercise is validated without a model call — a valid one
+  // reports its gap inventory beside "Validation passed", a gap with an empty hint
+  // is rejected with its line and column. No DB write, no network.
+  test("a cloze exercise reports its gap inventory, or a broken gap", async ({ page }) => {
+    await page.goto("/files/new");
+    await page.getByLabel(/Name/).fill("validate-cloze");
+    await page.getByLabel("Kind").selectOption("cloze");
+    await setEditorContent(
+      page,
+      "id: c\nllm:\n  model: m\nevaluation: e\ntext: |\n  She [[is going to]] start at [[nine|time]].\n",
+    );
+    await page.getByRole("button", { name: "Validate", exact: true }).click();
+
+    await expect(page.getByText("Validation passed")).toBeVisible();
+    await expect(page.getByText('2 gaps · 1 "is going to" · 2 "nine" (time)')).toBeVisible();
+
+    await setEditorContent(
+      page,
+      "id: c\nllm:\n  model: m\nevaluation: e\ntext: |\n  She [[will|]] go.\n",
+    );
+    await page.getByRole("button", { name: "Validate", exact: true }).click();
+
+    await expect(page.getByText("CLOZE_GAP_SYNTAX")).toBeVisible();
+    await expect(page.getByText(/Text line 1, column 5: the hint after \| is empty/)).toBeVisible();
+    await expect(page).toHaveURL(/\/files\/new$/);
+  });
 });

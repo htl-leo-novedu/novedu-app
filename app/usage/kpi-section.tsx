@@ -4,7 +4,7 @@ import { StatTile } from "@/components/ui/stat-tile";
 import type { UsageRange } from "@/lib/usage-range";
 import { getDashboardKpis } from "@/lib/usage-stats-store";
 
-// Headline KPIs — both windowed to the selected range. Async server component:
+// Headline KPIs — all windowed to the selected range. Async server component:
 // one query, rendered behind its own Suspense boundary so it streams independently.
 export async function KpiSection({ range, now }: { range: UsageRange; now: Date }) {
   const kpis = await getDashboardKpis({ range, now });
@@ -22,6 +22,12 @@ export async function KpiSection({ range, now }: { range: UsageRange; now: Date 
         className="flex-1"
         label="Quiz answers graded"
         value={formatCount(kpis.quizAnswers)}
+      />
+      <StatTile
+        data-testid="usage-kpi-cloze"
+        className="flex-1"
+        label="Cloze submissions graded"
+        value={formatCount(kpis.clozeSubmissions)}
       />
     </dl>
   );

@@ -8,7 +8,7 @@ import { FieldError } from "@/components/ui/field";
 import { deleteMyQuizResults, updateUserSettings } from "@/lib/user-settings-actions";
 import { cn } from "@/lib/utils";
 
-// The Settings page's "Quiz results" section: the switch behind the Finish
+// The Settings page's "Quiz and exercise results" section: the switch behind the Finish
 // page's "Always", and the student's saved results with a confirmed delete.
 // The switch updates optimistically and rolls back with a message when the
 // save fails — also when the call itself is lost (a rejected server action);
@@ -53,7 +53,7 @@ export function QuizResultsSettings({
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <span id={labelId} className="font-medium text-sm">
-            Save my quiz results for my personal statistics
+            Save my quiz and exercise results for my personal statistics
           </span>
           <p id={noticeId} className="text-foreground/65 text-sm">
             Saved results give you medals, retake reminders and quiz badges on your start page. Only
@@ -86,8 +86,8 @@ export function QuizResultsSettings({
       <div className="flex flex-wrap items-center justify-between gap-3 border-foreground/10 border-t pt-4">
         <p className="text-sm" data-testid="saved-results">
           {saved === 0
-            ? "You have no saved quiz results."
-            : `You have ${saved.toLocaleString("en")} saved quiz result${saved === 1 ? "" : "s"}.`}
+            ? "You have no saved results."
+            : `You have ${saved.toLocaleString("en")} saved result${saved === 1 ? "" : "s"}.`}
         </p>
         <DeleteResultsButton
           disabled={saved === 0}
@@ -151,7 +151,7 @@ function DeleteResultsButton({
       <DialogShell
         open={open}
         onClose={close}
-        title="Delete your saved quiz results?"
+        title="Delete your saved results?"
         size="fit"
         className="w-[min(32rem,92vw)]"
       >

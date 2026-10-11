@@ -165,11 +165,24 @@ rest of the app:
   likewise a strict `WritingYamlSchema` gate that **blocks** an invalid save and
   surfaces `title` + the `anonymous` flag (which defaults **`false`** for writing — see
   `docs/writing.md`).
+- **coding** → `loadAndCheckCoding(selfUrl, selfFetcher)` (`lib/coding-validate.ts`):
+  the same strict gate; coding is always anonymous (`docs/coding.md`).
+- **cloze** → `loadAndCheckCloze(selfUrl, selfFetcher)` (`lib/cloze-validate.ts`): the
+  strict `ClozeYamlSchema` gate plus the gap parser (syntax and limits, each error with its line and column in `text`); always anonymous. On success
+  it carries the **gap inventory** (`docs/cloze.md`).
+
+A validator may report a one-line **content summary** (`FileValidationResult.summary`,
+`null` for kinds without one — today only cloze's gap inventory). `validateFileContent`
+passes it through, the validate actions and `updateFileAction` return it, and the create
+and edit forms show it (`ContentSummary` in `components/validation-result.tsx`) beside
+"Validation passed" / "Saved".
 
 The create-file kind selector therefore offers **tutor / fragment / quiz / writing /
-coding**, and the `/files` list adds a single **"Create code"** action on every row whose
-kind is a **module** — tutor, quiz, writing, and coding, i.e. everything except `fragment`
-(gated by `isCodeModule`, linking to `/codes/new?module=<kind>&file=<url>`).
+coding / cloze**, and the `/files` list adds a single **"Create code"** action on every
+row whose kind is a **module** — tutor, quiz, writing, coding and cloze, i.e. everything
+except `fragment` (gated by `isCodeModule`, linking to
+`/codes/new?module=<kind>&file=<url>`). The list's kind pill uses the module's color for
+module kinds (cloze is rose); `fragment` (purple) has its own.
 
 The public origin is resolved once on the server (`resolveAppOrigin` /
 `resolveAppOriginOr` in `lib/app-origin.ts`) and the public URL is built by

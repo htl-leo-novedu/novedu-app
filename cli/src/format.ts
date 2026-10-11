@@ -1,3 +1,4 @@
+import type { ClozeCheckResult } from "@/lib/cloze-validate";
 import type { CodingCheckResult } from "@/lib/coding-validate";
 import type { EvalCheckResult } from "@/lib/eval-validate";
 import type { PromptDump } from "@/lib/prompt-dump";
@@ -203,6 +204,33 @@ export function formatCodingResult(result: CodingCheckResult, source: string): s
   lines.push(`  id: ${result.codingId}`);
   lines.push(`  model: ${result.model}`);
   lines.push(`  anonymous: true ${dim("(always — no conversations are stored)")}`);
+  if (result.warnings.length) {
+    lines.push("");
+    lines.push(yellow(`${result.warnings.length} warning(s):`));
+    lines.push(...renderWarnings(result.warnings));
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Renderer for a cloze check (`--kind cloze`): the summary plus the gap inventory, one
+ * gap per line. Cloze is ALWAYS anonymous (nothing links a submission to a student),
+ * so — like coding — that is shown as a fixed note, not a per-file value.
+ */
+export function formatClozeResult(result: ClozeCheckResult, source: string): string {
+  if (!result.ok) return renderFailureAndWarnings(result, "cloze exercise", source);
+
+  const lines = [green(`✔ Valid cloze exercise`) + dim(` — ${source}`)];
+  lines.push(`  id: ${result.clozeId}`);
+  lines.push(`  model: ${result.model}`);
+  lines.push(`  anonymous: true ${dim("(always — no submission is linked to a student)")}`);
+  lines.push(`  gaps: ${result.gapCount}`);
+  const width = String(result.gapCount).length;
+  for (const gap of result.gaps) {
+    const reference = gap.reference === "" ? dim("(empty)") : `"${gap.reference}"`;
+    const hint = gap.hint ? dim(`  (${gap.hint})`) : "";
+    lines.push(`    ${String(gap.number).padStart(width)}  ${reference}${hint}`);
+  }
   if (result.warnings.length) {
     lines.push("");
     lines.push(yellow(`${result.warnings.length} warning(s):`));

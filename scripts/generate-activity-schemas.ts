@@ -1,4 +1,4 @@
-// Regenerates the seven authoring JSON Schemas from their zod sources of truth.
+// Regenerates the eight authoring JSON Schemas from their zod sources of truth.
 //
 //   npm run generate:schemas
 //

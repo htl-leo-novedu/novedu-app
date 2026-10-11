@@ -22,6 +22,7 @@ vi.mock("@/lib/code-modules/registry", () => ({
     quiz: { renderDetail },
     writing: { renderDetail },
     coding: { renderDetail },
+    cloze: { renderDetail },
   },
 }));
 vi.mock("next/link", () => import("@/tests/mocks/next-link"));

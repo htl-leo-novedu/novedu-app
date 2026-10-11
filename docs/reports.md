@@ -6,7 +6,7 @@ one or two clicks, picking a **reaction** and an optional description; teachers
 triage the flags in a global **`/reports` inbox** and mark them resolved. Two
 surfaces produce reports — the three chat surfaces (tutor chat, quiz discussion,
 writing feedback chat) and each **graded quiz answer**; the coding module has no
-in-app UI and is excluded. The always-on invariants are summarized in `AGENTS.md`;
+in-app UI and is excluded, and a cloze exercise has no Report button. The always-on invariants are summarized in `AGENTS.md`;
 this file has the full mechanics. Read it before touching `lib/report-types.ts`,
 `lib/report-store.ts`, `lib/report-actions.ts`, `lib/quiz-verify.ts`,
 `components/report-button.tsx` and its four mounts (`app/tutor-chat.tsx`,
@@ -28,8 +28,8 @@ This is one of **three sanctioned exceptions** to the "`novedu_user_chats` is th
 only user↔chat link" invariant (`AGENTS.md`, `docs/codes.md`, `docs/auth.md`) —
 the siblings are `novedu_coding_keys`, where requesting a coding activity's personal
 API key stores the requester's user id behind an explicit on-page notice
-(`docs/coding.md`), and `novedu_quiz_results`, a student's own saved quiz counts
-(`docs/home.md`). The discipline that keeps reports honest: the store surfaces
+(`docs/coding.md`), and `novedu_quiz_results`, a student's own saved quiz or cloze
+first-round counts (`docs/home.md`). The discipline that keeps reports honest: the store surfaces
 **only the reporter's own** identity. It LEFT-JOINs `novedu_user` (for the
 reporter's display name) and `novedu_codes` (for the note/creator), but **never
 joins `novedu_user_chats`** or any path that would reveal a *different* student

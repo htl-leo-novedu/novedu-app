@@ -24,6 +24,7 @@ const day = (date: string, extra: Partial<UsageDay> = {}): UsageDay => ({
   quizAnswers: 0,
   writingSaves: 0,
   codingRequests: 0,
+  clozeSubmissions: 0,
   codingHours: 0,
   ...extra,
 });
@@ -232,18 +233,19 @@ describe("Coding rules", () => {
 });
 
 describe("Secret rules", () => {
-  it("Full Stack: chat, quiz, writing and coding inside ONE ISO week", () => {
-    // Mon 7 – Sun 13 Sep: chat Mon, quiz Tue, writing Sat, coding Sun → dated Sunday.
+  it("Full Stack: chat, quiz, writing, coding and cloze inside ONE ISO week", () => {
+    // Mon 7 – Sun 13 Sep: chat Mon, quiz Tue, cloze Thu, writing Sat, coding Sun → dated Sunday.
     const week = [
       day("2026-09-07", { userMessages: 2 }),
       day("2026-09-08", { quizAnswers: 1 }),
+      day("2026-09-10", { clozeSubmissions: 1 }),
       day("2026-09-12", { writingSaves: 1 }),
       day("2026-09-13", { codingRequests: 1, codingHours: 1 }),
     ];
     expect(run("full-stack", week)).toEqual({ earned: true, qualifiedOn: "2026-09-13" });
-    // The same four kinds spread over two weeks never count.
-    const split = [...week.slice(0, 3), day("2026-09-14", { codingRequests: 1, codingHours: 1 })];
-    expect(run("full-stack", split)).toEqual({ earned: false, current: 3, target: 4 });
+    // The same five kinds spread over two weeks never count.
+    const split = [...week.slice(0, 4), day("2026-09-14", { codingRequests: 1, codingHours: 1 })];
+    expect(run("full-stack", split)).toEqual({ earned: false, current: 4, target: 5 });
   });
 
   it("In the Zone: coding in 3 different local hours of one day", () => {
@@ -433,7 +435,7 @@ describe("Reach rules", () => {
     ).toEqual({ earned: true, qualifiedOn: "2026-09-10" });
   });
 
-  it("Full Toolkit: dated to the day the fourth kind was first shared", () => {
+  it("Full Toolkit: dated to the day the fifth kind was first shared", () => {
     const three = [
       teacherCode("A", "tutor", "2026-09-01"),
       teacherCode("B", "quiz", "2026-09-02"),
@@ -443,11 +445,17 @@ describe("Reach rules", () => {
     expect(runTeacher("full-toolkit", { codes: three })).toEqual({
       earned: false,
       current: 3,
-      target: 4,
+      target: 5,
+    });
+    const four = [...three, teacherCode("E", "coding", "2026-09-20")];
+    expect(runTeacher("full-toolkit", { codes: four })).toEqual({
+      earned: false,
+      current: 4,
+      target: 5,
     });
     expect(
-      runTeacher("full-toolkit", { codes: [...three, teacherCode("E", "coding", "2026-09-20")] }),
-    ).toEqual({ earned: true, qualifiedOn: "2026-09-20" });
+      runTeacher("full-toolkit", { codes: [...four, teacherCode("F", "cloze", "2026-09-25")] }),
+    ).toEqual({ earned: true, qualifiedOn: "2026-09-25" });
   });
 
   it("Crowd: below, at and above the tier on one activity, dated to the n-th student", () => {

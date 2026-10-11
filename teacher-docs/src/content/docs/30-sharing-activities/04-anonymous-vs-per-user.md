@@ -41,6 +41,7 @@ Each kind of activity has its own default:
 | Tutor | Anonymous | Chatting with a tutor is practice; students should feel free to ask anything. Students can't reopen earlier conversations; choose per-user if they should. |
 | Quiz | Anonymous | Answers feed the aggregate statistics without naming anyone. |
 | Writing | Per-user | Reviewing a saved text needs an author, so writing records one by default. |
+| Cloze | Always anonymous | A submission is never linked to a student; the results page shows counts per gap only. There is no setting to change. |
 | Coding | Always anonymous | Requests from a coding tool carry no student identity; there is no setting to change. Picking up the connection key is the one exception, always recorded with the student's name. |
 
 ## Where you set it
@@ -53,7 +54,7 @@ The mode comes from the `anonymous` field in the activity's YAML file. Omit it t
 anonymous: false
 ```
 
-For a tutor or a quiz, `anonymous: false` switches the activity from its anonymous default to per-user. A coding activity has no `anonymous` field at all; adding one is rejected as an error. Coding keeps its own fixed exception regardless: a student's coding conversations stay anonymous, but picking up the connection key their tool needs is always recorded with their name, covered in the chapter on connecting a coding activity.
+For a tutor or a quiz, `anonymous: false` switches the activity from its anonymous default to per-user. A coding activity and a cloze exercise have no `anonymous` field at all; adding one is rejected as an error. Coding keeps its own fixed exception regardless: a student's coding conversations stay anonymous, but picking up the connection key their tool needs is always recorded with their name, covered in the chapter on connecting a coding activity.
 
 ## The choice is frozen when you create a code
 
@@ -65,7 +66,7 @@ A writing activity set to `anonymous: true` has no author to save a text under, 
 
 ## What students may save for themselves
 
-At the end of a quiz, a student can choose to save the result to their personal statistics: the number of correct, partly correct and wrong answers, never the answers themselves. They answer **No**, **This time** or **Always**, and can change that choice later under **Settings** in their user menu. A saved result is stored with the student's account even in an anonymous quiz, because it belongs to them: it turns into medals, retake reminders and badges on their own start page.
+At the end of a quiz, or after the first round of a cloze exercise, a student can choose to save the result to their personal statistics: the number of correct, partly correct and wrong answers, never the answers themselves. They answer **No**, **This time** or **Always**, and can change that choice later under **Settings** in their user menu. A saved result is stored with the student's account even in an anonymous quiz or a cloze exercise, because it belongs to them: it turns into medals, retake reminders and badges on their own start page.
 
-Only the student sees their saved results. You cannot see them, not even as an aggregate, and they do not change what an anonymous quiz shows you. Students can delete their saved results under **Settings** at any time, and deleting a code removes every result saved for it.
+Only the student sees their saved results. You cannot see them, not even as an aggregate, and they do not change what an anonymous quiz or a cloze exercise shows you. Students can delete their saved results under **Settings** at any time, and deleting a code removes every result saved for it.
 
