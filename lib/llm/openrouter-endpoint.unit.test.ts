@@ -5,6 +5,7 @@ import {
   openrouterBase,
   openrouterChatCompletionsUrl,
   openrouterConfigured,
+  openrouterKeyUrl,
   openrouterModelsUrl,
 } from "@/lib/llm/openrouter-endpoint";
 
@@ -26,6 +27,7 @@ describe("openrouter URL builders", () => {
     expect(openrouterBase()).toBe("https://openrouter.ai/api/v1");
     expect(openrouterChatCompletionsUrl()).toBe("https://openrouter.ai/api/v1/chat/completions");
     expect(openrouterModelsUrl()).toBe("https://openrouter.ai/api/v1/models");
+    expect(openrouterKeyUrl()).toBe("https://openrouter.ai/api/v1/key");
   });
 
   it("honors an OPENROUTER_BASE_URL override (a proxy or self-hosted gateway)", () => {

@@ -37,6 +37,13 @@ export const openrouterChatCompletionsUrl = (): string => `${openrouterBase()}/c
 export const openrouterModelsUrl = (): string => `${openrouterBase()}/models`;
 
 /**
+ * The current key's own info. Unlike the model listing (public — it answers
+ * 200 for any key or none), this rejects an invalid key with a 401, so it is
+ * what proves the key.
+ */
+export const openrouterKeyUrl = (): string => `${openrouterBase()}/key`;
+
+/**
  * The API ROOT (the base without its `/v1`) — for an SDK that appends its own
  * versioned path (the TypeSafe SDK behind `lib/llm/jev-client.ts` adds
  * `/v1/systemone`). Same override as `openrouterBase()`, so a proxy serves both.
