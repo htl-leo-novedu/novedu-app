@@ -136,7 +136,7 @@ Read before touching: `lib/cloze-*.ts`, `lib/code-modules/cloze.ts`, `app/[code]
 - Both prompts come from the pure builders (`lib/cloze-grading-prompt.ts`, `lib/cloze-feedback-prompt.ts`) the prompt dump calls too; feedback passes the grounding filter (`lib/cloze-grounding.ts`) before reaching the browser. Telemetry is content-free (ids, counts, durations).
 - The teacher's statistics are `novedu_cloze_gap_counts` — per (code, gap, reference) verdict counters of **first submissions only**, never a user id or answer text; `lib/cloze-counts-store.ts` is its only access and deletes with the code.
 - The runner renders the text through the sanitized `MarkdownRenderer` plus a rehype plugin that swaps each placeholder for a gap widget (`app/[code]/_cloze/cloze-text.tsx`); model feedback is rendered as plain text, never Markdown.
-- `lib/cloze-gaps.ts` is the ONE gap parser — validator, runtime parser and every later consumer go through it; it decides positions with the renderer's own Markdown pipeline (`remark-parse` + `remark-gfm` + `remark-math`). A cloze file is always anonymous (`readAnonymousFlag` → `true`), and the validator, schema and gap parser are CLI-bundled (grep-guard closure).
+- `lib/cloze-gaps.ts` is the ONE gap parser — validator, runtime parser and every later consumer go through it; a plain line scan for `[[answer]]` / `[[answer|hint]]` / `[[]]` with no Markdown awareness and no escape. A cloze file is always anonymous (`readAnonymousFlag` → `true`), and the validator, schema and gap parser are CLI-bundled (grep-guard closure).
 
 ### App-hosted YAML files → `docs/files.md`
 

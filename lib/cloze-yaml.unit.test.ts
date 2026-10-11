@@ -20,7 +20,7 @@ evaluation: SECRET-RUBRIC
 text: |
   ## A plan
 
-  She [[REF-ONE]] start. The class [[REF-TWO|start]] at nine. \\[[literal\\]]
+  She [[REF-ONE]] start. The class [[REF-TWO|start]] at nine.
 `;
 
 describe("parseCloze", () => {
@@ -116,7 +116,7 @@ describe("toPublicCloze — the projection guard", () => {
       1,
       " start. The class ",
       2,
-      " at nine. \\[[literal\\]]\n",
+      " at nine.\n",
     ]);
   });
 });

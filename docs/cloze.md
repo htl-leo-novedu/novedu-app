@@ -71,53 +71,35 @@ image fields.
 | `[[answer\|hint]]` | plus a hint rendered after the gap, e.g. "(start)" |
 | `[[]]` | "nothing belongs here" (e.g. no comma) — an empty answer is correct |
 | `[[\|hint]]` | an empty reference with a hint |
-| `\[[` / `\]]` | a literal `[[` / `]]` |
 
 - The reference and the hint are trimmed. Gaps are numbered **1…N in reading order**
   (the order they appear in `text`).
 - A gap opens and closes on one line. It may not contain another `[[`, take a second
   `|`, or have an empty hint after `|`.
+- There is no escape: every `[[` must be closed on its line and every `]]` must close
+  a gap, so a literal `[[` or `]]` cannot appear in `text`.
 - Limits (`lib/cloze-types.ts`): at most **40** gaps (`MAX_CLOZE_GAPS`), each
   reference at most **200** characters (`MAX_CLOZE_ANSWER_LENGTH`, the answer cap a
   student's answer shares).
 - The text may not contain U+E000 or U+E001 — they delimit the gap placeholders of the
   public projection.
 
-### Where a gap may go
-
-`text` is Markdown, rendered by the sanitized `MarkdownRenderer`. A gap must end up as
-plain text: in a **paragraph, a list item, a blockquote or a table cell** (also inside
-emphasis). It may **not** sit in a heading (ATX or setext), code (inline, fenced or
-indented), math (`$…$`, `$$…$$`), link text or a link URL (including a bare autolink),
-an image, a link definition, a raw HTML block, or a footnote. Text between inline HTML
-tags is fine — the renderer drops the tags and keeps the text.
-
-Inside code a backslash is literal, so `\[[` there is resolved to `[[` by the parser
-itself; outside code the source keeps `\[[` and Markdown renders it as `[[`. An
-unescaped `]]` inside code, math or raw HTML is ordinary text.
+`text` is Markdown, rendered by the sanitized `MarkdownRenderer`. Gaps belong in
+ordinary sentences and list items (also inside emphasis, a blockquote or a table cell).
+The parser knows nothing about Markdown, so it does not police positions: a gap inside
+code renders as raw placeholder characters instead of an input — the authoring guides
+tell teachers to keep gaps out of headings, code and links.
 
 ## The gap parser — `lib/cloze-gaps.ts`
 
 `parseClozeGaps(text)` is the ONE reader of the gap markup, shared by the strict
 validator and the lenient runtime parser, so the validator, the student page and the
-grader agree on what the gaps are. It returns `{ ok: true, gaps, segments }` or
-`{ ok: false, errors }`.
-
-1. **Lexical scan** — every unescaped `[[ … ]]` on one line is a gap token (an odd
-   number of backslashes before `[[`/`]]` escapes it); an unescaped `]]` outside a
-   token is remembered for step 2.
-2. **Positions** — the text is parsed with the **same Markdown pipeline the renderer
-   runs** (`unified` + `remark-parse` + `remark-gfm` + `remark-math`), after every gap
-   token is replaced by an inert run of letters of the same length. Offsets stay
-   identical, and the probe behaves exactly like the public placeholder (neither
-   contains a character Markdown could read as structure — `[`, `|`, `*`). A gap
-   inside a forbidden node's range, or outside every `text` node, is a
-   `CLOZE_GAP_POSITION` error; a remembered `]]` outside code, math or raw HTML is a
-   `CLOZE_GAP_SYNTAX` error.
-3. **Segments** — the text between the gaps (with `\[[` in code resolved) interleaved
-   with the gap numbers. `renderClozeText(parsed, renderGap)` rebuilds the text,
-   writing each gap however the caller needs it (a placeholder for the student, the
-   reference for a prompt).
+grader agree on what the gaps are. It returns `{ ok: true, gaps }` or
+`{ ok: false, errors }`. It matches `[[…]]` on one line (the shortest match), checks
+each gap's inner part, then reports any `[[` or `]]` left over as unclosed or stray.
+`renderClozeText(text, gaps, renderGap)` rebuilds an accepted text, writing each gap
+however the caller needs it (a placeholder for the student, the reference for a
+prompt).
 
 Every located problem carries its 1-based `line`/`column` **within `text`** and a
 message starting `Text line L, column C:`; the errors come in reading order, followed
@@ -126,8 +108,7 @@ by the count errors.
 | Code | When |
 | --- | --- |
 | `CLOZE_SCHEMA_ERROR` | the document does not match `ClozeYamlSchema` |
-| `CLOZE_GAP_SYNTAX` | an unclosed `[[`, a gap spanning lines or containing `[[`, a second `\|`, an empty hint, a stray `]]`, a reserved character |
-| `CLOZE_GAP_POSITION` | a gap in a forbidden position |
+| `CLOZE_GAP_SYNTAX` | an unclosed `[[` (also a gap spanning lines or containing `[[`), a stray `]]`, a second `\|`, an empty hint, a reserved character |
 | `CLOZE_GAP_TOO_LONG` | a reference over 200 characters |
 | `CLOZE_NO_GAPS` | no gap at all |
 | `CLOZE_TOO_MANY_GAPS` | more than 40 gaps |
@@ -219,8 +200,7 @@ nothing else. Answers live in page state only: a reload starts over.
   `renderGap(N)` (passed via context) what to show — an input while answering, a
   verdict chip on the results screen. The parsed Markdown is memoized on the text, so
   typing re-renders only the gaps and an input never loses its focus. Gaps work
-  wherever the validator allows them (paragraphs, list items, blockquotes, table
-  cells).
+  in paragraphs, list items, blockquotes and table cells.
 - **Answering.** Each gap is a pill-shaped `<input>` labelled "Gap N" (the superscript
   number before it is decorative), its hint "(start)" after it as the input's
   description; the DOM order is the reading order, so Tab moves from gap to gap. Each
@@ -441,8 +421,8 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
 
 ## Tests
 
-- `lib/cloze-gaps.unit.test.ts` — syntax, escapes, every forbidden and allowed
-  position, limits, numbering, line/column, the inventory.
+- `lib/cloze-gaps.unit.test.ts` — syntax, limits, numbering, line/column, the
+  inventory.
 - `lib/cloze-validate.unit.test.ts` — the strict schema (unknown and quiz-only keys,
   missing fields), gap errors through the validator, the fragment gate, the metadata.
 - `lib/cloze-yaml.unit.test.ts` — the lenient parser and the projection guard.
@@ -450,7 +430,7 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
   mapping (`anonymous: true`, the inventory as `summary`, the provider gate).
 - `cli/src/commands/validate.unit.test.ts`, `cli/test/validate.integration.test.ts` —
   `--kind cloze` over `test-fixtures/activities/cloze/`.
-- `e2e/files.spec.ts` — the `/files/new` Validate button with a valid and a misplaced
+- `e2e/files.spec.ts` — the `/files/new` Validate button with a valid and a broken
   gap.
 - `lib/cloze-prepass.unit.test.ts`, `lib/cloze-grounding.unit.test.ts` — the pre-pass
   table and every grounding rule.

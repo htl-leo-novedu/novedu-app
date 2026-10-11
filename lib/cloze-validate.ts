@@ -1,6 +1,6 @@
 // The cloze AUTHORING validator — the cloze counterpart to `loadAndCheckQuiz` in
 // `lib/quiz-validate`. Strict schema (`ClozeYamlSchema`) + the gap parser
-// (`lib/cloze-gaps.ts`: syntax, forbidden positions, limits), surfaced as structured
+// (`lib/cloze-gaps.ts`: syntax and limits), surfaced as structured
 // `ValidationError[]` that BLOCK an invalid save. Wired into the validator seam
 // (`lib/file-validators.ts`) and the `@novedu/cli validate --kind cloze` command.
 // A successful check reports the gap inventory, which the `/files` editor and the

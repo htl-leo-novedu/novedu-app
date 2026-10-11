@@ -204,8 +204,8 @@ describe("novedu-cli validate — local files", () => {
     ]);
 
     expect(code).toBe(1);
-    expect(stdout).toContain("CLOZE_GAP_POSITION");
-    expect(stdout).toContain("Text line 1, column 6");
+    expect(stdout).toContain("CLOZE_GAP_SYNTAX");
+    expect(stdout).toContain("Text line 1, column 5");
   });
 
   // Document-level prompt fragments over a `file:` scheme with a RELATIVE ref, proving

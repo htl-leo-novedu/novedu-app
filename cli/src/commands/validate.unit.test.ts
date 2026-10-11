@@ -213,7 +213,7 @@ describe("runValidate — cloze exercises (local files)", () => {
     expect(outcome.result.ok).toBe(false);
     if (!outcome.result.ok) {
       expect(outcome.result.errors.map((e) => [e.code, e.line])).toEqual([
-        ["CLOZE_GAP_POSITION", 1],
+        ["CLOZE_GAP_SYNTAX", 1],
         ["CLOZE_GAP_SYNTAX", 3],
       ]);
     }

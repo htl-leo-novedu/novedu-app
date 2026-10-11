@@ -72,7 +72,7 @@ export const ClozeYamlSchema = z.strictObject({
   }),
   text: z.string().min(1).meta({
     description:
-      "The complete exercise text (Markdown) with each gap marked around its reference answer: [[answer]], [[answer|hint]] for a hint shown after the gap, [[]] where nothing belongs (an empty answer is correct). Write \\[[ for a literal [[. Gaps go in paragraphs, list items, quotes or table cells — not in headings, code, math or links. 1 to 40 gaps, each answer at most 200 characters. The reference answers are SERVER-ONLY: students see only numbered gaps and hints.",
+      "The complete exercise text (Markdown) with each gap marked around its reference answer: [[answer]], [[answer|hint]] for a hint shown after the gap, [[]] where nothing belongs (an empty answer is correct). A gap opens and closes on one line; put gaps in ordinary sentences and list items. A literal [[ or ]] is not supported. 1 to 40 gaps, each answer at most 200 characters. The reference answers are SERVER-ONLY: students see only numbered gaps and hints.",
   }),
 });
 export type ClozeYaml = z.infer<typeof ClozeYamlSchema>;

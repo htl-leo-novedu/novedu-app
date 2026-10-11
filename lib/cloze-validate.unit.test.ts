@@ -109,7 +109,7 @@ id: c
 llm: { model: m }
 evaluation: e
 text: |
-  ## Heading [[a]]
+  A stray ]] and [[a]].
 
   Fine [[b]] but [[c|]] here.
 `;
@@ -117,7 +117,7 @@ text: |
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.map((e) => [e.code, e.line, e.column])).toEqual([
-        ["CLOZE_GAP_POSITION", 1, 12],
+        ["CLOZE_GAP_SYNTAX", 1, 9],
         ["CLOZE_GAP_SYNTAX", 3, 16],
       ]);
     }

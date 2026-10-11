@@ -196,9 +196,9 @@ prose carries everything an editor needs.
   non-correct gaps back it; an unbacked pattern is dropped, not shown. "Your
   mistakes don't share a common cause" is a normal outcome, not an error.
 - No images, no discussion chat, no live hint. Do not borrow quiz features.
-- Gap positions: the validator allows paragraphs, list items, quotes and table
-  cells. Keep the chapter to the rule a teacher meets; the parsing details belong
-  in the engineer docs.
+- Gap positions: the validator does not check them. The rule a teacher meets is
+  "put gaps in ordinary sentences and list items", and a literal `[[` or `]]` is not
+  supported (there is no escape). The parsing details belong in the engineer docs.
 
 ## 30-sharing-activities/04-anonymous-vs-per-user
 

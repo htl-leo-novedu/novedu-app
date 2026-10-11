@@ -63,8 +63,7 @@ validation certifies both files. See [eval.md](eval.md) for the eval format.
 | `WRITING_SCHEMA_ERROR` | Writing document wrong — usually missing `instructions` or `llm.model`. |
 | `CODING_SCHEMA_ERROR` | Coding document wrong — missing field, or an unsupported one like `anonymous`. |
 | `CLOZE_SCHEMA_ERROR` | Cloze document wrong — missing `evaluation`/`text`/`llm.model`, or an unsupported key like `anonymous`. |
-| `CLOZE_GAP_SYNTAX` | Broken gap markup in `text`: an unclosed `[[`, a stray `]]`, a gap over two lines, a second `\|` or an empty hint. Write `\[[` / `\]]` for literal brackets. |
-| `CLOZE_GAP_POSITION` | A gap in a heading, code, math, a link, an image, raw HTML or a footnote — move it into a paragraph, list item, quote or table cell. |
+| `CLOZE_GAP_SYNTAX` | Broken gap markup in `text`: an unclosed `[[` (also a gap over two lines), a stray `]]`, a second `\|`, an empty hint or a reserved character. A literal `[[` / `]]` is not supported. |
 | `CLOZE_GAP_TOO_LONG` / `CLOZE_NO_GAPS` / `CLOZE_TOO_MANY_GAPS` | A reference over 200 characters / no gap / more than 40 gaps. |
 | `FRAGMENT_NOT_FOUND` | The activity references a fragment id the file doesn't define. |
 | `MISSING_REQUIRED_VARIABLE` | A fragment needs a variable the activity didn't supply. |

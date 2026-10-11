@@ -63,14 +63,11 @@ export type ErrorCode =
   | "WRITING_SCHEMA_ERROR"
   | "CODING_SCHEMA_ERROR"
   | "CLOZE_SCHEMA_ERROR"
-  // The cloze `text`'s gap markup (`lib/cloze-gaps.ts`), each carrying the 1-based
-  // `line`/`column` of the offending spot: a malformed marker (an unclosed `[[`, a
-  // stray `]]`, a gap spanning lines or containing `[[`, an empty hint or a second
-  // `|`, a reserved character), a gap in a forbidden position (heading, code, math,
-  // link, image, raw HTML, footnote), a reference over the answer cap, no gap at
-  // all, or more gaps than the limit.
+  // The cloze `text`'s gap markup (`lib/cloze-gaps.ts`), the located ones carrying the
+  // 1-based `line`/`column` of the offending spot: a malformed marker (an unclosed
+  // `[[`, a stray `]]`, an empty hint or a second `|`, a reserved character), a
+  // reference over the answer cap, no gap at all, or more gaps than the limit.
   | "CLOZE_GAP_SYNTAX"
-  | "CLOZE_GAP_POSITION"
   | "CLOZE_GAP_TOO_LONG"
   | "CLOZE_NO_GAPS"
   | "CLOZE_TOO_MANY_GAPS"

@@ -87,7 +87,6 @@ Gaps go inside the `text` field:
 | `She [[is going to]] start.` | She ¹▢ start. |
 | `The class [[starts\|start]] at nine.` | The class ²▢ (start) at nine. |
 | `Yes[[]] she said.` | Yes³▢ she said. The correct answer is to leave the gap empty, for example where no comma belongs. |
-| `\[[` or `\]]` | A literal `[[` or `]]`, not a gap. |
 
 The rules for gaps:
 
@@ -95,9 +94,10 @@ The rules for gaps:
 - The part after `|` is a **hint**, shown in brackets after the gap, for example the verb students should use. A gap takes at most one `|`, and the hint can't be empty.
 - A gap opens and closes on the same line.
 - An exercise has at most 40 gaps, and each reference answer is at most 200 characters long. Students' answers have the same limit.
-- Gaps belong in paragraphs, list items, quotes and table cells. They are not allowed in headings, code, maths formulas, links or images.
+- Put gaps in ordinary sentences and list items, not in headings, code or links.
+- Double square brackets always mark a gap: every `[[` needs its `]]` on the same line, so the text can't contain a literal `[[` or `]]`.
 
-When a gap breaks a rule, validation names the line and column inside `text`, for example `Text line 3, column 12: gap 2 is in a heading`.
+When a gap breaks a rule, validation names the line and column inside `text`, for example `Text line 3, column 12: this [[ is never closed`.
 
 ## Writing grading criteria that work
 

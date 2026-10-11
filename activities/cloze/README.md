@@ -73,18 +73,18 @@ you would give. Students never see it; they see a numbered empty field.
 | `She [[is going to]] start.` | She ¹▢ start. |
 | `The class [[starts\|start]] at nine.` | The class ²▢ (start) at nine. |
 | `Yes[[]] she said.` | Yes³▢ she said. — the correct answer is to leave it empty (e.g. no comma) |
-| `\[[` or `\]]` | a literal `[[` or `]]` |
 
 - Gaps are numbered **in reading order**, 1, 2, 3, …
 - The part after `|` is a **hint** shown after the gap (e.g. the verb to use). One `|`
   per gap at most, and the hint may not be empty.
 - A gap opens and closes **on the same line**.
 - At most **40 gaps** per exercise, each answer at most **200 characters**.
-- Gaps belong in **paragraphs, list items, quotes and table cells**. They are not
-  allowed in headings, code, math formulas, links or images.
+- Put gaps in **ordinary sentences and list items**. Every `[[` must be closed by a
+  `]]` on the same line, and a `]]` without its `[[` is an error, so a literal `[[` or
+  `]]` cannot appear anywhere in `text`.
 
 The validator names every problem with its **line and column inside `text`**, e.g.
-`Text line 3, column 12: gap 2 is in a heading`.
+`Text line 3, column 12: this [[ is never closed`.
 
 The reference answer is one good answer, not the only one: `evaluation` decides which
 other answers count (contractions, synonyms, equivalent forms).

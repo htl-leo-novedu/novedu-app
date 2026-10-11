@@ -168,8 +168,7 @@ rest of the app:
 - **coding** → `loadAndCheckCoding(selfUrl, selfFetcher)` (`lib/coding-validate.ts`):
   the same strict gate; coding is always anonymous (`docs/coding.md`).
 - **cloze** → `loadAndCheckCloze(selfUrl, selfFetcher)` (`lib/cloze-validate.ts`): the
-  strict `ClozeYamlSchema` gate plus the gap parser (syntax, forbidden positions,
-  limits, each error with its line and column in `text`); always anonymous. On success
+  strict `ClozeYamlSchema` gate plus the gap parser (syntax and limits, each error with its line and column in `text`); always anonymous. On success
   it carries the **gap inventory** (`docs/cloze.md`).
 
 A validator may report a one-line **content summary** (`FileValidationResult.summary`,

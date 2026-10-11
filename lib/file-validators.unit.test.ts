@@ -240,12 +240,12 @@ describe("fileValidators.cloze", () => {
   it("surfaces the structured errors on a failed check (BLOCKS the save)", async () => {
     mocks.loadAndCheckCloze.mockResolvedValue({
       ok: false,
-      errors: [{ code: "CLOZE_GAP_POSITION", message: "m", line: 1, column: 3 }],
+      errors: [{ code: "CLOZE_GAP_SYNTAX", message: "m", line: 1, column: 3 }],
       warnings: [],
     });
     expect(await fileValidators.cloze.validate(URL_, fetcher)).toEqual({
       ok: false,
-      errors: [{ code: "CLOZE_GAP_POSITION", message: "m", line: 1, column: 3 }],
+      errors: [{ code: "CLOZE_GAP_SYNTAX", message: "m", line: 1, column: 3 }],
     });
   });
 });

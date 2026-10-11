@@ -1,5 +1,5 @@
 import { parse as parseYamlText } from "yaml";
-import { type ClozeGap, type ClozeSegment, parseClozeGaps, renderClozeText } from "./cloze-gaps";
+import { type ClozeGap, parseClozeGaps, renderClozeText } from "./cloze-gaps";
 import { type ClozePublic, clozeGapPlaceholder } from "./cloze-types";
 import {
   DEFAULT_PROVIDER,
@@ -53,10 +53,13 @@ export interface Cloze {
   instructionsPreamble: string;
   /** SERVER-ONLY exercise-level grading criteria. */
   evaluation: string;
+  /**
+   * SERVER-ONLY: the teacher's text (Markdown) with its gap markup — the reference
+   * answers inside. The browser gets it only through `toPublicCloze`.
+   */
+  text: string;
   /** Every gap, in reading order, INCLUDING its server-only reference answer. */
   gaps: ClozeGap[];
-  /** The text between the gaps (Markdown source), interleaved with the gaps. */
-  segments: ClozeSegment[];
 }
 
 export type ClozeParseResult = { ok: true; cloze: Cloze } | { ok: false; message: string };
@@ -145,8 +148,8 @@ export function parseCloze(content: string): ClozeParseResult {
       fragmentBlock: readFragmentBlock(root),
       instructionsPreamble: "",
       evaluation,
+      text,
       gaps: parsed.gaps,
-      segments: parsed.segments,
     },
   };
 }
@@ -162,7 +165,7 @@ export function toPublicCloze(cloze: Cloze): ClozePublic {
   return {
     title: cloze.title,
     description: cloze.description,
-    text: renderClozeText(cloze, (gap) => clozeGapPlaceholder(gap.number)),
+    text: renderClozeText(cloze.text, cloze.gaps, (gap) => clozeGapPlaceholder(gap.number)),
     gaps: cloze.gaps.map((gap) => ({
       number: gap.number,
       ...(gap.hint ? { hint: gap.hint } : {}),

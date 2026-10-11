@@ -18,7 +18,7 @@ import type { Cloze } from "./cloze-yaml";
 /** What both prompt builders read off a loaded exercise. */
 export type ClozePromptSource = Pick<
   Cloze,
-  "instructionsPreamble" | "evaluation" | "gaps" | "segments"
+  "instructionsPreamble" | "evaluation" | "text" | "gaps"
 >;
 
 /**
@@ -36,8 +36,8 @@ export function formatGapMarker(gap: Pick<ClozeGap, "number" | "reference" | "hi
 }
 
 /** The exercise's full text with every gap written as its {@link formatGapMarker}. */
-export function textWithReferences(cloze: Pick<Cloze, "gaps" | "segments">): string {
-  return renderClozeText(cloze, formatGapMarker);
+export function textWithReferences(cloze: Pick<Cloze, "text" | "gaps">): string {
+  return renderClozeText(cloze.text, cloze.gaps, formatGapMarker);
 }
 
 /**
