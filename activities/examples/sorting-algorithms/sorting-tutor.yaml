@@ -30,6 +30,10 @@ exampleQuestions:
   - title: "Wer tauscht seltener?"
     question: "Welcher der beiden Algorithmen macht weniger Vertauschungen — Bubble Sort oder Selection Sort — und warum?"
 
+# Per-user (the tutor default is anonymous): each conversation is recorded with
+# the student's name, and students can reopen their earlier conversations.
+anonymous: false
+
 llm:
   model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
 

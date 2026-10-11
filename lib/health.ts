@@ -11,6 +11,7 @@ import {
   openrouterAuthHeader,
   openrouterBase,
   openrouterConfigured,
+  openrouterKeyUrl,
   openrouterModelsUrl,
 } from "@/lib/llm/openrouter-endpoint";
 import { withTimeout } from "@/lib/promise-timeout";
@@ -120,17 +121,27 @@ export async function checkFoundry(): Promise<HealthIndicator> {
 }
 
 /**
- * Single-stage OpenRouter probe: unlike Foundry there is no token to acquire —
- * auth is the static `OPENROUTER_API_KEY` — so ONE authenticated model listing
- * proves both key validity and endpoint reachability, exactly like the SCCH probe.
+ * Two-stage OpenRouter probe. OpenRouter's model listing is public — it answers
+ * 200 for any key or none — so it proves reachability only. The key is proved
+ * first by the key-info endpoint, which rejects an invalid key with a 401; the
+ * listing then supplies the model count.
  */
 export async function checkOpenRouter(): Promise<HealthIndicator> {
   if (!openrouterConfigured()) {
     return { ok: false, detail: "Not configured (OPENROUTER_API_KEY is missing)." };
   }
   try {
+    const headers = { Authorization: openrouterAuthHeader() };
+    const keyRes = await fetch(openrouterKeyUrl(), {
+      headers,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!keyRes.ok) {
+      return { ok: false, detail: `API key rejected (HTTP ${keyRes.status}).` };
+    }
     const res = await fetch(openrouterModelsUrl(), {
-      headers: { Authorization: openrouterAuthHeader() },
+      headers,
       signal: AbortSignal.timeout(TIMEOUT_MS),
       cache: "no-store",
     });

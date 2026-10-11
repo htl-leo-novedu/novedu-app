@@ -85,7 +85,12 @@ The quickest way to a running activity is an example from the Novedu repository 
 5. Open a private browser window and paste the share link there. Novedu asks you to sign in first: select **Mia Gruber · Student**, and the tutor opens.
 6. Write a message to the tutor. The fake model answers.
 
-Back in Anna's window, select **Codes** in the menu and then the new code to open its statistics page, which lists Mia's conversation. To write your own activity, select **YAML Files** in the menu and create a file there; the chapters on building activities explain the fields.
+This example tutor is per-user: Novedu records which student each conversation belongs to. That shows two things an anonymous tutor can't:
+
+- Back in Anna's window, select **Codes** in the menu and then the new code to open its statistics page. It lists Mia's conversation under her name.
+- In Mia's window, select **Start over** above the chat and confirm. Then select **Previous conversations** next to it: Mia can reopen her first conversation and continue where she left off.
+
+To write your own activity, select **YAML Files** in the menu and create a file there; the chapters on building activities explain the fields.
 
 ## Try real AI models with an OpenRouter key
 
@@ -94,7 +99,7 @@ OpenRouter is a paid service that gives you access to AI models from many vendor
 1. Create an account at [openrouter.ai](https://openrouter.ai).
 2. Buy a small amount of credit, for example 5 or 10 US dollars. A short trial of a few chats with an inexpensive model costs a few cents.
 3. Create an API key. Give the key a **credit limit**, for example 2 US dollars, so the key stops working once it has spent that much.
-4. In your `novedu-local` folder, create a text file named `.env` with one line, your key in place of the placeholder:
+4. In your `novedu-local` folder, create a text file named `.env` with one line, your key in place of the placeholder. If the file already exists, for example because you changed the ports, add the line to it:
 
    ```text
    OPENROUTER_API_KEY=sk-or-your-key
@@ -106,7 +111,7 @@ OpenRouter is a paid service that gives you access to AI models from many vendor
    docker compose up -d --wait
    ```
 
-6. Sign in as a teacher and open **Health** in the menu. The **OpenRouter models** line shows **OK** and the number of models available.
+6. Sign in as a teacher and open **Health** in the menu. The **OpenRouter models** line shows **OK** and the number of models available. Health checks the key itself, so **OK** means OpenRouter accepted it.
 
 Now choose a real model for a code: on the create-code form, select the preset **OpenRouter · GLM 5.3 Flash**, or type `OpenRouter` as the provider and an OpenRouter model id as the model. In an activity file, the same choice is `provider: OpenRouter` and the model id in the `llm:` block. OpenRouter lists every model with its id and its price on its website.
 
@@ -114,13 +119,20 @@ Some OpenRouter models also come as a free version, marked by `:free` at the end
 
 Keep the key private: anyone with it can spend your credit. When you're done trying, delete the key on the OpenRouter website.
 
+### When OpenRouter fails
+
+If a chat or a grading test on an OpenRouter model fails, the error message says what OpenRouter answered. The message is written for a school's Novedu and suggests contacting the operator; on your local Novedu, that's you.
+
+- **"OpenRouter refused the server's credentials (upstream 401)"**: OpenRouter doesn't accept the key. Check the line in `.env` for typos, check that the key still exists on the OpenRouter website, and restart Novedu after every change. **Health** shows the same problem as **API key rejected**.
+- **"OpenRouter rejected the request"** with a 402: the key has reached its credit limit, or your account has no credit left. Raise the limit or buy credit on the OpenRouter website.
+
 ## Stop, update, and reset
 
 All commands run in the folder that holds `compose.yaml`.
 
 - **Stop** your local Novedu: `docker compose stop`. Your data stays, and `docker compose up -d --wait` starts it again.
 - **Update** to the newest Novedu: `docker compose pull`, then `docker compose up -d --wait`. Your data stays.
-- **Reset** everything, including all codes, files, images, and conversations: `docker compose down -v`.
+- **Reset** everything, including all codes, files, images, and conversations: `docker compose down -v`. A reset also ends every sign-in, including the Novedu CLI's: run the CLI's `login` command again afterwards, or its commands answer only `Unauthorized`.
 
 ## Change the ports
 
@@ -148,7 +160,27 @@ npx @novedu/cli@latest login --server http://localhost:3000
 
 The CLI prints a link and a short code and opens the link in your browser. Sign in there as a demo teacher, for example **Anna Berger · Teacher**, check that the code matches, and select **Approve**. After that, every CLI command works with your local Novedu as long as you add `--server http://localhost:3000` to it.
 
-Grading tests (the CLI's `eval` command) run against your local Novedu as well. With the fake model they only show that the test file and the steps work: the fake model grades every answer as correct, so a test that expects an incorrect answer fails. To test how a quiz really grades, add an OpenRouter key (see "Try real AI models with an OpenRouter key") and run the test on a real model:
+Instead of adding `--server` to every command, you can set the address once for your terminal session in the `NOVEDU_SERVER` environment variable. On macOS and Linux:
+
+```bash
+export NOVEDU_SERVER=http://localhost:3000
+```
+
+On Windows, in PowerShell:
+
+```powershell
+$env:NOVEDU_SERVER = "http://localhost:3000"
+```
+
+From then on, commands in that terminal use your local Novedu without `--server`. A `--server` on a single command still takes precedence.
+
+Grading tests (the CLI's `eval` command) run against your local Novedu as well. With the fake model they only show that the test file and the steps work:
+
+- The fake model grades every answer as correct, so a test that expects an incorrect answer fails.
+- The fake model can't act as the judge that reviews the results, so every judge review ends as an error. Add `--no-judge-feedback` to skip the judge on fake-model runs.
+- The report names the model from the activity, for example an SCCH model, even though the fake model answered in its place.
+
+To test how a quiz really grades, add an OpenRouter key (see "Try real AI models with an OpenRouter key") and run the test on a real model:
 
 ```bash
 npx @novedu/cli@latest eval my-quiz.eval.yaml --server http://localhost:3000 \

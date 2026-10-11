@@ -42,6 +42,17 @@ prose carries everything an editor needs.
   Azure identity.
 - No OpenRouter prices or minimums as facts: OpenRouter changes them. Name
   concepts (credit, a per-key credit limit, `:free` variants with a daily cap).
+- The fake model has no judge fixture: every eval judge call fails, so
+  fake-model eval runs take `--no-judge-feedback`. An eval report names the
+  activity's model even when the fake answered for it.
+- Health's OpenRouter line checks the key itself (OpenRouter's model list is
+  public and proves nothing about a key). The upstream error texts are written
+  for a school's Novedu ("contact the operator"); on a local Novedu the reader
+  is the operator, so the chapter maps them to what to check.
+- The first-activity walkthrough uses the per-user example tutor on purpose: it
+  shows the student's name on the statistics page and **Previous conversations**.
+  If the example ever turns anonymous again, the walkthrough breaks.
+- Any reset (`docker compose down -v`) ends every session, the CLI's included.
 
 ## 00-introduction/03-tutors-overview
 

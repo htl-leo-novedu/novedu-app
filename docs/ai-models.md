@@ -409,9 +409,10 @@ indicator for a provider nobody uses.
   endpoint reachability (a model listing). Testids `health-foundry` /
   `health-foundry-host`.
 - **OpenRouter**, only when `OPENROUTER_API_KEY` is set: `checkOpenRouter()` is
-  **single-stage** — auth is a static key, so ONE authenticated GET of the models
-  URL proves key validity and reachability at once (a bad key comes back as an
-  HTTP 401), exactly like the SCCH probe. The host row resolves `openrouter.ai`
+  two-stage — OpenRouter's model listing is public (it answers 200 for any key or
+  none), so the probe first proves the key with the key-info endpoint
+  (`GET <base>/key`, an HTTP 401 for a bad key) and then lists the models for the
+  count. The host row resolves `openrouter.ai`
   unless `OPENROUTER_BASE_URL` points elsewhere. Testids `health-openrouter` /
   `health-openrouter-host`.
 
