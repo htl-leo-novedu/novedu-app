@@ -7,10 +7,7 @@ import {
   buildClozeGradingPrompt,
   CLOZE_GRADING_MESSAGE_TEMPLATE,
 } from "@/lib/cloze-grading-prompt";
-import {
-  clozeFeedbackResponseJsonSchema,
-  clozeGradingResponseJsonSchema,
-} from "@/lib/cloze-output-schemas";
+import { CLOZE_FEEDBACK_SCHEMA, CLOZE_GRADING_SCHEMA } from "@/lib/cloze-output-schemas";
 import { loadClozeFrom } from "@/lib/cloze-resolve";
 import { buildUpstreamChatBody } from "@/lib/coding-proxy";
 import { loadCodingFrom } from "@/lib/coding-resolve";
@@ -203,15 +200,17 @@ function loadFailed(message: string, url: string): PromptDumpResult {
 }
 
 /**
- * The verdict schema as plain JSON Schema, generated from the zod source of truth with
- * zod 4's native converter — the same mechanism `lib/schema-gen` uses for the authoring
- * schemas, so there is no second conversion story in the repo.
+ * A structured-output schema as plain JSON Schema, generated from the zod source of
+ * truth with zod 4's native converter — the same mechanism `lib/schema-gen` uses for the
+ * authoring schemas, so there is no second conversion story in the repo.
  */
+export function toResponseJsonSchema(schema: z.ZodType): Record<string, unknown> {
+  return z.toJSONSchema(schema, { target: "draft-2020-12" }) as Record<string, unknown>;
+}
+
+/** The quiz verdict schema as plain JSON Schema. */
 export function verdictResponseJsonSchema(): Record<string, unknown> {
-  return z.toJSONSchema(QUIZ_VERDICT_SCHEMA, { target: "draft-2020-12" }) as Record<
-    string,
-    unknown
-  >;
+  return toResponseJsonSchema(QUIZ_VERDICT_SCHEMA);
 }
 
 // tutor: the tutor core IS the runtime path (the agent calls the same function per
@@ -363,12 +362,12 @@ const clozeDumper: PromptDumper = {
         grading: {
           system: buildClozeGradingPrompt(cloze),
           userMessageTemplate: CLOZE_GRADING_MESSAGE_TEMPLATE,
-          responseSchema: clozeGradingResponseJsonSchema(),
+          responseSchema: toResponseJsonSchema(CLOZE_GRADING_SCHEMA),
         },
         feedback: {
           system: buildClozeFeedbackPrompt(cloze),
           userMessageTemplate: CLOZE_FEEDBACK_MESSAGE_TEMPLATE,
-          responseSchema: clozeFeedbackResponseJsonSchema(),
+          responseSchema: toResponseJsonSchema(CLOZE_FEEDBACK_SCHEMA),
         },
       },
     };

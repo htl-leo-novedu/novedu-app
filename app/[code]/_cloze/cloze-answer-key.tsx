@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { VERDICT_VARS } from "@/components/ui/verdict";
+import { type ClozeGapCount, gapTotal } from "@/lib/cloze-types";
 import { cn } from "@/lib/utils";
 import { ClozeText } from "./cloze-text";
 
@@ -11,20 +12,14 @@ import { ClozeText } from "./cloze-text";
 // A client component only because `ClozeText` takes the per-gap renderer as a
 // function; everything it shows arrives as plain data.
 
-export interface AnswerKeyGap {
-  gap: number;
-  reference: string;
-  hint?: string;
-  correct: number;
-  partial: number;
-  incorrect: number;
-}
+/** One gap of the current text with its counts (zero when nothing was submitted yet). */
+export type GapResult = ClozeGapCount & { hint?: string };
 
 const SEGMENTS = ["correct", "partial", "incorrect"] as const;
 
 /** A thin three-segment bar of one gap's verdict shares, with its `n`. */
-export function GapBar({ gap }: { gap: AnswerKeyGap }) {
-  const n = gap.correct + gap.partial + gap.incorrect;
+export function GapBar({ gap }: { gap: GapResult }) {
+  const n = gapTotal(gap);
   const label =
     n === 0
       ? "no submissions yet"
@@ -54,7 +49,7 @@ export function GapBar({ gap }: { gap: AnswerKeyGap }) {
   );
 }
 
-export function ClozeAnswerKey({ text, gaps }: { text: string; gaps: AnswerKeyGap[] }) {
+export function ClozeAnswerKey({ text, gaps }: { text: string; gaps: GapResult[] }) {
   function renderGap(number: number): ReactNode {
     const gap = gaps[number - 1];
     if (!gap) return null;

@@ -34,11 +34,7 @@ export async function ClozeDetail({ entry }: { entry: CodeEntry }) {
           ? {
               ok: true,
               text: toPublicCloze(loaded.cloze).text,
-              gaps: loaded.cloze.gaps.map((gap) => ({
-                number: gap.number,
-                reference: gap.reference,
-                hint: gap.hint,
-              })),
+              gaps: loaded.cloze.gaps,
             }
           : { ok: false, message: loaded.message },
         counts,

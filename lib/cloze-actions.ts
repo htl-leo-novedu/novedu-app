@@ -27,14 +27,11 @@ import {
   verifyClozeResultToken,
 } from "@/lib/cloze-result-token";
 import {
-  answersMatchGaps,
   CLOZE_CHANGED_MESSAGE,
   type ClozeCodeInput,
   isAnswerList,
   type LoadedCloze,
-  loadVerifiedCloze,
   verifyAndLoadCloze,
-  verifyClozeCode,
 } from "@/lib/cloze-verify";
 import { invalidateHome } from "@/lib/home-data";
 import { providerUnavailableReason } from "@/lib/llm/availability";
@@ -148,7 +145,7 @@ export async function gradeCloze(
 
   const ctx = await verifyAndLoadCloze(input);
   if (!ctx.ok) return ctx;
-  if (!answersMatchGaps(input.answers, ctx.cloze)) {
+  if (input.answers.length !== ctx.cloze.gaps.length) {
     return { ok: false, message: CLOZE_CHANGED_MESSAGE };
   }
 
@@ -285,15 +282,14 @@ export async function explainCloze(
     return { ok: false, message: REJECTED };
   }
 
-  const verified = await verifyClozeCode(input);
-  if (!verified.ok) return verified;
-  // The token before the (expensive) reload: only a grading this server did for this
-  // session user passes.
+  const ctx = await verifyAndLoadCloze(input);
+  if (!ctx.ok) return ctx;
+  // Only a grading this server did for this session user passes.
   const tokenOk = verifyClozeResultToken(
     input.resultToken,
     {
-      code: verified.code,
-      userId: verified.userId,
+      code: ctx.code,
+      userId: ctx.userId,
       attemptId: input.attemptId,
       answers: input.answers,
       verdicts: input.verdicts,
@@ -301,10 +297,7 @@ export async function explainCloze(
     getClozeResultSecret(),
   );
   if (!tokenOk) return { ok: false, message: REJECTED };
-
-  const ctx = await loadVerifiedCloze(verified);
-  if (!ctx.ok) return ctx;
-  if (!answersMatchGaps(input.answers, ctx.cloze)) {
+  if (input.answers.length !== ctx.cloze.gaps.length) {
     return { ok: false, message: CLOZE_CHANGED_MESSAGE };
   }
 

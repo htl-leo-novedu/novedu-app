@@ -123,8 +123,7 @@ YAML load, `ClozeYamlSchema` (`lib/cloze-schema.ts`, `z.strictObject` throughout
 gap parser, then the fragment block's authoring gate over `instructions` (every
 referenced library fetched and checked thoroughly, an assembly dry-run). On success
 it reports `clozeId`, `model`, `provider`, `title`, `gapCount`, `gaps` (number,
-reference, hint) and `inventory`. `checkClozeValue(parsed, url)` is the pure,
-fetch-free part (schema + gaps).
+reference, hint) and `inventory`.
 
 It backs three surfaces:
 
@@ -237,8 +236,8 @@ Both actions verify through `lib/cloze-verify.ts`, which — like `lib/quiz-veri
 carries **no `"use server"`** (its `verifyAndLoadCloze` returns the exercise,
 references and `evaluation` included; guard-tested). Order: cheap shape checks (uuid
 attempt id, answers an array of strings ≤ 200 characters) before any I/O → session →
-`checkCode()` → `module === "cloze"` → (explain only: the result token) → the YAML
-reload → one answer per gap (a mismatch means the teacher changed the gaps since the
+`checkCode()` → `module === "cloze"` → the YAML reload → (explain only: the result
+token) → one answer per gap (a mismatch means the teacher changed the gaps since the
 page loaded: "reload the page"). Every rejection is a fixed message.
 
 1. **`gradeCloze({ code, attemptId, round, answers })`** →

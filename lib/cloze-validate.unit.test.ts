@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parse as parseYamlText } from "yaml";
-import { checkClozeValue, loadAndCheckCloze } from "@/lib/cloze-validate";
+import { stringify } from "yaml";
+import { loadAndCheckCloze } from "@/lib/cloze-validate";
 import type { Fetcher } from "@/lib/prompt-fragments";
 
 // The cloze AUTHORING validator: the strict schema gate + the gap parser + the
@@ -140,8 +140,9 @@ text: A [[b]] c.
   });
 });
 
-describe("checkClozeValue — schema errors", () => {
-  const check = (yaml: string) => checkClozeValue(parseYamlText(yaml), URL_);
+describe("loadAndCheckCloze — schema errors", () => {
+  const check = (yaml: string) => loadAndCheckCloze(URL_, fetcherFor(yaml));
+  const checkValue = (value: object) => check(stringify(value));
   const base = {
     id: "c",
     llm: { model: "m" },
@@ -149,8 +150,8 @@ describe("checkClozeValue — schema errors", () => {
     text: "A [[b]] c.",
   };
 
-  it("accepts the base shape", () => {
-    expect(checkClozeValue(base, URL_).ok).toBe(true);
+  it("accepts the base shape", async () => {
+    expect((await checkValue(base)).ok).toBe(true);
   });
 
   it.each([
@@ -165,14 +166,14 @@ describe("checkClozeValue — schema errors", () => {
     ["an anonymous field", { ...base, anonymous: false }],
     ["a shuffle field", { ...base, shuffle: false }],
     ["a questions field", { ...base, questions: [] }],
-  ])("rejects %s as CLOZE_SCHEMA_ERROR", (_label, value) => {
-    const result = checkClozeValue(value, URL_);
+  ])("rejects %s as CLOZE_SCHEMA_ERROR", async (_label, value) => {
+    const result = await checkValue(value);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors[0]?.code).toBe("CLOZE_SCHEMA_ERROR");
   });
 
-  it("rejects a text without gaps as CLOZE_NO_GAPS", () => {
-    const result = check(`
+  it("rejects a text without gaps as CLOZE_NO_GAPS", async () => {
+    const result = await check(`
 id: c
 llm: { model: m }
 evaluation: e

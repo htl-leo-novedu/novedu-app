@@ -2,10 +2,11 @@ import { type ListColumn, ListTable } from "@/components/data-list";
 import { META_LABEL } from "@/components/ui/meta-label";
 import { StatTile } from "@/components/ui/stat-tile";
 import { VERDICT_VARS } from "@/components/ui/verdict";
-import type { ClozeGapCount } from "@/lib/cloze-counts-store";
+import type { ClozeGap } from "@/lib/cloze-gaps";
+import { type ClozeGapCount, gapTotal } from "@/lib/cloze-types";
 import { cn } from "@/lib/utils";
 import { LocalTime } from "../../local-time";
-import { ClozeAnswerKey } from "./cloze-answer-key";
+import { ClozeAnswerKey, type GapResult } from "./cloze-answer-key";
 
 // The cloze module's teacher detail body (docs/cloze.md → Teacher view), pure
 // presentation over what `ClozeDetail` loaded: the facts (file, window, model,
@@ -16,41 +17,29 @@ import { ClozeAnswerKey } from "./cloze-answer-key";
 // be loaded, the stored counts are listed by gap number and reference instead.
 // Nothing here is per student: counts only, never an answer.
 
-/** A gap of the current text, for the answer key. */
-export interface ClozeDetailGap {
-  number: number;
-  reference: string;
-  hint?: string;
-}
-
 export interface ClozeDetailData {
   fileUrl: string;
   validFrom: number | null;
   validUntil: number | null;
   llm?: { model: string; reasoning?: string };
   /** The current exercise (the public text with placeholders + the gaps), or why not. */
-  exercise: { ok: true; text: string; gaps: ClozeDetailGap[] } | { ok: false; message: string };
+  exercise:
+    | { ok: true; text: string; gaps: Omit<ClozeGap, "line" | "column">[] }
+    | { ok: false; message: string };
   /** Every stored counts row of the code; `undefined` = the read failed. */
   counts: ClozeGapCount[] | undefined;
 }
 
-const total = (row: ClozeGapCount) => row.correct + row.partial + row.incorrect;
-
 /** "First submissions": the largest per-gap total — the same number the /codes list shows. */
 export function firstSubmissions(counts: readonly ClozeGapCount[]): number {
-  return counts.reduce((max, row) => Math.max(max, total(row)), 0);
+  return counts.reduce((max, row) => Math.max(max, gapTotal(row)), 0);
 }
 
 const percent = (part: number, whole: number) => `${Math.round((part / whole) * 100)}%`;
 
-/** One table row: a gap and its counts (zero when nothing was submitted yet). */
-interface GapRow extends ClozeGapCount {
-  hint?: string;
-}
-
 function countCell(verdict: "correct" | "partial" | "incorrect") {
-  return (row: GapRow) => {
-    const n = total(row);
+  return (row: GapResult) => {
+    const n = gapTotal(row);
     if (n === 0) return verdict === "correct" ? "No submissions yet" : null;
     return (
       <span className={cn("text-(--verdict)", VERDICT_VARS[verdict])}>
@@ -60,7 +49,7 @@ function countCell(verdict: "correct" | "partial" | "incorrect") {
   };
 }
 
-const COLUMNS: ListColumn<GapRow>[] = [
+const COLUMNS: ListColumn<GapResult>[] = [
   { header: "Gap", kind: "numeric", render: (row) => row.gap },
   {
     header: "Reference",
@@ -78,10 +67,10 @@ const COLUMNS: ListColumn<GapRow>[] = [
   { header: "Correct", kind: "numeric", render: countCell("correct") },
   { header: "Partial", kind: "numeric", render: countCell("partial") },
   { header: "Wrong", kind: "numeric", render: countCell("incorrect") },
-  { header: "n", kind: "numeric", render: (row) => total(row) },
+  { header: "n", kind: "numeric", render: (row) => gapTotal(row) },
 ];
 
-function GapTable({ rows }: { rows: GapRow[] }) {
+function GapTable({ rows }: { rows: GapResult[] }) {
   return (
     <div data-testid="cloze-gap-table">
       <ListTable
@@ -99,7 +88,7 @@ export function ClozeDetailView({ data }: { data: ClozeDetailData }) {
   const { exercise, counts } = data;
 
   // The rows of the CURRENT text, in gap order, zero-filled; everything else is stale.
-  let rows: GapRow[] = [];
+  let rows: GapResult[] = [];
   let hiddenRows = 0;
   if (exercise.ok) {
     const byKey = new Map((counts ?? []).map((row) => [`${row.gap}\u0000${row.reference}`, row]));
@@ -114,7 +103,7 @@ export function ClozeDetailView({ data }: { data: ClozeDetailData }) {
         incorrect: row?.incorrect ?? 0,
       };
     });
-    hiddenRows = (counts ?? []).length - rows.filter((row) => total(row) > 0).length;
+    hiddenRows = (counts ?? []).length - rows.filter((row) => gapTotal(row) > 0).length;
   }
 
   return (

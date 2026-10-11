@@ -11,12 +11,9 @@ import {
   CLOZE_GRADING_MESSAGE_TEMPLATE,
   formatGapMarker,
 } from "./cloze-grading-prompt";
-import {
-  clozeFeedbackResponseJsonSchema,
-  clozeGradingResponseJsonSchema,
-} from "./cloze-output-schemas";
+import { CLOZE_FEEDBACK_SCHEMA, CLOZE_GRADING_SCHEMA } from "./cloze-output-schemas";
 import { loadClozeFrom } from "./cloze-resolve";
-import { dumpPrompts } from "./prompt-dump";
+import { dumpPrompts, toResponseJsonSchema } from "./prompt-dump";
 import type { Fetcher } from "./prompt-fragments";
 
 // Both cloze prompt builders, their user-message wrappers and the prompt dump: the dump
@@ -105,8 +102,10 @@ describe("cloze prompts", async () => {
     expect(result.dump.feedback.system).toBe(buildClozeFeedbackPrompt(cloze));
     expect(result.dump.grading.userMessageTemplate).toBe(CLOZE_GRADING_MESSAGE_TEMPLATE);
     expect(result.dump.feedback.userMessageTemplate).toBe(CLOZE_FEEDBACK_MESSAGE_TEMPLATE);
-    expect(result.dump.grading.responseSchema).toEqual(clozeGradingResponseJsonSchema());
-    expect(result.dump.feedback.responseSchema).toEqual(clozeFeedbackResponseJsonSchema());
+    expect(result.dump.grading.responseSchema).toEqual(toResponseJsonSchema(CLOZE_GRADING_SCHEMA));
+    expect(result.dump.feedback.responseSchema).toEqual(
+      toResponseJsonSchema(CLOZE_FEEDBACK_SCHEMA),
+    );
     expect(result.dump.grading.responseSchema).toMatchObject({
       properties: { gaps: { type: "array" } },
     });

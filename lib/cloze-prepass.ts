@@ -16,18 +16,13 @@ import type { QuizVerdict } from "./quiz-types";
 // unifies typographic apostrophes/quotes; it is deliberately CASE-SENSITIVE (a capital
 // letter may be the point of the gap).
 //
-// PURE / CLI-safe: no I/O, no `app/**`, no DB. The eval runner applies the same pre-pass
-// locally, so an eval reports exactly what a student would have been graded.
-
-/** Which pre-pass rule decided a gap, or `null` when the gap goes to the model. */
-export type ClozePrepassRule = "empty-reference" | "not-answered" | "exact-match";
+// PURE: no I/O, no `app/**`, no DB.
 
 export interface ClozePrepassEntry {
   /** The gap number (1-based, reading order). */
   gap: number;
   /** The decided verdict, or `null` when the model must decide. */
   verdict: QuizVerdict | null;
-  rule: ClozePrepassRule | null;
 }
 
 // Typographic apostrophes and primes → `'`; typographic double quotes → `"`.
@@ -56,12 +51,9 @@ export function runClozePrepass(
     const answer = normalizeClozeAnswer(answers[i] ?? "");
     const reference = normalizeClozeAnswer(gap.reference);
     if (answer === "") {
-      return reference === ""
-        ? { gap: gap.number, verdict: "correct", rule: "empty-reference" }
-        : { gap: gap.number, verdict: "incorrect", rule: "not-answered" };
+      return { gap: gap.number, verdict: reference === "" ? "correct" : "incorrect" };
     }
-    if (answer === reference) return { gap: gap.number, verdict: "correct", rule: "exact-match" };
-    return { gap: gap.number, verdict: null, rule: null };
+    return { gap: gap.number, verdict: answer === reference ? "correct" : null };
   });
 }
 

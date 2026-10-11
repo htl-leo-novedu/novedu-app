@@ -51,19 +51,3 @@ export const CLOZE_FEEDBACK_SCHEMA = z.object({
 });
 
 export type ClozeFeedbackOutput = z.infer<typeof CLOZE_FEEDBACK_SCHEMA>;
-
-/** `CLOZE_GRADING_SCHEMA` as plain JSON Schema — the grading call's response contract. */
-export function clozeGradingResponseJsonSchema(): Record<string, unknown> {
-  return z.toJSONSchema(CLOZE_GRADING_SCHEMA, { target: "draft-2020-12" }) as Record<
-    string,
-    unknown
-  >;
-}
-
-/** `CLOZE_FEEDBACK_SCHEMA` as plain JSON Schema — the feedback call's response contract. */
-export function clozeFeedbackResponseJsonSchema(): Record<string, unknown> {
-  return z.toJSONSchema(CLOZE_FEEDBACK_SCHEMA, { target: "draft-2020-12" }) as Record<
-    string,
-    unknown
-  >;
-}

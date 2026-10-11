@@ -27,24 +27,24 @@ describe("runClozePrepass", () => {
   it("decides the table's rows and leaves the rest to the model", () => {
     const result = runClozePrepass(gaps, ["is  going to", "start", "", ", ", "won’t"]);
     expect(result).toEqual([
-      { gap: 1, verdict: "correct", rule: "exact-match" },
-      { gap: 2, verdict: null, rule: null },
-      { gap: 3, verdict: "correct", rule: "empty-reference" },
+      { gap: 1, verdict: "correct" },
+      { gap: 2, verdict: null },
+      { gap: 3, verdict: "correct" },
       // `[[]]` with a non-empty answer goes to the model.
-      { gap: 4, verdict: null, rule: null },
-      { gap: 5, verdict: "correct", rule: "exact-match" },
+      { gap: 4, verdict: null },
+      { gap: 5, verdict: "correct" },
     ]);
     expect(undecidedGaps(result)).toEqual([2, 4]);
   });
 
   it("an empty answer to a non-empty reference is not answered (incorrect)", () => {
     const [first] = runClozePrepass(gaps, ["   ", "", "", "", ""]);
-    expect(first).toEqual({ gap: 1, verdict: "incorrect", rule: "not-answered" });
+    expect(first).toEqual({ gap: 1, verdict: "incorrect" });
   });
 
   it("a case difference goes to the model", () => {
     expect(runClozePrepass([{ number: 1, reference: "starts" }], ["Starts"])).toEqual([
-      { gap: 1, verdict: null, rule: null },
+      { gap: 1, verdict: null },
     ]);
   });
 });

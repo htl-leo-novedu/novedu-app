@@ -169,15 +169,8 @@ export function renderClozeText(
   });
 }
 
-/** One gap of the inventory — the reference and hint, without the source position. */
-export interface ClozeGapSummary {
-  number: number;
-  reference: string;
-  hint?: string;
-}
-
 /** The gap's inventory entry, e.g. `3 "starts" (start)` or `4 (empty)`. */
-function inventoryEntry(gap: ClozeGapSummary): string {
+function inventoryEntry(gap: Omit<ClozeGap, "line" | "column">): string {
   const reference = gap.reference === "" ? "(empty)" : `"${gap.reference}"`;
   return `${gap.number} ${reference}${gap.hint ? ` (${gap.hint})` : ""}`;
 }
@@ -186,7 +179,7 @@ function inventoryEntry(gap: ClozeGapSummary): string {
  * The one-line gap inventory a successful validation reports:
  * `10 gaps · 1 "is going to" · 2 "is going to" · 3 "starts" (start) · …`.
  */
-export function formatGapInventory(gaps: readonly ClozeGapSummary[]): string {
+export function formatGapInventory(gaps: readonly Omit<ClozeGap, "line" | "column">[]): string {
   const count = `${gaps.length} gap${gaps.length === 1 ? "" : "s"}`;
   return [count, ...gaps.map(inventoryEntry)].join(" · ");
 }

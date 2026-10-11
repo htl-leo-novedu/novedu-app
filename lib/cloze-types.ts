@@ -70,3 +70,17 @@ export interface ClozePublic {
   /** Every gap, in reading order (gap N is `gaps[N - 1]`). */
   gaps: ClozeGapPublic[];
 }
+
+/** The stored verdict counts of one (gap, reference) of a cloze code — counts only. */
+export interface ClozeGapCount {
+  gap: number;
+  reference: string;
+  correct: number;
+  partial: number;
+  incorrect: number;
+}
+
+/** How many first submissions a gap's counts hold. */
+export function gapTotal(row: Pick<ClozeGapCount, "correct" | "partial" | "incorrect">): number {
+  return row.correct + row.partial + row.incorrect;
+}

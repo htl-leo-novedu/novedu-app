@@ -1,7 +1,7 @@
 import { loadCloze } from "@/lib/cloze-fetch";
 import { MAX_CLOZE_ANSWER_LENGTH } from "@/lib/cloze-types";
 import type { Cloze } from "@/lib/cloze-yaml";
-import { type CodeEntry, type CodeRejection, checkCode, effectiveLlm } from "@/lib/code-store";
+import { type CodeRejection, checkCode, effectiveLlm } from "@/lib/code-store";
 import type { LlmProvider, ReasoningLevel } from "@/lib/llm/provider";
 import { getSession } from "@/lib/session";
 
@@ -15,7 +15,7 @@ import { getSession } from "@/lib/session";
 //
 // Check order, cheap before expensive: session → `checkCode()` (the stored row and its
 // window, re-run on EVERY action) → `module === "cloze"` → the exercise re-loaded from
-// the code's file → (per action) the answers against the reloaded gaps.
+// the code's file.
 
 export interface ClozeCodeInput {
   code: string;
@@ -28,27 +28,24 @@ export const CLOZE_CODE_REJECTION_MESSAGES: Record<CodeRejection, string> = {
   "lookup-failed": "Exercise codes cannot be checked right now — try again in a moment.",
 };
 
-export type VerifiedClozeCode = {
+export type LoadedCloze = {
   ok: true;
   userId: string;
   code: string;
   fileUrl: string;
-  /** The stored row's LLM override, for `effectiveLlm`. */
-  entry: Pick<CodeEntry, "llm">;
-};
-
-export type LoadedCloze = Omit<VerifiedClozeCode, "entry"> & {
   cloze: Cloze;
   /** The provider + model (+ reasoning) to grade with: the code's override or the YAML's. */
   llm: { provider: LlmProvider; model: string; reasoning?: ReasoningLevel };
 };
 
-export type ClozeRejection = { ok: false; message: string };
-
-/** Session + a valid, in-window cloze code. No YAML load yet. */
-export async function verifyClozeCode(
+/**
+ * The preamble of every cloze action: an authenticated session + a valid, in-window
+ * cloze code + the (server-authoritative) exercise re-loaded from the code's file.
+ * Returns a ready-to-show message on any failure.
+ */
+export async function verifyAndLoadCloze(
   input: ClozeCodeInput,
-): Promise<VerifiedClozeCode | ClozeRejection> {
+): Promise<LoadedCloze | { ok: false; message: string }> {
   const session = await getSession();
   const userId = session?.user?.id;
   if (!userId) return { ok: false, message: "Please sign in to continue." };
@@ -61,32 +58,24 @@ export async function verifyClozeCode(
   if (entry.module !== "cloze") {
     return { ok: false, message: "This code is not a cloze exercise." };
   }
-  return { ok: true, userId, code: input.code, fileUrl: entry.fileUrl, entry };
-}
 
-/** Loads the (server-authoritative) exercise behind an already verified code. */
-export async function loadVerifiedCloze(
-  verified: VerifiedClozeCode,
-): Promise<LoadedCloze | ClozeRejection> {
-  const loaded = await loadCloze(verified.fileUrl);
+  const loaded = await loadCloze(entry.fileUrl);
   if (!loaded.ok) return { ok: false, message: loaded.message };
-  const { entry: _entry, ...rest } = verified;
-  return { ...rest, cloze: loaded.cloze, llm: effectiveLlm(verified.entry, loaded.cloze) };
-}
 
-/** The whole preamble: {@link verifyClozeCode}, then {@link loadVerifiedCloze}. */
-export async function verifyAndLoadCloze(
-  input: ClozeCodeInput,
-): Promise<LoadedCloze | ClozeRejection> {
-  const verified = await verifyClozeCode(input);
-  if (!verified.ok) return verified;
-  return loadVerifiedCloze(verified);
+  return {
+    ok: true,
+    userId,
+    code: input.code,
+    fileUrl: entry.fileUrl,
+    cloze: loaded.cloze,
+    llm: effectiveLlm(entry, loaded.cloze),
+  };
 }
 
 /**
  * A well-formed answer list: an array of strings, none longer than the answer cap. The
  * cheap shape check every action runs BEFORE any I/O; the gap count is checked against
- * the reloaded exercise by {@link answersMatchGaps}.
+ * the reloaded exercise afterwards.
  */
 export function isAnswerList(value: unknown): value is string[] {
   return (
@@ -96,13 +85,8 @@ export function isAnswerList(value: unknown): value is string[] {
 }
 
 /**
- * The answers fit the exercise as it is NOW: one per gap. A mismatch means the teacher
- * changed the gaps after the page loaded (a known limitation — the student reloads).
+ * The answers no longer fit the exercise (one per gap): the teacher changed the gaps
+ * after the page loaded (a known limitation — the student reloads).
  */
-export function answersMatchGaps(answers: readonly string[], cloze: Cloze): boolean {
-  return answers.length === cloze.gaps.length;
-}
-
-/** The message for {@link answersMatchGaps} failing. */
 export const CLOZE_CHANGED_MESSAGE =
   "This exercise changed while you were working on it. Reload the page to start again.";

@@ -1,4 +1,5 @@
 import { asc, eq, inArray, sql } from "drizzle-orm";
+import type { ClozeGapCount } from "@/lib/cloze-types";
 import { type DbExecutor, getDb } from "@/lib/db";
 import { clozeGapCounts } from "@/lib/db/schema";
 import type { QuizVerdict } from "@/lib/quiz-types";
@@ -22,15 +23,6 @@ export interface ClozeGapVerdict {
   gap: number;
   reference: string;
   verdict: QuizVerdict;
-}
-
-/** The stored counts of one (gap, reference) row. */
-export interface ClozeGapCount {
-  gap: number;
-  reference: string;
-  correct: number;
-  partial: number;
-  incorrect: number;
 }
 
 /**

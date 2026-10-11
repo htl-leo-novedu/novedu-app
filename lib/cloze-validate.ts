@@ -15,7 +15,7 @@
 // — like coding — this validator carries no anonymity flag; the file-validator seam
 // freezes `anonymous: true` onto the code row.
 
-import { type ClozeGapSummary, formatGapInventory, parseClozeGaps } from "@/lib/cloze-gaps";
+import { type ClozeGap, formatGapInventory, parseClozeGaps } from "@/lib/cloze-gaps";
 import {
   assembleFragmentPrompt,
   type Fetcher,
@@ -42,18 +42,14 @@ export type ClozeCheckResult =
       title: string | null;
       gapCount: number;
       /** Every gap in reading order: number, reference answer, hint. */
-      gaps: ClozeGapSummary[];
+      gaps: Omit<ClozeGap, "line" | "column">[];
       /** The one-line inventory, e.g. `10 gaps · 1 "is going to" · 3 "starts" (start) · …`. */
       inventory: string;
       warnings: ValidationWarning[];
     }
   | { ok: false; errors: ValidationError[]; warnings: ValidationWarning[] };
 
-/**
- * Check an already-schema-validated cloze value: the gap parser → metadata. Split
- * from `checkClozeValue` so `loadAndCheckCloze` can reuse the single `validate` it
- * already ran (no second parse of the same document against the same schema).
- */
+/** Check an already-schema-validated cloze value: the gap parser → metadata. */
 function checkClozeParsed(cloze: ClozeYaml): ClozeCheckResult {
   const parsed = parseClozeGaps(cloze.text);
   if (!parsed.ok) return { ok: false, errors: parsed.errors, warnings: [] };
@@ -73,17 +69,6 @@ function checkClozeParsed(cloze: ClozeYaml): ClozeCheckResult {
     inventory: formatGapInventory(gaps),
     warnings: [],
   };
-}
-
-/**
- * Validate an already-parsed cloze value: schema → gap parser → metadata. Pure (the
- * parsed value is passed in); `loadAndCheckCloze` wraps it with fetch + YAML parse +
- * the fragment block's authoring gate.
- */
-export function checkClozeValue(parsed: unknown, url?: string): ClozeCheckResult {
-  const valid = validate<ClozeYaml>(parsed, ClozeYamlSchema, "CLOZE_SCHEMA_ERROR", url);
-  if (!valid.ok) return { ok: false, errors: [valid.error], warnings: [] };
-  return checkClozeParsed(valid.data);
 }
 
 /**

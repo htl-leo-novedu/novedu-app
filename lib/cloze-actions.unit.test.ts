@@ -347,10 +347,10 @@ describe("explainCloze", () => {
     ["answers", { answers: ["other", "start", ""] }],
     ["attempt", { attemptId: "11111111-1111-4111-8111-111111111111" }],
     ["token", { resultToken: "ab".repeat(32) }],
-  ])("rejects a token that does not match the %s, before reloading", async (_, change) => {
+  ])("rejects a token that does not match the %s", async (_, change) => {
     const result = await explainCloze({ ...input(), ...change } as never);
     expect(result).toEqual({ ok: false, message: "This submission cannot be checked." });
-    expect(loadCloze).not.toHaveBeenCalled();
+    expect(checkCode).toHaveBeenCalledWith(CODE);
     expect(generate).not.toHaveBeenCalled();
   });
 
