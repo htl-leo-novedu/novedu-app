@@ -24,13 +24,13 @@ A **code** is a `[a-z0-9-]` string (1–32 chars; `generateCode()` mints 10 rand
 | Column | Meaning |
 | --- | --- |
 | `code` (PK) | the code, `varchar(32)` (sized for future teacher-defined memorable codes) |
-| `module` | the dispatch discriminator — `tutor` \| `quiz` \| `writing` \| `coding`, picks the renderer + agent (the `coding` module has no in-app agent — it is an OpenAI-compatible endpoint; see `docs/coding.md`) |
+| `module` | the dispatch discriminator — `tutor` \| `quiz` \| `writing` \| `coding` \| `cloze`, picks the renderer + agent (the `coding` module has no in-app agent — it is an OpenAI-compatible endpoint, `docs/coding.md`; `cloze` has no chat agent — it is graded by its own server actions, `docs/cloze.md`) |
 | `created_by` | session user id (`novedu_user.id`) of the creating teacher |
 | `file_url` | public URL of the activity YAML (normalized via `URL.href`) |
 | `valid_from` / `valid_until` | availability window, UTC `timestamptz`, **both bounds inclusive**. Each is **nullable** — a null `valid_from` opens the code immediately, a null `valid_until` never expires it (both null = always valid). `checkCode` / `windowStatus` coalesce a null bound to `DISTANT_PAST` / `DISTANT_FUTURE` |
 | `note` | teacher's label, shown in their code list and as the recents label (≤ 200 chars) |
 | `origin` | **documentation-only**: where the code was created (DEV vs PROD rows). Lookups never read it — a code created on localhost works in production, since all environments share the database |
-| `anonymous` | the activity YAML's `anonymous` flag (default is module-specific — tutor/quiz `true`, writing `false`, coding always `true`), **frozen at create time** — a later YAML edit does NOT update it. Governs whether the stats page shows per-student data |
+| `anonymous` | the activity YAML's `anonymous` flag (default is module-specific — tutor/quiz `true`, writing `false`, coding and cloze always `true`), **frozen at create time** — a later YAML edit does NOT update it. Governs whether the stats page shows per-student data |
 | `llm_provider` / `llm_model` / `llm_reasoning` | the code's optional **LLM override**: when set, it replaces the activity YAML's whole `llm:` block for every request served under this code. The pair is **both-or-nothing** — either both NULL (the YAML's `llm:` block applies) or both set; model ids are provider-specific, so validation rejects a lone half. `llm_reasoning` is the optional third member (a `REASONING_LEVELS` literal, docs/ai-models.md): it requires the pair, and an override WITHOUT one drops the YAML's level too (wholesale). Surfaced as `CodeEntry.llm` and applied via `effectiveLlm` (`lib/code-store.ts`); a corrupt stored pair is logged and read as no override, a corrupt stored reasoning is logged and dropped while the pair survives. Editable on `/codes/edit` (NOT frozen) |
 | `created_at` | creation time |
 
@@ -42,7 +42,7 @@ stateless link form: an activity opens if (and only while) a row with that code
 exists and "now" is inside its window. The single check lives in `checkCode()`
 (`lib/code-store.ts`) and is used by every gate (the student entry route, the
 runtime route, the public coding routes, and the module server actions — quiz,
-writing, tutor), each re-checking on **every** server touch
+writing, tutor, cloze), each re-checking on **every** server touch
 — one PK SELECT on the pooled connection — so an open activity stops accepting
 input the moment its window closes (403 / error with a human-readable reason).
 Malformed codes are pattern-rejected without a database round-trip — which also
@@ -88,13 +88,13 @@ siblings) AND by code-create (fetcher = `appHostedFetcher`; url = the row's
   (`lib/coding-yaml.ts`) — see `docs/coding.md`.
 - `cloze` → `loadAndCheckCloze` (`lib/cloze-validate.ts`): the strict `ClozeYamlSchema`
   gate plus the gap parser (`lib/cloze-gaps.ts`); always anonymous like coding, and the
-  only validator with a `summary` — the gap inventory the `/files` editor shows. It is
-  a file kind **without a module** today, like `fragment`. See `docs/cloze.md`.
+  only validator with a `summary` — the gap inventory the `/files` editor shows. See
+  `docs/cloze.md`.
 
 **Layer 2, read-only sibling — the prompt-dump registry** (`lib/prompt-dump.ts`):
 `promptDumpers[kind].dump(url, fetcher, opts)` answers the other file-level
-question — "which exact LLM prompts does this YAML produce?" — for the four
-prompt-producing kinds (`PromptKind = Exclude<FileKind, "fragment" | "cloze">`). Like the
+question — "which exact LLM prompts does this YAML produce?" — for the five
+prompt-producing kinds (`PromptKind = Exclude<FileKind, "fragment">`). Like the
 validators it derives from the FILE alone, and it never re-implements assembly:
 every dumper calls the production builders/loaders. It backs the
 `novedu-cli prompts` command — see `docs/cli-prompts.md`.
@@ -103,7 +103,7 @@ every dumper calls the production builders/loaders. It backs the
 shareable activities.
 
 - `types.ts` is **client-safe** (`CodeModule = "tutor" | "quiz" | "writing" |
-  "coding"` + display labels) so client components and the `/codes` module filter
+  "coding" | "cloze"` + display labels) so client components and the `/codes` module filter
   can name modules without importing server code.
 - `registry.ts` is **server-only** (`codeModules: Record<CodeModule,
   CodeModuleDef>`). Each descriptor carries a `fileKind` (which Layer-2 validator
@@ -114,7 +114,7 @@ shareable activities.
     can't wire the wrong validator.
   - `runtime` — `{ agentId, buildRequestContext(entry) }`: which Mastra agent the
     runtime route runs and how its per-request `RequestContext` (system prompt +
-    model) is built. **Optional**: `coding` omits it (it has no in-app agent), and
+    model) is built. **Optional**: `coding` and `cloze` omit it (no in-app chat), and
     the CopilotKit route 404s any module without a `runtime`.
   - `renderDetail(entry, searchParams)` — **the** teacher detail body on
     `/codes/[code]`. Each module owns it entirely; there is no privileged "stats
@@ -126,18 +126,22 @@ shareable activities.
   - There is **no per-module result override** — every module's create/edit screen
     shows the same **`ShareLinkResult`** (the `/<code>` share link with a copy
     button), rendered directly by the `/codes/edit/[code]` page.
-- `tutor.ts`, `quiz.ts`, `writing.ts`, `coding.ts` are the descriptors. `writing` is
+- `tutor.ts`, `quiz.ts`, `writing.ts`, `coding.ts`, `cloze.ts` are the descriptors. `writing` is
   the Markdown-writing-with-AI-feedback module (`docs/writing.md`): its `renderDetail`
   is the savers-first teacher review (saved text first, chat second), and its agent
   reads the student's live draft through the read-only `getCurrentText` frontend tool
   but has no tool to change it. `coding` is the OpenAI-compatible coding-endpoint
   module (`docs/coding.md`): it has **no `runtime`** and is reached only through its
   own public `/api/coding/v1` routes, authenticated by a per-user API key from
-  `novedu_coding_keys` — the code string itself opens nothing.
+  `novedu_coding_keys` — the code string itself opens nothing. `cloze` is the
+  gap-fill exercise (`docs/cloze.md`): no `runtime` either — its `gradeCloze` /
+  `explainCloze` server actions run the internal `clozeEvaluator` agent — and its
+  `renderDetail` shows the code's facts and the gap inventory.
 
 Student **rendering** is also NOT a registry seam: it is a thin `switch (entry.module)`
 in `app/[code]/page.tsx` delegating to each module's own server component
-(`render-tutor.tsx`, `render-quiz.tsx`, `render-writing.tsx`, `render-coding.tsx`).
+(`render-tutor.tsx`, `render-quiz.tsx`, `render-writing.tsx`, `render-coding.tsx`,
+`render-cloze.tsx`).
 (The *teacher* detail body IS a registry seam — `renderDetail` above — but
 descriptors keep JSX out by calling components as plain functions.)
 
@@ -173,7 +177,8 @@ because CopilotKit appends sub-paths like `/info` to the runtime URL). It
 `RequestContext`, and runs that one agent: any other agent id in the path 404s, and
 the per-request CopilotKit runtime **registers only that agent**
 (`MastraAgent.getLocalAgent`, never Mastra's whole registry), so the internal
-agents (`quizEvaluator`, `evalJudge`, `evalTutor`) are not even known to it.
+agents (`quizEvaluator`, `clozeEvaluator`, `evalJudge`, `evalTutor`) are not even
+known to it.
 `resourceId` is the **code** for every module. One access check, one header scheme,
 module-driven agent selection.
 
@@ -185,12 +190,12 @@ affects them.
 
 Every consumption of the activity's `llm:` block goes through
 `effectiveLlm(entry, activityLlm)` (`lib/code-store.ts`): the code's LLM override
-wins wholesale when set (its optional reasoning level included). The five sites:
+wins wholesale when set (its optional reasoning level included). The six sites:
 the tutor agent (the descriptor puts it on the RequestContext as
 `tutor-provider-override`/`tutor-model-override`/`tutor-reasoning-override`;
 `app/mastra/tutor-agent.ts` applies it), the quiz
 discussion + writing `buildRequestContext`s, the quiz grader (`submitAnswer`),
-and the coding proxy. Each gates `providerUnavailableReason` on the EFFECTIVE
+the cloze actions (`gradeCloze` / `explainCloze`), and the coding proxy. Each gates `providerUnavailableReason` on the EFFECTIVE
 provider. Usage metering needs no extra wiring — the exporter reads the actually
 resolved provider/model off the MODEL_GENERATION span (`docs/ai-models.md`), and
 the coding proxy meters the effective pair explicitly.

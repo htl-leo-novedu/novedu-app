@@ -1,4 +1,17 @@
 import { z } from "zod";
+import {
+  buildClozeFeedbackPrompt,
+  CLOZE_FEEDBACK_MESSAGE_TEMPLATE,
+} from "@/lib/cloze-feedback-prompt";
+import {
+  buildClozeGradingPrompt,
+  CLOZE_GRADING_MESSAGE_TEMPLATE,
+} from "@/lib/cloze-grading-prompt";
+import {
+  clozeFeedbackResponseJsonSchema,
+  clozeGradingResponseJsonSchema,
+} from "@/lib/cloze-output-schemas";
+import { loadClozeFrom } from "@/lib/cloze-resolve";
 import { buildUpstreamChatBody } from "@/lib/coding-proxy";
 import { loadCodingFrom } from "@/lib/coding-resolve";
 import type { FileKind } from "@/lib/file-name";
@@ -38,6 +51,7 @@ import { loadWritingFrom } from "@/lib/writing-resolve";
 //   quiz     loadQuizFrom + buildGradingPrompt / buildDiscussionInstructions
 //   writing  loadWritingFrom
 //   coding   loadCodingFrom + buildUpstreamChatBody (lib/coding-proxy)
+//   cloze    loadClozeFrom + buildClozeGradingPrompt / buildClozeFeedbackPrompt
 //
 // The activity's OWN `llm` block is reported. A code's per-code LLM override pair
 // (`effectiveLlm`, docs/ai-models.md) is deliberately out of scope: a dump describes a
@@ -51,12 +65,11 @@ import { loadWritingFrom } from "@/lib/writing-resolve";
 /**
  * The kinds with a prompt dump — every `FileKind` except `fragment`, which is a
  * library, not an activity (it has no `llm`, and its fragments only ever appear inline
- * in some activity's host text, where the four dumps below already show them rendered),
- * and `cloze`, whose grading and feedback prompts have no builder to dump.
+ * in some activity's host text, where the dumps below already show them rendered).
  */
-export type PromptKind = Exclude<FileKind, "fragment" | "cloze">;
+export type PromptKind = Exclude<FileKind, "fragment">;
 
-export const PROMPT_KINDS: readonly PromptKind[] = ["tutor", "quiz", "writing", "coding"];
+export const PROMPT_KINDS: readonly PromptKind[] = ["tutor", "quiz", "writing", "coding", "cloze"];
 
 /** The activity's own model + provider (per-code overrides are out of scope). */
 export interface PromptDumpLlm {
@@ -149,7 +162,32 @@ export interface CodingPromptDump extends PromptDumpBase {
   upstreamSystemMessage: string;
 }
 
-export type PromptDump = TutorPromptDump | QuizPromptDump | WritingPromptDump | CodingPromptDump;
+/** One call of the cloze pipeline: its system prompt, user-message wrapper and output. */
+export interface ClozeCallDump {
+  /** The FULL system prompt, exactly as the server action builds it. */
+  system: string;
+  /** The user message; `{answers}` is the JSON list the action fills in. */
+  userMessageTemplate: string;
+  /** The call's structured output as plain JSON Schema. */
+  responseSchema: Record<string, unknown>;
+}
+
+export interface ClozePromptDump extends PromptDumpBase {
+  kind: "cloze";
+  /** How many gaps the text has (the grading call sees only the undecided ones). */
+  gapCount: number;
+  /** Step 1 — one verdict per gap the pre-pass left undecided (`gradeCloze`). */
+  grading: ClozeCallDump;
+  /** Step 2 — patterns + per-gap notes over the final verdicts (`explainCloze`). */
+  feedback: ClozeCallDump;
+}
+
+export type PromptDump =
+  | TutorPromptDump
+  | QuizPromptDump
+  | WritingPromptDump
+  | CodingPromptDump
+  | ClozePromptDump;
 
 export type PromptDumpResult =
   | { ok: true; dump: PromptDump }
@@ -303,12 +341,47 @@ const codingDumper: PromptDumper = {
   },
 };
 
+// cloze: the runtime load (preamble rendered once), then the two real prompt builders —
+// the grading call's and the feedback call's — with their user-message wrappers and
+// output schemas.
+const clozeDumper: PromptDumper = {
+  async dump(url, fetcher, opts = {}) {
+    const loaded = await loadClozeFrom(url, fetcher, { allowedSchemes: opts.allowedSchemes });
+    if (!loaded.ok) return loadFailed(loaded.message, url);
+    const cloze = loaded.cloze;
+    return {
+      ok: true,
+      dump: {
+        kind: "cloze",
+        id: cloze.id,
+        llm: {
+          provider: cloze.provider,
+          model: cloze.model,
+          ...(cloze.reasoning ? { reasoning: cloze.reasoning } : {}),
+        },
+        gapCount: cloze.gaps.length,
+        grading: {
+          system: buildClozeGradingPrompt(cloze),
+          userMessageTemplate: CLOZE_GRADING_MESSAGE_TEMPLATE,
+          responseSchema: clozeGradingResponseJsonSchema(),
+        },
+        feedback: {
+          system: buildClozeFeedbackPrompt(cloze),
+          userMessageTemplate: CLOZE_FEEDBACK_MESSAGE_TEMPLATE,
+          responseSchema: clozeFeedbackResponseJsonSchema(),
+        },
+      },
+    };
+  },
+};
+
 /** The seam: one dumper per prompt-producing `FileKind`. */
 export const promptDumpers: Record<PromptKind, PromptDumper> = {
   tutor: tutorDumper,
   quiz: quizDumper,
   writing: writingDumper,
   coding: codingDumper,
+  cloze: clozeDumper,
 };
 
 /** Dump the prompts of ONE activity file — the single entry point callers use. */
@@ -334,6 +407,11 @@ export function promptSections(dump: PromptDump): { name: string; text: string }
       ];
     case "coding":
       return [{ name: "system (injected upstream)", text: dump.system }];
+    case "cloze":
+      return [
+        { name: "grading", text: dump.grading.system },
+        { name: "feedback", text: dump.feedback.system },
+      ];
     default:
       return [{ name: "system", text: dump.system }];
   }

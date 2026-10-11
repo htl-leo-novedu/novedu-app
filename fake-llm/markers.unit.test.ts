@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { buildClozeFeedbackMessage } from "@/lib/cloze-feedback-prompt";
+import { buildClozeGradingMessage } from "@/lib/cloze-grading-prompt";
 import { defaultReply, fakeReply } from "./markers.mjs";
 
 // The fake LLM's rule table (fake-llm/markers.mjs, docs/testing.md "Fake LLM").
@@ -166,5 +168,67 @@ describe("fakeReply", () => {
       reasoning: "y",
       content: defaultReply("[reply:x] [reasoning:y]"),
     });
+  });
+});
+
+// The two cloze calls, driven by the REAL user-message builders so the fake parses
+// exactly what the app sends (lib/cloze-grading-prompt.ts, lib/cloze-feedback-prompt.ts).
+describe("fakeReply — cloze", () => {
+  const format = (properties: Record<string, unknown>) => ({
+    type: "json_schema",
+    json_schema: { name: "cloze", schema: { type: "object", properties } },
+  });
+  const GRADING = format({ gaps: {} });
+  const FEEDBACK = format({ patterns: {}, gap_notes: {} });
+  const parse = (reply: unknown) => JSON.parse((reply as { content: string }).content);
+
+  it("grades every listed gap: a marker picks the verdict, else incorrect; omit drops it", () => {
+    const message = buildClozeGradingMessage([
+      { gap: 2, answer: "will" },
+      { gap: 4, answer: "am meeting [grade:partial]" },
+      { gap: 5, answer: "[grade:omit]" },
+    ]);
+    expect(parse(fakeReply(chat(message, { response_format: GRADING })))).toEqual({
+      gaps: [
+        { gap: 2, result: "incorrect", reason: "Fake LLM reason for gap 2." },
+        { gap: 4, result: "partial", reason: "Fake LLM reason for gap 4." },
+      ],
+    });
+  });
+
+  it("explains: one pattern over two or more non-correct gaps and a note each", () => {
+    const message = buildClozeFeedbackMessage([
+      { gap: 1, answer: "will", verdict: "incorrect" },
+      { gap: 2, answer: "starts", verdict: "correct" },
+      { gap: 3, answer: "", verdict: "partial" },
+    ]);
+    expect(parse(fakeReply(chat(message, { response_format: FEEDBACK })))).toEqual({
+      patterns: [
+        {
+          title: "Fake LLM pattern",
+          explanation: "Fake LLM explanation for gaps 1, 3.",
+          gaps: [1, 3],
+          next_time: "Fake LLM tip for next time.",
+        },
+      ],
+      gap_notes: [
+        { gap: 1, note: "Fake LLM note for gap 1." },
+        { gap: 3, note: "Fake LLM note for gap 3." },
+      ],
+    });
+  });
+
+  it("returns no pattern for a single non-correct gap", () => {
+    const message = buildClozeFeedbackMessage([{ gap: 1, answer: "x", verdict: "incorrect" }]);
+    expect(parse(fakeReply(chat(message, { response_format: FEEDBACK })))).toMatchObject({
+      patterns: [],
+    });
+  });
+
+  it("fails the feedback call on [explain:fail]", () => {
+    const message = buildClozeFeedbackMessage([
+      { gap: 1, answer: "[explain:fail]", verdict: "incorrect" },
+    ]);
+    expect(fakeReply(chat(message, { response_format: FEEDBACK }))).toMatchObject({ status: 500 });
   });
 });

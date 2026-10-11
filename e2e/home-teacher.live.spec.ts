@@ -415,7 +415,7 @@ test("the teacher's badges are granted from real rows, dated by their evidence, 
     await expect(badges.locator('[data-family="reach"] li[data-badge="first-code"]')).toContainText(
       "Earned",
     );
-    await expect(badges.locator('li[data-badge="full-toolkit"]')).toContainText("1 / 4");
+    await expect(badges.locator('li[data-badge="full-toolkit"]')).toContainText("1 / 5");
     await expect(badges.locator('li[data-badge="crowd-30"]')).toContainText("10 / 30");
     await expect(badges).not.toContainText("XP");
 

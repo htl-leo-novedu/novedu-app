@@ -180,10 +180,10 @@ and edit forms show it (`ContentSummary` in `components/validation-result.tsx`) 
 
 The create-file kind selector therefore offers **tutor / fragment / quiz / writing /
 coding / cloze**, and the `/files` list adds a single **"Create code"** action on every
-row whose kind is a **module** — tutor, quiz, writing, and coding, i.e. everything except
-`fragment` and `cloze` (gated by `isCodeModule`, linking to
+row whose kind is a **module** — tutor, quiz, writing, coding and cloze, i.e. everything
+except `fragment` (gated by `isCodeModule`, linking to
 `/codes/new?module=<kind>&file=<url>`). The list's kind pill uses the module's color for
-module kinds; `fragment` (purple) and `cloze` (rose) have their own.
+module kinds (cloze is rose); `fragment` (purple) has its own.
 
 The public origin is resolved once on the server (`resolveAppOrigin` /
 `resolveAppOriginOr` in `lib/app-origin.ts`) and the public URL is built by

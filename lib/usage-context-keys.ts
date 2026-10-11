@@ -22,7 +22,7 @@ export const USAGE_CODE = "usageCode";
 export const USAGE_USER_ID = "usageUserId";
 
 /**
- * The code's module (`tutor` | `quiz` | `writing` | `coding`), required for the
+ * The code's module (`tutor` | `quiz` | `writing` | `coding` | `cloze`), required for the
  * `usage_by_code` INSERT branch.
  */
 export const USAGE_MODULE = "usageModule";

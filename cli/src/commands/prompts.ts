@@ -41,11 +41,11 @@ export function registerPrompts(program: Command): void {
   program
     .command("prompts")
     .description(
-      "Print the exact LLM prompts a tutor (default), quiz, writing or coding YAML produces",
+      "Print the exact LLM prompts a tutor (default), quiz, writing, coding or cloze YAML produces",
     )
     .argument(
       "<pathOrUrl>",
-      "path to a tutor, quiz, writing or coding YAML file, or a public http(s) URL",
+      "path to a tutor, quiz, writing, coding or cloze YAML file, or a public http(s) URL",
     )
     .option(
       "--kind <kind>",
@@ -66,6 +66,9 @@ Examples:
   # A writing activity's coach prompt / a coding activity's injected system prompt
   $ novedu-cli prompts ./activities/writings/my-writing.yaml --kind writing
   $ novedu-cli prompts ./activities/coding/my-coding.yaml --kind coding
+
+  # A cloze exercise's grading and feedback prompts, with both output schemas
+  $ novedu-cli prompts ./activities/cloze/my-cloze.yaml --kind cloze --json
 
   # One question's grading prompt, straight out of the JSON dump
   $ novedu-cli prompts ./my-quiz.yaml --kind quiz --json | jq -r '.grading.questions[0].system'`,

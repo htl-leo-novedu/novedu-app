@@ -4,7 +4,7 @@ Deep reference for the **shared prompt-fragment core**: the one home of Handleba
 handling and the load / fetch / placement-check / render pipeline that turns an
 activity's **host text** (with inline `{{fragment}}` and `{{file}}` markers) plus its
 declared fragment **libraries** and plain-**text files** into a finished prompt string. It is not an activity module —
-it is the infrastructure **all four** activity kinds (tutor, quiz, writing, coding)
+it is the infrastructure **every** activity kind (tutor, quiz, writing, coding, cloze)
 build on, so a persona / safety / rules fragment written once in a fragment library is
 reusable by every kind. The teacher-facing authoring guides live in
 `activities/tutors/README.md` (the full fragment format) and
@@ -245,7 +245,7 @@ keep `validateLibraries: true`.
 
 ## Who consumes it, and how
 
-All four kinds resolve one document-level block + their host text through the shared
+Every kind resolves one document-level block + their host text through the shared
 `assembleFragmentPrompt`; the runtime seam of each is documented in its own doc.
 
 - **Tutor** (`lib/tutors/`) — `loadAndBuildTutorPrompt` passes `tutor_instructions` as
@@ -268,6 +268,9 @@ All four kinds resolve one document-level block + their host text through the sh
 - **Coding** (`docs/coding.md`) — `loadCoding` (`lib/coding-fetch.ts`) does the same for
   its `instructions`. Rendering stays in the load/parse layer, **never** in
   `lib/llm/endpoint.ts` (which stays provider-blind and side-effect-free).
+- **Cloze** (`docs/cloze.md`) — `loadCloze` (`lib/cloze-fetch.ts`) renders the optional
+  `instructions` **once** into the server-only `Cloze.instructionsPreamble`, prepended
+  to BOTH the grading and the feedback prompt. `toPublicCloze` never copies it.
 
 ## Literal-text safety & whitespace
 

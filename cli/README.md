@@ -69,6 +69,9 @@ npx @novedu/cli prompts ./sorting-quiz.yaml --kind quiz --json
 npx @novedu/cli prompts ./my-writing.yaml --kind writing
 npx @novedu/cli prompts ./my-coding.yaml --kind coding
 
+# A cloze exercise: the grading and feedback prompts with both output schemas
+npx @novedu/cli prompts ./my-cloze.yaml --kind cloze --json
+
 # A published activity by URL (same argument as `validate`)
 npx @novedu/cli prompts https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/examples/sorting-algorithms/sorting-tutor.yaml
 
@@ -315,7 +318,7 @@ server runs the identical validation pipeline as the web forms and is
 authoritative — the CLI sends your input as-is and relays the server's answer.
 
 ```
-codes create  --module <tutor|quiz|writing|coding> --file <url>
+codes create  --module <tutor|quiz|writing|coding|cloze> --file <url>
               [--start <iso>] [--end <iso>] [--note <text>]
               [--llm-provider <p> --llm-model <m>] [--llm-reasoning <level>]
 codes list    [--search <q>] [--module <m>] [--all]

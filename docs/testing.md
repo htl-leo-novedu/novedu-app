@@ -230,8 +230,9 @@ behaviour run in CI.
   `playwright.config.ts` is the fake's only coupling point — no app code knows
   about it.
 - **What stays real:** a spec is `@live-llm` only if its purpose is a specific
-  provider or real model behaviour (the provider smoke tests, vision, the eval
-  judge, the health probe). Everything else uses the fake.
+  provider or real model behaviour (the provider smoke tests, vision, the cloze
+  structured outputs, the eval judge, the health probe). Everything else uses the
+  fake.
 
 **Markers.** The fake's behaviour is driven by markers in the **last user
 message**, never by a spec's wording. The first matching rule wins
@@ -242,18 +243,23 @@ message**, never by a spec's wording. The first matching rule wins
 | 1 | model id contains `no-such-model` | HTTP 404 `model not found` |
 | 2 | grader request + `[grade:correct\|partial\|incorrect]` | that verdict, feedback `Fake LLM verdict: <result>.` |
 | 3 | grader request without a marker | `correct` |
-| 4 | any other `response_format: json_schema` request | HTTP 400 `fake LLM: no fixture for this structured request` |
-| 5 | a tool result after the last user message | `Fake LLM received the tool result: <tool result>` |
-| 6 | `[tool:<name>]` or `[tool:<name> <json-args>]` | one call to that tool, with the arguments (default `{}`) |
-| 7 | `[reasoning:<text>]` | that reasoning, then the default reply |
-| 8 | `[reply:<text>]` | exactly that text |
-| 9 | anything else | `This reply comes from Novedu's fake LLM, not a real model. You wrote: <first 80 chars>` |
+| 4 | cloze grading request | one entry per gap listed in the message: an answer containing `[grade:correct\|partial\|incorrect]` gets that verdict, `[grade:omit]` is left out, any other answer is `incorrect`; reason `Fake LLM reason for gap <n>.` |
+| 5 | cloze feedback request | one `Fake LLM pattern` over the non-correct gaps (when there are at least two) and a `Fake LLM note for gap <n>.` each; an answer containing `[explain:fail]` → HTTP 500 |
+| 6 | any other `response_format: json_schema` request | HTTP 400 `fake LLM: no fixture for this structured request` |
+| 7 | a tool result after the last user message | `Fake LLM received the tool result: <tool result>` |
+| 8 | `[tool:<name>]` or `[tool:<name> <json-args>]` | one call to that tool, with the arguments (default `{}`) |
+| 9 | `[reasoning:<text>]` | that reasoning, then the default reply |
+| 10 | `[reply:<text>]` | exactly that text |
+| 11 | anything else | `This reply comes from Novedu's fake LLM, not a real model. You wrote: <first 80 chars>` |
 
 - A **grader request** is a `json_schema` request whose schema has a top-level
-  `result` property (`QUIZ_VERDICT_SCHEMA`, `lib/quiz-verdict-schema.ts`). **A new
+  `result` property (`QUIZ_VERDICT_SCHEMA`, `lib/quiz-verdict-schema.ts`); a **cloze
+  grading / feedback request** one with a top-level `gaps` / `patterns` property
+  (`lib/cloze-output-schemas.ts`), whose user message carries a JSON list the fake
+  parses (`docs/cloze.md`). **A new
   structured-output caller needs its own rule in `fake-llm/markers.mjs`**; until
   then the fake fails it loudly with the 400.
-- The echoes (rules 5 and 9) let a spec assert that its input reached the model.
+- The echoes (rules 7 and 11) let a spec assert that its input reached the model.
 - A malformed tool marker (bad JSON) is ignored, so the later rules apply.
 - Streamed replies arrive in 10-character chunks 40 ms apart, so a run stays in
   flight long enough to observe the chat's "generating" note.
@@ -351,10 +357,11 @@ the real `novedu_files` table), the **image lifecycle**
 (`e2e/image-management.live.spec.ts`, which writes `novedu_images` against a
 temporary filesystem root — no real Azure Files needed), and the **database
 auth-matrix** (`e2e/db-auth.live.spec.ts`, below) — also run **in CI** against a
-container (next section), as do the specs that run against the fake LLM (the quiz,
+container (next section), as do the specs that run against the fake LLM (the quiz, cloze,
 writing, tool, persistence, metering, reload and coding-proxy flows). The
 **`@live-llm`** ones — the per-provider chat smokes, the vision round-trips, the
-health probe, the coding-agent override legs, the eval judge probes — stay
+health probe, the coding-agent override legs, the eval judge probes, the cloze
+structured-output round-trip — stay
 **local** (the SCCH endpoint is geo-blocked to Austria). The
 **reasoning-visibility** set (`e2e/reasoning-visibility.spec.ts`) reads the raw
 `/api/copilotkit` SSE bodies to prove an effective teacher receives `REASONING_*`

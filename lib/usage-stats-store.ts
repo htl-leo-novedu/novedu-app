@@ -215,19 +215,21 @@ export async function getTokensByProvider(opts: {
   }
 }
 
-/** The two headline KPIs, both windowed to the selected range. */
+/** The headline KPIs, all windowed to the selected range. */
 export interface DashboardKpis {
   /** Distinct Mastra threads with ≥1 user message in the window (a real chat). */
   chats: number;
   /** Quiz answers graded in the window (`SUM(quiz_answers)` for quiz codes). */
   quizAnswers: number;
+  /** Cloze submissions graded in the window (`SUM(cloze_submissions)` for cloze codes). */
+  clozeSubmissions: number;
 }
 
 /**
- * Both KPIs in one round trip (two windowed subselects). `chats` counts threads
+ * All KPIs in one round trip (windowed subselects). `chats` counts threads
  * that have a user message in the window (the repo's "real conversation"
- * definition, matching code-stats-store); `quizAnswers` sums the quiz answer
- * counter. Returns `undefined` on a DB error. Never throws.
+ * definition, matching code-stats-store); `quizAnswers` and `clozeSubmissions`
+ * sum their counters. Returns `undefined` on a DB error. Never throws.
  *
  * `chats` is phrased as an EXISTS over `mastra_threads` (small — one row per chat)
  * probing `mastra_messages` by its `thread_id` index, NOT a `COUNT(DISTINCT
@@ -241,7 +243,11 @@ export async function getDashboardKpis(opts: {
 }): Promise<DashboardKpis | undefined> {
   const { start } = resolveRange(opts.range, opts.now);
   try {
-    const res = await getDb().execute<{ chats: number | string; quizAnswers: number | string }>(sql`
+    const res = await getDb().execute<{
+      chats: number | string;
+      quizAnswers: number | string;
+      clozeSubmissions: number | string;
+    }>(sql`
       SELECT
         (SELECT COUNT(*)
            FROM mastra.mastra_threads t
@@ -252,10 +258,17 @@ export async function getDashboardKpis(opts: {
           )) AS chats,
         (SELECT COALESCE(SUM(u.quiz_answers), 0)
            FROM novedu_usage_by_code u
-          WHERE u.module = 'quiz' AND u.hour >= ${start}) AS "quizAnswers"
+          WHERE u.module = 'quiz' AND u.hour >= ${start}) AS "quizAnswers",
+        (SELECT COALESCE(SUM(u.cloze_submissions), 0)
+           FROM novedu_usage_by_code u
+          WHERE u.module = 'cloze' AND u.hour >= ${start}) AS "clozeSubmissions"
     `);
     const row = res.rows[0];
-    return { chats: Number(row?.chats ?? 0), quizAnswers: Number(row?.quizAnswers ?? 0) };
+    return {
+      chats: Number(row?.chats ?? 0),
+      quizAnswers: Number(row?.quizAnswers ?? 0),
+      clozeSubmissions: Number(row?.clozeSubmissions ?? 0),
+    };
   } catch (error) {
     console.error("usage-stats-store: dashboard KPIs failed", error);
     return undefined;

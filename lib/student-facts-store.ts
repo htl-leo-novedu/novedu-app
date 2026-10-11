@@ -21,7 +21,7 @@ const STORE = "student-facts-store";
 
 // An active hour: any counted interaction; token-only buckets don't count.
 const ACTIVE = sql.raw(
-  "u.user_messages + u.quiz_answers + u.writing_saves + u.coding_requests > 0",
+  "u.user_messages + u.quiz_answers + u.writing_saves + u.coding_requests + u.cloze_submissions > 0",
 );
 
 // `codingHours` counts distinct local hours: on the autumn clock change the two
@@ -35,6 +35,7 @@ function usageStatement(userId: string): SQL {
            sum(u.quiz_answers) AS "quizAnswers",
            sum(u.writing_saves) AS "writingSaves",
            sum(u.coding_requests) AS "codingRequests",
+           sum(u.cloze_submissions) AS "clozeSubmissions",
            count(DISTINCT extract(hour FROM u.hour AT TIME ZONE ${HOME_TIME_ZONE}))
              FILTER (WHERE u.coding_requests > 0) AS "codingHours"
     FROM novedu_usage_by_user u
@@ -61,6 +62,7 @@ export async function loadStudentUsage(userId: string): Promise<UsageDay[] | und
       quizAnswers: number | string;
       writingSaves: number | string;
       codingRequests: number | string;
+      clozeSubmissions: number | string;
       codingHours: number | string;
     }>(usageStatement(userId));
     return res.rows.map((row) => ({
@@ -70,6 +72,7 @@ export async function loadStudentUsage(userId: string): Promise<UsageDay[] | und
       quizAnswers: Number(row.quizAnswers),
       writingSaves: Number(row.writingSaves),
       codingRequests: Number(row.codingRequests),
+      clozeSubmissions: Number(row.clozeSubmissions),
       codingHours: Number(row.codingHours),
     }));
   } catch (error) {

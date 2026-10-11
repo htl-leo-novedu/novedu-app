@@ -442,6 +442,8 @@ export const usageByCode = pgTable(
     writingSaves: integer("writing_saves").notNull().default(0),
     // Requests through the coding proxy (the coding route's usage tap).
     codingRequests: integer("coding_requests").notNull().default(0),
+    // Graded cloze submissions (every successful `gradeCloze`, practice rounds included).
+    clozeSubmissions: integer("cloze_submissions").notNull().default(0),
   },
   (t) => [
     // Per-code cost-over-time is the PK's natural read; the extra index serves the
@@ -469,6 +471,8 @@ export const usageByUser = pgTable(
     writingSaves: integer("writing_saves").notNull().default(0),
     // Requests through the coding proxy (the coding route's usage tap).
     codingRequests: integer("coding_requests").notNull().default(0),
+    // Graded cloze submissions (every successful `gradeCloze`, practice rounds included).
+    clozeSubmissions: integer("cloze_submissions").notNull().default(0),
   },
   // The PK `(user_id, hour)` doubles as the per-user range-scan index: the quota
   // window and the start page's usage facts (docs/home.md).

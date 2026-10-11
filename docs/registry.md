@@ -75,10 +75,11 @@ activities:
 | Field | Required | Rules |
 | --- | --- | --- |
 | `base-url` | only if any entry uses `file` | `http(s)` URL, must end with `/` (resolution is `new URL(file, baseUrl)`, so a missing slash would drop the last segment) |
-| `activities` | yes | mapping of the four known group keys; an unknown group name is an **error** — it would silently drop every entry under it |
+| `activities` | yes | mapping of the five known group keys; an unknown group name is an **error** — it would silently drop every entry under it |
 
 **Groups:** `quizzes` → module `quiz`, `tutors` → `tutor`, `writing` → `writing`,
-`coding` → `coding`. All groups optional; an empty group is fine. There is no
+`coding` → `coding`, `cloze` → `cloze` (singular like `writing` and `coding`). All groups
+optional; an empty group is fine. There is no
 `defaults` section — every entry states its own parameters.
 
 **Entry** (the map key is the registry key)
@@ -128,7 +129,7 @@ the five activity schemas it is **generated from zod** — `lib/registry-schema.
 what both the CLI and the generator use. `cli/src/registry.ts` keeps the parsing
 **strategy**: its `rootSchema` leaves `activities` opaque to zod so the hand-written walk
 can name the exact YAML path in every message. `RegistryYamlSchema` — the document shape
-the schema is generated from — builds its four group properties from `GROUP_MODULES`, so
+the schema is generated from — builds its group properties from `GROUP_MODULES`, so
 the group names cannot drift from the walk.
 
 Two divergences from CLI validation are deliberate, and neither should be "fixed":

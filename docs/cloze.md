@@ -6,16 +6,17 @@ consolidated feedback that connects their mistakes. The file kind, the module an
 eval kind are all named `cloze`. The always-on invariants are summarized in
 `AGENTS.md`; this file has the full mechanics.
 
-Read it before touching the cloze libs (`lib/cloze-*.ts`), the cloze schema
+Read it before touching the cloze libs (`lib/cloze-*.ts`), the module
+(`lib/code-modules/cloze.ts`, `app/[code]/render-cloze.tsx`, `app/[code]/_cloze/**`),
+the agent (`app/mastra/cloze-agents.ts`), the cloze schema
 (`activities/cloze/cloze-yaml.schema.json`, generated from `lib/cloze-schema.ts`), or
 the cloze sample under `activities/examples/`.
 
-This file covers the **authoring** layer: the `cloze` file kind with its strict
-validator, the gap parser, the lenient runtime parser with the public projection, the
-generated JSON schema, `novedu-cli validate --kind cloze`, and the `/files` editor's
-Cloze kind. `cloze` is a file kind without a code module: no code can be created for a
-cloze file (the `/files` list offers no "Create code" for it), and it has no prompt
-dump (`PromptKind` excludes it).
+It covers the **authoring** layer (the `cloze` file kind with its strict validator,
+the gap parser, the lenient runtime parser with the public projection, the generated
+JSON schema, `novedu-cli validate --kind cloze`, the `/files` editor's Cloze kind) and
+the **student activity** (the `cloze` module, the two-step grading pipeline, the
+result token, metering and `novedu-cli prompts --kind cloze`).
 
 ## The YAML
 
@@ -180,6 +181,192 @@ never changes the text's structure, and the client splits a rendered text run on
 with `splitOnClozeGaps(text)` (strings and gap numbers, in order). `lib/cloze-types.ts`
 is pure and client-safe.
 
+The loader `loadCloze(url)` (`lib/cloze-fetch.ts`, the app-hosted/DB seam) and its
+app-free twin `loadClozeFrom(url, fetcher)` (`lib/cloze-resolve.ts`, used by the prompt
+dump) share `resolveCloze`, which renders `instructions` ONCE into the server-only
+`instructionsPreamble` through `assembleFragmentPrompt` (`validateLibraries: false`; a
+fragment failure fails the load closed). Every page load and every submission reloads
+the YAML uncached, so a fix applies at once.
+
+## The module — `lib/code-modules/cloze.ts`
+
+`cloze` is a `CodeModule` (badge "Cloze", count column "Submissions", tone `rose`)
+with **no `runtime`**, exactly like coding: the CopilotKit route 404s every agent id
+for a cloze code, and `/info` lists none. The code row freezes `anonymous: true`.
+
+- **Student page.** `app/[code]/page.tsx` runs `checkCode()`, records the recent code
+  and delegates to `render-cloze.tsx`, which loads the exercise and hands only
+  `toPublicCloze(cloze)` to the client `ClozeRunner` (`app/[code]/_cloze/`). No thread
+  and no thread token are minted. A load failure shows a notice.
+- **Teacher detail.** `renderDetail` is `ClozeDetail` (`app/[code]/_cloze/cloze-detail.tsx`):
+  the file link, the window, the effective model and the current gap inventory.
+- **Registry.** `codes sync` mints cloze codes from the activity registry's `cloze`
+  group (`docs/registry.md`).
+
+## The student runner — `app/[code]/_cloze/`
+
+`ClozeRunner` (`cloze-runner.tsx`, client) receives `{ code, cloze: ClozePublic }` and
+nothing else. Answers live in page state only: a reload starts over.
+
+- **The text.** `ClozeText` (`cloze-text.tsx`) renders `cloze.text` through the
+  sanitized `MarkdownRenderer`, extended by a small rehype plugin that splits every
+  rendered text node on the placeholders (`splitOnClozeGaps`; `code`/`pre` are left
+  alone) and leaves a `<cloze-gap data-gap="N">` element in each one's place. That
+  element renders through ONE stable component that asks the caller's
+  `renderGap(N)` (passed via context) what to show — an input while answering, a
+  verdict chip on the results screen. The parsed Markdown is memoized on the text, so
+  typing re-renders only the gaps and an input never loses its focus. Gaps work
+  wherever the validator allows them (paragraphs, list items, blockquotes, table
+  cells).
+- **Answering.** Each gap is a pill-shaped `<input>` labelled "Gap N" (the superscript
+  number before it is decorative), its hint "(start)" after it as the input's
+  description; the DOM order is the reading order, so Tab moves from gap to gap. Each
+  answer is capped at `MAX_CLOZE_ANSWER_LENGTH`. The footer counts "x / N gaps filled"
+  (whitespace is not an answer); **Submit exercise** is always enabled — with empty
+  gaps it first asks "N gaps are empty — submit anyway?" (Keep editing / Submit
+  anyway). The attempt uuid is minted when the page loads.
+- **Results.** As soon as `gradeCloze` returns, the text shows a chip per gap — the
+  answer coloured AND shaped by its verdict (✓ correct, – partly correct, ✕ wrong; an
+  empty wrong answer reads "Not answered") — and the "Your feedback" card shows the
+  counts ("5 correct · 2 partial · 3 wrong") with a loading line while `explainCloze`
+  runs. Its result fills in the pattern columns (title, explanation, "See your
+  answers" gap buttons that select a gap and scroll its chip into view, "Next time:")
+  and the per-gap notes. When no pattern survived the grounding filter but two or more
+  gaps are non-correct, the card reads "Your mistakes don't share a common cause — see
+  each gap below." When every gap is correct the client makes no feedback call and
+  shows "All N gaps correct.". Below the text, the selected gap's panel (initially the
+  first non-correct gap) shows "Your answer", "A possible answer" (`(leave empty)` for
+  an empty reference) and its note. Pattern and note text from the model is rendered
+  as plain text, never Markdown.
+- **Try again** clears every gap, mints a new attempt id and switches to
+  `round: "retry"`; the header shows "Practice round" from then on. A feedback that
+  arrives after Try again is dropped.
+- **Errors.** A failed `gradeCloze` keeps the answers and shows its message under the
+  Submit button (submitting again retries). A failed `explainCloze` keeps the verdicts
+  and offers **Retry**, which re-calls only `explainCloze` with the same token.
+
+## Submitting — two server actions (`lib/cloze-actions.ts`)
+
+Both actions verify through `lib/cloze-verify.ts`, which — like `lib/quiz-verify.ts` —
+carries **no `"use server"`** (its `verifyAndLoadCloze` returns the exercise,
+references and `evaluation` included; guard-tested). Order: cheap shape checks (uuid
+attempt id, answers an array of strings ≤ 200 characters) before any I/O → session →
+`checkCode()` → `module === "cloze"` → (explain only: the result token) → the YAML
+reload → one answer per gap (a mismatch means the teacher changed the gaps since the
+page loaded: "reload the page"). Every rejection is a fixed message.
+
+1. **`gradeCloze({ code, attemptId, round, answers })`** →
+   `{ ok: true, verdicts, references, resultToken }` (index-aligned with the gaps;
+   `references[i]` is "a possible answer", `""` = leave empty) or `{ ok: false, message }`.
+   It runs the pre-pass, then — only if gaps are left — one grading call; on success
+   `recordClozeSubmission` bumps `cloze_submissions` off the response path (every
+   successful grading, practice rounds included) and a content-free `cloze.graded`
+   event carries `code`, `round`, `gaps`, `modelGaps`, `latencyMs`. `round`
+   (`"first"` | `"retry"`) is client-claimed.
+2. **`explainCloze({ code, attemptId, answers, verdicts, resultToken })`** →
+   `{ ok: true, patterns, gapNotes }` or `{ ok: false, message }`. It refuses any token
+   that does not match the session user, the code, the attempt, the answers and the
+   verdicts, so the feedback writer only ever works from verdicts the server produced
+   and the action is no general-purpose LLM endpoint. All-correct verdicts return
+   empty feedback without a model call. Event: `cloze.explained` (counts, latency).
+
+The **result token** (`lib/cloze-result-token.ts`) is the thread-token family: a
+stateless HMAC-SHA256 over `JSON.stringify([code, userId, attemptId, answers, verdicts])`
+with its own key, `HMAC(AUTH_SECRET, "novedu:cloze-result:v1")`. Nothing is persisted.
+
+## The grading pipeline
+
+**Pre-pass** (`lib/cloze-prepass.ts`, pure). Answers and references are compared after
+NFC, trimming, collapsing whitespace and unifying typographic apostrophes/quotes —
+case-sensitive.
+
+| Reference | Answer | Verdict |
+| --- | --- | --- |
+| `""` (`[[]]`) | empty | `correct` |
+| non-empty | empty | `incorrect` ("not answered") |
+| any | equal after normalization | `correct` |
+| otherwise | | the model decides |
+
+**Agent.** `clozeEvaluator` (`app/mastra/cloze-agents.ts`, registered in
+`app/mastra/index.ts`) is memory-less and configured per request from the
+RequestContext (`cloze-eval-instructions` / `-model` / `-provider` / `-reasoning`) plus
+the usage keys (`usageModule = "cloze"`), so the exporter attributes both calls' tokens.
+The model is `effectiveLlm(entry, cloze)` (the code's override applies), gated by
+`providerUnavailableReason` on the effective provider. Both calls use
+`structuredOutput` with the schemas in `lib/cloze-output-schemas.ts` and the quiz's
+truncation retry (`withTruncationRetry`, `lib/quiz-truncation-retry.ts`; events
+`cloze.grading.truncated` / `cloze.feedback.truncated`).
+
+**Grading call** (`buildClozeGradingPrompt`, `lib/cloze-grading-prompt.ts`). System
+prompt = preamble → frame → `evaluation` → the full text with every gap written as
+`⟦3 · reference "starts" · hint "start"⟧` (`formatGapMarker`; JSON-quoted). The user
+message is `CLOZE_GRADING_MESSAGE_TEMPLATE` around a JSON list
+`[{ "gap": 2, "answer": "…" }]` of the undecided gaps, framed as data, never
+instructions. Output `{ gaps: [{ gap, result, reason }] }`; `reason` is never shown to
+a student. The output must name every undecided gap exactly once and no other — a
+mismatch is retried once (`cloze.grading.mismatch`), then the action fails.
+
+**Feedback call** (`buildClozeFeedbackPrompt`, `lib/cloze-feedback-prompt.ts`). System
+prompt = preamble → frame → `evaluation` → the text with references. The user message
+`CLOZE_FEEDBACK_MESSAGE_TEMPLATE` carries `[{ gap, answer, verdict }]` for every gap as
+fixed facts. Output `{ patterns: [{ title, explanation, gaps, next_time }],
+gap_notes: [{ gap, note }] }`. The grading call's `reason`s are not passed on (the
+client never holds them).
+
+**Grounding filter** (`lib/cloze-grounding.ts`, pure). Drops a pattern citing an
+unknown, duplicate or correct gap or fewer than two gaps, keeps at most three
+(`MAX_CLOZE_PATTERNS`); drops a note on an unknown or correct gap, a second note per
+gap and an empty note. It reports what it dropped and why (for the eval report); the
+student gets `{ title, explanation, gaps (ascending), nextTime }` and `{ gap, note }`.
+
+## Security
+
+- **Server-only content.** The reference answers, `evaluation`, `instructions`, the
+  rendered preamble and `llm` never reach the browser before a grading:
+  `render-cloze.tsx` ships only `toPublicCloze` (guard-tested). After a grading the
+  references come back on purpose, as "a possible answer".
+- **The code gates every touch.** `checkCode()` runs on the page load and again in each
+  action, and each action reloads the YAML; there is no thread and no thread token.
+- **`clozeEvaluator` is never web-reachable** (beside `quizEvaluator`, `evalJudge`,
+  `evalTutor`): no module names it as its `runtime.agentId`, so the CopilotKit route
+  404s it and `/info` never lists it. Its callers are `gradeCloze` and `explainCloze`
+  — the prompts are built server-side; the client sends only answers.
+- **`explainCloze` trusts only token-signed verdicts.** The result token binds the
+  session user, the code, the attempt, the answers and the verdicts, so a client cannot
+  hand the feedback writer verdicts of its own or use it as a free LLM endpoint.
+- **`lib/cloze-verify.ts` carries no `"use server"`** (guard-tested): it returns the
+  loaded exercise, and as a server action it would leak the references and
+  `evaluation`. `lib/cloze-actions.ts` re-exports nothing.
+- **Anonymous.** No user↔answer link is stored; telemetry carries ids, counts and
+  durations only — never an answer, a reference or feedback text.
+- **Accepted trust gaps:** `round` is client-claimed, and there is no rate limit
+  beyond `checkCode`.
+
+## Metering
+
+`cloze_submissions` is an `int` counter in both `novedu_usage_by_code` and
+`novedu_usage_by_user` (`docs/usage-metering.md`). It is part of the activity-hour
+predicates of the start pages (`lib/student-facts-store.ts`,
+`lib/teacher-facts-store.ts`), a fifth activity kind for the "Full Stack" (student) and
+"Full Toolkit" (teacher) badges, and the `/usage` KPI "Cloze submissions graded".
+
+## Prompt dump
+
+`novedu-cli prompts --kind cloze` (`lib/prompt-dump.ts`) prints a `ClozePromptDump`:
+`gapCount`, and for `grading` and `feedback` each the `system` prompt, the
+`userMessageTemplate` and the `responseSchema` (JSON Schema) — all from the production
+builders (grep-guarded in `lib/prompt-dump.unit.test.ts`).
+
+## Fake LLM
+
+`fake-llm/markers.mjs` answers both calls by schema (`gaps` → grading, `patterns` →
+feedback), parsing the JSON list of the user message: an answer containing
+`[grade:correct|partial|incorrect]` gets that verdict, `[grade:omit]` is left out (so
+the grading fails after its retry), anything else is `incorrect`; feedback is one
+"Fake LLM pattern" over the non-correct gaps (when there are at least two) plus one
+note each, and an answer containing `[explain:fail]` makes the feedback call fail
+(`docs/testing.md`).
+
 ## Tests
 
 - `lib/cloze-gaps.unit.test.ts` — syntax, escapes, every forbidden and allowed
@@ -193,3 +380,24 @@ is pure and client-safe.
   `--kind cloze` over `test-fixtures/activities/cloze/`.
 - `e2e/files.spec.ts` — the `/files/new` Validate button with a valid and a misplaced
   gap.
+- `lib/cloze-prepass.unit.test.ts`, `lib/cloze-grounding.unit.test.ts` — the pre-pass
+  table and every grounding rule.
+- `lib/cloze-result-token.unit.test.ts` — the real HMAC: each payload field binds, the
+  key domain differs from the thread token's.
+- `lib/cloze-prompts.unit.test.ts` — both builders, the user-message wrappers, and the
+  dump byte-identical to them.
+- `lib/cloze-actions.unit.test.ts` — check order, `checkCode` on every call, the
+  pre-pass skipping the model, the coverage retry, the token, metering, content-free
+  telemetry, and `lib/cloze-verify.ts` without `"use server"`.
+- `lib/code-modules/cloze.unit.test.ts`, `app/[code]/render-cloze.unit.test.tsx` (the
+  projection is all the runner receives), `app/[code]/page.unit.test.tsx`, the runtime
+  route's `clozeEvaluator` 404s (`app/api/copilotkit/[[...slug]]/route.unit.test.ts`),
+  `fake-llm/markers.unit.test.ts`, `cli/src/commands/prompts.unit.test.ts`.
+- `tests/component/cloze-runner.browser.test.tsx` — the runner with mocked actions:
+  labelled inputs in tab order, the counter, the empty-gap confirmation, chips before
+  the feedback, the all-correct and no-pattern lines, both failure states with their
+  retry, Try again → "Practice round" with `round: "retry"` and a fresh attempt id.
+- `e2e/cloze.spec.ts` (`@live-db`, fake LLM) — `/<code>` and `/codes/<code>` open
+  without errors; fill → submit → verdicts → pattern → gap panel → Try again → all
+  correct. Its `@live-llm` test proves a real model honours both structured outputs
+  (`test-fixtures/activities/cloze/live-cloze.yaml`).

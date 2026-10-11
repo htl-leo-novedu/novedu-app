@@ -99,6 +99,7 @@ const MODULE_ROW_ACCENT: Record<CodeModule, string> = {
   quiz: "border-l-4 border-l-amber-700",
   writing: "border-l-4 border-l-green-700",
   coding: "border-l-4 border-l-blue-800",
+  cloze: "border-l-4 border-l-rose-700",
 };
 
 // Teacher-only: lists ALL codes across modules (any effective teacher may

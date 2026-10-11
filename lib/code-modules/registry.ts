@@ -5,6 +5,7 @@ import type { CodeEntry } from "@/lib/code-store";
 import type { FileKind } from "@/lib/file-name";
 import { type FileValidationResult, fileValidators } from "@/lib/file-validators";
 import type { Fetcher } from "@/lib/prompt-fragments";
+import { clozeModule } from "./cloze";
 import { codingModule } from "./coding";
 import { quizModule } from "./quiz";
 import { tutorModule } from "./tutor";
@@ -59,8 +60,8 @@ export interface CodeModuleDef {
   /**
    * The CopilotKit runtime branch (agent + per-request context). OPTIONAL: a module
    * served outside the in-app chat omits it. `coding` does — it is reached only
-   * through its own public OpenAI-compatible route, never the CopilotKit runtime,
-   * which rejects any module without a `runtime`.
+   * through its own public OpenAI-compatible route — and so does `cloze`, graded by
+   * its own server actions; the CopilotKit runtime rejects any module without one.
    */
   runtime?: CodeModuleRuntime;
   /**
@@ -81,6 +82,7 @@ export const codeModules: Record<CodeModule, CodeModuleDef> = {
   quiz: quizModule,
   writing: writingModule,
   coding: codingModule,
+  cloze: clozeModule,
 };
 
 /**

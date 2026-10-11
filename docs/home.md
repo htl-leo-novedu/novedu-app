@@ -52,7 +52,7 @@ Usage buckets are UTC hours (`docs/usage-metering.md`); every day, week and hour
 on the page is a **Vienna-local** cut of them (`HOME_TIME_ZONE`).
 
 - **Active hour** — a `novedu_usage_by_user` bucket with
-  `user_messages + quiz_answers + writing_saves + coding_requests > 0`; token-only
+  `user_messages + quiz_answers + writing_saves + coding_requests + cloze_submissions > 0`; token-only
   buckets don't count. On the autumn clock change the two buckets sharing local
   02:00 are two hours; the missing spring hour has no bucket.
 - **Coding hours of a day** — the distinct Vienna-local hours (0–23) with a coding
@@ -122,8 +122,8 @@ Families on the page:
 - **Coding** — Connected (a first coding key, dated to its issue day), First
   Request (the first day with a coding request), coding days 5/20, Toolbelt (keys
   for 3 coding activities).
-- **Secret** (`hidden`) — Full Stack (chat, quiz, writing and coding inside one
-  ISO week), In the Zone (coding in 3 different local hours of one day) and Bug
+- **Secret** (`hidden`) — Full Stack (chat, quiz, writing, coding and cloze inside
+  one ISO week), In the Zone (coding in 3 different local hours of one day) and Bug
   Hunter (an own report was resolved, dated to the resolution day). The
   column shows only earned ones plus the note "Secret badges show up here once you
   earn them."; an unearned secret badge is never in Almost there, the Badges
@@ -203,7 +203,7 @@ the grants are the seventh):
   `ix_novedu_codes_created_by`. A code with an unknown module is dropped.
 - **Usage** (`loadTeacherUsage`) — `novedu_usage_by_code` joined to those codes,
   per code and Vienna-local day over the whole history: interactions (messages +
-  quiz answers + writing saves + coding requests), the part of them outside
+  quiz answers + writing saves + coding requests + cloze submissions), the part of them outside
   school hours, quiz answers, input tokens (new + cached) and output tokens. The
   window's sums are derived from it in pure code (`codeUsage`); every code with a
   usage row **ever** has at least one day, so "never used" means no row at all.
@@ -270,7 +270,7 @@ codes and rows, dated to the local day its evidence was first complete):
 | Family | Achievement | Rule |
 |---|---|---|
 | Reach | First Code | the first code created |
-| Reach | Full Toolkit | a tutor, a quiz, a writing and a coding code created (dated by the fourth kind's first code) |
+| Reach | Full Toolkit | a code of every module kind created — tutor, quiz, writing, coding and cloze (dated by the fifth kind's first code) |
 | Reach | Small Crowd / Full Class / Packed House (`crowd-10/30/100`) | 10 / 30 / 100 identified students on ONE activity — never added up across activities |
 | Reach | Busy / Buzzing / Hive of Activity (`busy-100/1000/5000`) | 100 / 1,000 / 5,000 interactions on one activity (a running total) |
 | Authoring | Evergreen | one activity used in 8 different ISO weeks |

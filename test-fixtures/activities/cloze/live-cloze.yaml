@@ -1,0 +1,17 @@
+id: live-cloze
+name: "Live Test Cloze"
+title: "Live Test Cloze"
+description: Complete the text with suitable future forms.
+# A REAL model id: the @live-llm spec (e2e/cloze-live.spec.ts) sends both cloze calls
+# to the live SCCH endpoint, unlike test-cloze.yaml's fake `test-model`.
+llm:
+  model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
+evaluation: |
+  Goal: the future form that matches the speaker's intention.
+  Correct: the intended form; contractions count.
+  Partly correct: the intended construction with a wrong verb ending.
+  Wrong: a different future form, or a form that changes the meaning.
+text: |
+  Sue has already decided: she [[is going to]] start next week. The class
+  [[starts|start]] at nine on Sunday. "I [[am meeting|meet]] my coach at 8:45,"
+  she says. Look at those clouds! It [[is going to]] rain.

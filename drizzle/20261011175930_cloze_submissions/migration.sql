@@ -1,0 +1,2 @@
+ALTER TABLE "novedu_usage_by_code" ADD COLUMN "cloze_submissions" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "novedu_usage_by_user" ADD COLUMN "cloze_submissions" integer DEFAULT 0 NOT NULL;

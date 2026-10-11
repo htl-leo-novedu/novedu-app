@@ -91,7 +91,7 @@ const INFO_RESOURCE_ID = "__info__";
  * hand). `/info` advertises exactly these, because CopilotKit's client resolves a
  * chat's agent from the `/info` agent list and throws for an id it does not find.
  * The internal agents Mastra also knows (`quizEvaluator`, `evalJudge`,
- * `evalTutor`) are deliberately absent: no module runs them through this route,
+ * `evalTutor`, `clozeEvaluator`) are deliberately absent: no module runs them through this route,
  * so their names and descriptions have no business reaching a browser.
  */
 function studentFacingAgentIds(): string[] {
@@ -222,10 +222,11 @@ async function resolveThreadOwnership(
 //     .agentId), and the per-request runtime REGISTERS only that one agent. Any
 //     other agent id 404s here before a runtime is built (and the runtime would
 //     not know it anyway), so the Mastra-registered but internal `quizEvaluator`
-//     grader, `evalJudge` feedback judge and `evalTutor` eval tutor are never
-//     reachable through this web route. (Their only other callers are
-//     `submitAnswer` and the teacher-only bearer routes /api/eval/{grade,judge,
-//     respond}, which bring their own system prompts — docs/cli-eval.md.)
+//     grader, `evalJudge` feedback judge, `evalTutor` eval tutor and
+//     `clozeEvaluator` cloze grader are never reachable through this web route.
+//     (Their only other callers are `submitAnswer`, `gradeCloze`/`explainCloze`
+//     and the teacher-only bearer routes /api/eval/{grade,judge,respond}, which
+//     bring their own system prompts — docs/cli-eval.md.)
 //
 // The lone exception is GET `/info`: runtime metadata (the student-facing agent
 // list + capabilities) with no chat data, gated by AUTHENTICATION ALONE — the
@@ -309,15 +310,16 @@ async function handler(req: Request): Promise<Response> {
   const { entry } = verification;
   const def = codeModules[entry.module];
 
-  // A module without a CopilotKit runtime (e.g. `coding`, reached only through its
-  // own public OpenAI-compatible route) is never served here.
+  // A module without a CopilotKit runtime (`coding`, reached only through its own
+  // public OpenAI-compatible route; `cloze`, graded by its own server actions) is
+  // never served here.
   if (!def.runtime) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
 
   // AGENT: each module runs exactly one agent; any other id 404s, so the
-  // Mastra-registered but internal `quizEvaluator`, `evalJudge` and `evalTutor`
-  // stay unreachable from the web. Defense in depth with the runtime below,
+  // Mastra-registered but internal `quizEvaluator`, `evalJudge`, `evalTutor` and
+  // `clozeEvaluator` stay unreachable from the web. Defense in depth with the runtime below,
   // which registers ONLY this module's agent.
   if (runtimeRequest.agentId !== def.runtime.agentId) {
     return Response.json({ error: "Not found" }, { status: 404 });

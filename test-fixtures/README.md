@@ -33,12 +33,12 @@ fixtures live in-code in `lib/tutors/test-fixtures.ts`.
 
 ## Models
 
-Hermetic fixtures use a fake `model: test-model` (nothing calls an LLM). The six
+Hermetic fixtures use a fake `model: test-model` (nothing calls an LLM). The seven
 LLM-backed fixtures carry a **real** model id: `tutors/live-tutor.yaml`,
 `tutors/live-tools-tutor.yaml`, `tutors/vision-tutor.yaml`,
-`quizzes/vision-quiz.yaml`, `writings/test-writing.yaml` and
-`coding/live-coding.yaml`. The vision pair serves only `@live-llm` specs (the live
-SCCH endpoint); the others also back CI specs that run against the fake LLM, which
+`quizzes/vision-quiz.yaml`, `writings/test-writing.yaml`,
+`coding/live-coding.yaml` and `cloze/live-cloze.yaml`. The vision pair and
+`live-cloze.yaml` serve only `@live-llm` specs (the live SCCH endpoint); the others also back CI specs that run against the fake LLM, which
 answers whatever model id it is asked for (`docs/testing.md`, "Fake LLM").
 
 ## Layout
@@ -55,7 +55,8 @@ activities/
   writings/  test-writing.yaml [real model id], broken-writing.yaml, fragments-writing.yaml
   coding/    test-coding.yaml, broken-coding.yaml, fragments-coding.yaml,
              live-coding.yaml [real model id]
-  cloze/     test-cloze.yaml, broken-cloze.yaml (schema-valid, broken gaps)
+  cloze/     test-cloze.yaml, broken-cloze.yaml (schema-valid, broken gaps),
+             live-cloze.yaml [real model id]
   evals/     quiz evals (→ quizzes/test-quiz.yaml): test-eval.yaml, mismatch-eval.yaml,
              judge-eval.yaml, broken-eval.yaml;
              tutor evals: tutor-eval.yaml, tutor-judge-eval.yaml, broken-tutor-eval.yaml

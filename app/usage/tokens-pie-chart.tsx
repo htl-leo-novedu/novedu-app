@@ -17,7 +17,7 @@ import { OTHER_KEY, type Slice } from "@/lib/usage-range";
 // by variant, so it is decided here from serializable props (a function prop can't
 // cross the server→client boundary):
 //   - "module": color follows the module identity (fixed CODE_MODULES order), so
-//     tutor/quiz/writing/coding keep the same hue as elsewhere.
+//     every module keeps the same hue as elsewhere.
 //   - "code" / "model": color follows rank (top slices), and the folded "Other"
 //     slice is the muted gray.
 // Legend + tooltip carry identity (the dataviz "relief" for sub-3:1 hues); slices

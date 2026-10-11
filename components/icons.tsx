@@ -37,6 +37,37 @@ export const CheckIcon = (props: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+/** Cross — a wrong cloze answer (beside its colour, so the verdict never rests on colour alone). */
+export const XIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </Icon>
+);
+
+/** Dash — a partly correct cloze answer. */
+export const MinusIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </Icon>
+);
+
+/** Right arrow — a forward action ("Submit exercise"). */
+export const ArrowRightIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </Icon>
+);
+
+/** Shield with a check — "Anonymous activity". */
+export const ShieldCheckIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <polyline points="9 12 11 14 15 10" />
+  </Icon>
+);
+
 /** Box with an out-arrow — "Open in a new tab" (raw YAML, chat, …). */
 export const ExternalLinkIcon = (props: SVGProps<SVGSVGElement>) => (
   <Icon {...props}>
@@ -123,6 +154,16 @@ export const HelpCircleIcon = (props: SVGProps<SVGSVGElement>) => (
     <circle cx="12" cy="12" r="10" />
     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
     <line x1="12" y1="17" x2="12.01" y2="17" />
+  </Icon>
+);
+
+/** Text lines with an empty slot — the cloze module pill. */
+export const TextGapIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="8" y2="12" />
+    <rect x="11" y="9.5" width="7" height="5" rx="1" />
+    <line x1="3" y1="18" x2="15" y2="18" />
   </Icon>
 );
 

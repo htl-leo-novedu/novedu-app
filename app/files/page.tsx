@@ -44,14 +44,13 @@ interface FileRow {
 
 // Kind → badge tone, shared visual language with the codes list: module kinds
 // use the module's pill color (codeModuleLabels); `fragment` is the one kind
-// without a module and gets its own hue, and so does `cloze` until a code can
-// dispatch to it.
+// without a module and gets its own hue.
 const KIND_TONES: Record<FileKind, VariantProps<typeof badgeVariants>["tone"]> = {
   tutor: codeModuleLabels.tutor.tone,
   quiz: codeModuleLabels.quiz.tone,
   writing: codeModuleLabels.writing.tone,
   coding: codeModuleLabels.coding.tone,
-  cloze: "rose",
+  cloze: codeModuleLabels.cloze.tone,
   fragment: "purple",
 };
 

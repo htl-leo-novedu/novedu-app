@@ -68,7 +68,7 @@ export async function listTeacherCodes(teacherId: string): Promise<TeacherCode[]
 
 // A counted interaction, as in the student facts: token-only buckets add nothing.
 const INTERACTIONS = sql.raw(
-  "(u.user_messages + u.quiz_answers + u.writing_saves + u.coding_requests)",
+  "(u.user_messages + u.quiz_answers + u.writing_saves + u.coding_requests + u.cloze_submissions)",
 );
 
 /**

@@ -58,13 +58,14 @@ vi.mock("@/lib/user-chat-store", () => ({ recordUserChat }));
 vi.mock("@/lib/usage-store", () => ({ recordUserMessage }));
 // The module registry decides which agent runs per module. All runtime modules
 // share one buildRequestContext mock so a test can flip it to the error path;
-// `coding` mirrors the real descriptor — no runtime, so no agent in `/info`.
+// `coding` and `cloze` mirror the real descriptors — no runtime, so no agent in `/info`.
 vi.mock("@/lib/code-modules/registry", () => ({
   codeModules: {
     tutor: { fileKind: "tutor", runtime: { agentId: "tutor", buildRequestContext } },
     quiz: { fileKind: "quiz", runtime: { agentId: "quizDiscussion", buildRequestContext } },
     writing: { fileKind: "writing", runtime: { agentId: "writing", buildRequestContext } },
     coding: { fileKind: "coding" },
+    cloze: { fileKind: "cloze" },
   },
 }));
 // Importing the real Mastra instance would pull in @mastra/pg + the Azure
@@ -177,7 +178,7 @@ function runnerChain(): unknown[] {
 }
 
 // Mastra-registered agents that no module runs through this route.
-const INTERNAL_AGENT_IDS = ["quizEvaluator", "evalJudge", "evalTutor"];
+const INTERNAL_AGENT_IDS = ["quizEvaluator", "evalJudge", "evalTutor", "clozeEvaluator"];
 
 beforeEach(() => {
   // The REAL thread-token module memoizes its secret; derive it afresh per test.
@@ -356,7 +357,7 @@ describe("info endpoint (auth-only metadata)", () => {
     const res = await GET(new Request(`${BASE}/info`));
     expect(res.status).toBe(200);
     // Derived from the registry: every module's runtime.agentId, nothing more
-    // (`coding` has no runtime, so contributes none).
+    // (`coding` and `cloze` have no runtime, so contribute none).
     expect(lastRuntimeAgentIds()).toEqual(["quizDiscussion", "tutor", "writing"]);
     for (const internal of INTERNAL_AGENT_IDS) {
       expect(lastRuntimeAgentIds()).not.toContain(internal);
@@ -717,6 +718,24 @@ describe("coding module (no CopilotKit runtime)", () => {
     expect(res.status).toBe(404);
     expect(CopilotRuntime).not.toHaveBeenCalled();
   });
+});
+
+describe("cloze module (no CopilotKit runtime)", () => {
+  // The cloze grader is reached only through the gradeCloze/explainCloze actions.
+  it.each(["clozeEvaluator", "tutor"])(
+    "404s a cloze-module request targeting %s and never builds a runtime",
+    async (agent) => {
+      checkCode.mockResolvedValue({
+        ok: true,
+        entry: { module: "cloze", fileUrl: "https://example.com/api/files/cz" },
+      });
+      const threadId = crypto.randomUUID();
+      const res = await POST(agentRequest({ threadId, token: token(threadId), agent }));
+      expect(res.status).toBe(404);
+      expect(getLocalAgent).not.toHaveBeenCalled();
+      expect(CopilotRuntime).not.toHaveBeenCalled();
+    },
+  );
 });
 
 // The user↔chat link is written after a run the runtime accepted; whether the

@@ -1,7 +1,7 @@
 # `prompts`: what the model actually receives
 
 ```
-prompts <pathOrUrl> [--kind tutor|quiz|writing|coding] [--json]
+prompts <pathOrUrl> [--kind tutor|quiz|writing|coding|cloze] [--json]
 ```
 
 `prompts` prints the EXACT system prompts an activity YAML produces, built by
@@ -46,6 +46,11 @@ an override may add, change or drop the reasoning level too.
 - **coding** gives `system` plus `upstreamSystemMessage` — what the proxy puts
   on the wire, appended to the calling agent's last system message so the
   teacher has the final word.
+- **cloze** gives `gapCount` plus `grading` and `feedback` — the two calls of
+  the gap-fill pipeline — each with `system`, `userMessageTemplate` (`{answers}`
+  is a JSON list of gap answers; feedback adds each final verdict) and
+  `responseSchema`. Gaps an exact (normalized) answer or an empty answer already
+  decides never reach the grading call.
 
 ## Failures
 
