@@ -34,7 +34,7 @@ npx @novedu/cli validate ./activities/examples/shared/general-fragments.yaml --k
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-quiz.yaml --kind quiz
 npx @novedu/cli validate ./activities/examples/future-forms/sue-fresh-start.yaml --kind cloze
 
-# An eval file, quiz or tutor (also strict-checks the activity it targets)
+# An eval file, quiz, tutor or cloze (also strict-checks the activity it targets)
 npx @novedu/cli validate ./sorting-quiz.eval.yaml --kind eval
 
 # Machine-readable output (the raw validation result)
@@ -112,7 +112,7 @@ production path**, then reports what the model actually did. This is the one com
 that both **runs the model** and needs you signed in (`novedu-cli login`); everything
 else about it is local.
 
-Two kinds, chosen by the file's own `kind:` field — there is no flag, and one
+Three kinds, chosen by the file's own `kind:` field — there is no flag, and one
 invocation may mix them:
 
 - **quiz** (`kind` omitted): student answers with the verdict each one must get,
@@ -121,8 +121,11 @@ invocation may mix them:
 - **tutor** (`kind: tutor`): conversations you script, each ending on a student turn.
   The real tutor generates the next turn and the judge checks it against the tutor's
   own system prompt plus your per-case expectations.
+- **cloze** (`kind: cloze`): whole submissions to a cloze exercise, answers by gap
+  number. The real grading and feedback calls run; your per-gap `expect` gates the
+  **verdicts**, and the judge audits the **feedback** a student would have read.
 
-Either way the judge measures the output against the very prompt that produced it, so
+In every kind the judge measures the output against the very prompt that produced it, so
 there is nothing extra to author — and what it flags is **reported, never a failure**.
 For a tutor eval that makes the `--report` Markdown the actual deliverable: the exit
 code only reflects whether the run itself completed.
@@ -423,7 +426,7 @@ students struggle with, and how should I improve this activity?").
 - **No student identity**, for any code — no user id, name or pseudonym. Photos
   arrive as placeholders `{ "type": "image", "mimeType", "bytes" }`; the image
   itself never leaves the server. Writing submissions are not included, and a
-  coding code exports a header and no conversations (coding stores none).
+  coding or cloze code exports a header and no conversations (neither stores any).
 - **Format** (`novedu-conversations/1`): line 1 is a header
   `{ "type": "export", "format", "code", "module", "note", "fileUrl", "anonymous", "exportedAt" }`;
   every further line is one conversation

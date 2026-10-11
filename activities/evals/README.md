@@ -16,7 +16,8 @@ Use a **quiz** eval whenever you change an `evaluation` prompt, suspect the AI i
 lenient or too strict, or want a check you can re-run before publishing. Use a **tutor**
 eval whenever you write or change tutor rules ("never hand over the solution", "stay
 inside this chapter", "answer in German") and want to see whether the tutor actually
-follows them.
+follows them. Use a **cloze** eval whenever you change a cloze exercise's
+`evaluation` or its gaps, and want to see the verdicts and the feedback it produces.
 
 ---
 
@@ -192,7 +193,7 @@ novedu-cli eval ./loops-tutor.eval.yaml --report loops.md
 ```
 
 Everything else works exactly as it does for quiz evals: `--repeats`, `--no-judge-feedback`,
-the model overrides, folders and globs, `--json`. A run may mix both kinds — the totals
+the model overrides, folders and globs, `--json`. A run may mix kinds — the totals
 line then names each kind's units separately, because "4 conversations" and "27 answers"
 are not the same thing.
 
@@ -409,12 +410,12 @@ treat it as a floor, not an invoice.
 ## 6. Good to know
 
 - **What you evaluated is what you must publish.** A green run certifies the file on
-  your disk. If the quiz or tutor is hosted in the app, upload the same file afterwards
+  your disk. If the quiz, tutor or cloze exercise is hosted in the app, upload the same file afterwards
   (`novedu-cli files upload`) — otherwise the live code keeps serving the old version.
 - The prompts are built **on your machine** from your local files, so an eval
-  works on a quiz or tutor you have not pushed yet.
+  works on an activity you have not pushed yet.
 - Nothing is stored: no eval, no answer, no conversation, no verdict and no judgment is
-  saved anywhere. The token usage of a run — grading, tutor answers and judging alike — is
+  saved anywhere. The token usage of a run — grading, tutor answers, cloze feedback and judging alike — is
   metered like any other AI usage, under the name `cli-eval`.
 
 The engineering reference for all of this is

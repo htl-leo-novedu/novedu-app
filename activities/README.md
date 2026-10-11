@@ -34,7 +34,7 @@ Two more folders hold editor schemas without being modules:
   see it and it never gets a code. Guide: [evals/README.md](evals/README.md),
   engineering reference: [`../docs/cli-eval.md`](../docs/cli-eval.md).
 
-**Prompt fragments are a cross-cutting capability of all four kinds.** A fragment is a
+**Prompt fragments are a cross-cutting capability of all five kinds.** A fragment is a
 reusable, parameterized prompt piece — a persona, a safety policy, a set of ground
 rules — written once in a **fragment library**, declared in an activity under
 `fragment_files:`, and placed with inline `{{fragment "alias.id" …}}` markers in the

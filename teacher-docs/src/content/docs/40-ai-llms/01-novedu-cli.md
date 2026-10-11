@@ -19,7 +19,7 @@ The Novedu CLI is a small companion tool for the app that you run from a termina
 
 Checking comes first, because it saves the most trouble. The CLI runs the very same checks the app runs when it loads your activity, so a missing field or a typo shows up on your screen instead of in front of a class. It can also print the exact instructions your activity sends to the AI model, which is the fastest way to answer "why is the tutor behaving like that?".
 
-The second half is the teacher work: creating a code for an activity, uploading activity files and images to the app, seeing what students have reported, exporting the conversations under one of your codes, and testing how a quiz grades sample answers. Every one of those has its own chapter later in this guide.
+The second half is the teacher work: creating a code for an activity, uploading activity files and images to the app, seeing what students have reported, exporting the conversations under one of your codes, and testing how a quiz or a cloze exercise grades sample answers. Every one of those has its own chapter later in this guide.
 
 You don't install the CLI permanently. With Node.js (version 22 or newer) on your computer, one command fetches and runs it whenever you need it:
 

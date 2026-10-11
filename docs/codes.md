@@ -527,8 +527,8 @@ isolation and is unaffected.
   `collapseReplayedRuns` as the viewer (with an export-shaped key), tool calls kept as
   `tool` parts, photos reduced to `{ mimeType, bytes }` inside Postgres, and at most
   the last 500 messages per conversation (`truncated: true` beyond that). tutor, quiz
-  discussions and writing chats export; writing *submissions* do not, and coding
-  stores no conversations (an empty export). It is NOT a `checkCode()` site — the
+  discussions and writing chats export; writing *submissions* do not, and coding and
+  cloze store no conversations (an empty export). It is NOT a `checkCode()` site — the
   caller is a teacher on the bearer channel, not a student.
 
 Privacy note: this lets a teacher read the *content* of conversations under their

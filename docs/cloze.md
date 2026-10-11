@@ -14,11 +14,13 @@ the cloze sample under `activities/examples/`.
 
 It covers the **authoring** layer (the `cloze` file kind with its strict validator,
 the gap parser, the lenient runtime parser with the public projection, the generated
-JSON schema, `novedu-cli validate --kind cloze`, the `/files` editor's Cloze kind) and
-the **student activity** (the `cloze` module, the two-step grading pipeline, the
-result token, metering and `novedu-cli prompts --kind cloze`) the **teacher view**
-(the per-gap counts, the detail page and the `/codes` list count) and **saved
-results** (a first round's counts in the shared quiz-result store).
+JSON schema, `novedu-cli validate --kind cloze`, the `/files` editor's Cloze kind), the
+**student activity** (the `cloze` module, the two-step grading pipeline, the result
+token, metering and `novedu-cli prompts --kind cloze`), the **teacher view** (the
+per-gap counts, the detail page and the `/codes` list count), **saved results** (a
+first round's counts in the shared quiz-result store) and **evals** (the `cloze` eval
+kind and `POST /api/eval/cloze`). The teacher-facing guide is the chapter
+`teacher-docs/src/content/docs/20-building-activities/09-cloze.md`.
 
 ## The YAML
 

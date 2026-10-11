@@ -102,7 +102,7 @@ Two things to know before you rely on a library:
 - A fragment library is hosted like the tutor file itself: at a public web address, or as a file hosted in the app. Publishing works the same way for both.
 - Validating a tutor also validates every fragment in every library it references, even fragments the tutor doesn't use. A broken template anywhere in the library fails the whole check, which is good news: a shared library that validates once is safe for everyone who uses it.
 
-**When are fragments worth it?** When several activities should share the same wording: a school-wide safety policy, a Socratic teaching style, a language rule. Fragments aren't limited to tutors, either: the same library also works in quizzes, writing activities, and coding activities, and the chapter on reusable fragments shows how to write a library of your own. For a single tutor with instructions nobody else will reuse, plain `tutor_instructions` is simpler and just as good.
+**When are fragments worth it?** When several activities should share the same wording: a school-wide safety policy, a Socratic teaching style, a language rule. Fragments aren't limited to tutors, either: the same library also works in quizzes, writing activities, coding activities, and cloze exercises, and the chapter on reusable fragments shows how to write a library of your own. For a single tutor with instructions nobody else will reuse, plain `tutor_instructions` is simpler and just as good.
 
 ## The sample tutor, walked through
 

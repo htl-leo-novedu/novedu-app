@@ -169,6 +169,37 @@ prose carries everything an editor needs.
 - Keep this the one deep fragment chapter: the tutors, quiz, writing and coding
   chapters cover placing fragments from the consumer side and should stay lighter.
 
+## 20-building-activities/09-cloze
+
+- Reader: a teacher (language teachers above all) building a gap text, then reading
+  its results. One chapter covers the whole module: authoring, what students see,
+  the teacher's results, saved results and evals.
+- A cloze exercise is ALWAYS anonymous: there is no `anonymous` field, and adding
+  one is an error. The one user link is a result the student CHOSE to save, which
+  only they see. Never suggest the teacher can see who submitted or what anyone
+  typed: the results page holds per-gap verdict counts, nothing else.
+- The reference answers are revealed as "a possible answer" right after the first
+  submission. That is why **Try again** is a practice round: never counted in the
+  results page, never saveable. Do not describe a retry as a second attempt.
+- The results page counts FIRST submissions only, the teacher's own test runs
+  included. The usage dashboard and the start page count EVERY graded submission,
+  practice rounds included. Keep the two numbers apart.
+- Changing a gap's answer or its position restarts that gap's statistics from
+  zero; unchanged gaps keep theirs. The advice is to settle the gaps before
+  handing out a code. Never promise anything about students who are mid-attempt
+  while the text changes, beyond "they may be asked to reload".
+- Exact matches and empty gaps are decided without the AI. Capital letters count
+  for an exact match, but a different capitalisation is not automatically wrong:
+  it goes to the AI, which decides by `evaluation`. Do not write "case-sensitive
+  grading".
+- The feedback names a common pattern only when at least two of the student's
+  non-correct gaps back it; an unbacked pattern is dropped, not shown. "Your
+  mistakes don't share a common cause" is a normal outcome, not an error.
+- No images, no discussion chat, no live hint. Do not borrow quiz features.
+- Gap positions: the validator allows paragraphs, list items, quotes and table
+  cells. Keep the chapter to the rule a teacher meets; the parsing details belong
+  in the engineer docs.
+
 ## 30-sharing-activities/04-anonymous-vs-per-user
 
 - Tutor history follows the mode: in an anonymous tutor students cannot return to
@@ -251,8 +282,8 @@ prose carries everything an editor needs.
   chat can contain draft passages (the AI reads the draft and may quote it).
 - "The same conversations as the code's page" holds for tutor and quiz codes only;
   a per-user writing code's page lists savers, not chats.
-- A coding code exports nothing but the header line: coding conversations are never
-  stored.
+- A coding or cloze code exports nothing but the header line: coding conversations
+  are never stored, and a cloze exercise has no chat and stores no answers.
 - Only conversations in which a student wrote at least one message count, the same
   rule as the code's page. A very long conversation keeps only its last 500 messages
   and is marked as shortened.

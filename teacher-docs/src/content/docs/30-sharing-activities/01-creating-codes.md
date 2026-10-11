@@ -27,7 +27,7 @@ The activity's YAML file must be reachable at a public web address. There are tw
 Novedu checks the activity file before storing anything. If the file has errors, the form lists them and no code is created; fix the file and submit again.
 
 1. Open **Codes** and select **New code**.
-2. Under **Activity**, pick the kind of activity: tutor, quiz, writing, or coding.
+2. Under **Activity**, pick the kind of activity: tutor, quiz, writing, coding, or cloze.
 3. Paste the file's address into **Activity YAML URL**.
 4. Add a **Note** for yourself, for example "3AHIF linked lists exercise". Only teachers see it; it labels the code in your list.
 5. Set **Available from** and **Available until** if the code should only work during a certain time. Both fields use your local time, and either may stay blank to leave that side open. The **Now**, **+1h**, **+1d**, and **+1w** buttons fill common values.

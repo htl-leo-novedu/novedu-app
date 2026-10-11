@@ -88,3 +88,37 @@ The validator names every problem with its **line and column inside `text`**, e.
 
 The reference answer is one good answer, not the only one: `evaluation` decides which
 other answers count (contractions, synonyms, equivalent forms).
+
+---
+
+## 4. See the exact prompt
+
+A cloze exercise sends two prompts to the AI: one grades the gaps, the other writes the
+feedback the student reads. Both contain your whole text with every reference answer,
+`evaluation`, and the rendered `instructions`. Print them offline, no sign-in needed:
+
+```bash
+npx @novedu/cli prompts ./my-cloze.yaml --kind cloze          # summary
+npx @novedu/cli prompts ./my-cloze.yaml --kind cloze --json   # full text + output schemas
+```
+
+---
+
+## 5. Testing the grading and the feedback (`eval`)
+
+Write sample submissions — answers by gap number, the verdicts you expect, and the gaps
+the feedback should connect — and `novedu-cli eval` runs them through the real grading
+and feedback. The sample [`../examples/future-forms/sue-fresh-start.eval.yaml`](../examples/future-forms/sue-fresh-start.eval.yaml)
+shows the format; [`../evals/README.md`](../evals/README.md) ("Cloze evals") explains it.
+
+---
+
+## 6. After you share it
+
+- Every page load and every submission re-reads the file, so a fix to `description`,
+  `evaluation` or `instructions` applies at once.
+- The results page counts verdicts per gap, keyed by the gap's number and reference
+  answer: change a reference, or add or remove a gap before others, and those gaps'
+  statistics start from zero. Settle the gaps before you hand out a code.
+- Only a student's **first** submission is counted. **Try again** starts a practice
+  round, which is never counted and can never be saved as a result.

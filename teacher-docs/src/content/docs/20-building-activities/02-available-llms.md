@@ -18,7 +18,7 @@ llm:
   model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
 ```
 
-That's the whole block in most activities, taken from the sorting-algorithms sample tutor. The same block works in tutors, quizzes, writing activities, and coding activities.
+That's the whole block in most activities, taken from the sorting-algorithms sample tutor. The same block works in tutors, quizzes, writing activities, coding activities, and cloze exercises.
 
 ## The three providers
 

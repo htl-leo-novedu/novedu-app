@@ -214,7 +214,7 @@ any page, and its handler re-validates the session itself on top of that.
   the export even if the cut removed all its user messages). **No identity** for any code (the
   store, `lib/conversation-export-store.ts`, never joins `novedu_user_chats` or
   `novedu_user`), and photos are stripped inside Postgres — the base64 never leaves
-  the database. Coding codes store no conversations and answer an empty page. One
+  the database. Coding and cloze codes store no conversations and answer an empty page. One
   content-free `conversations.export.page` event (`code`, `limit`, `returned`) per
   request.
 - **`GET /api/files?q=&mine=`** (`app/api/files/route.ts`, teacher-only) —

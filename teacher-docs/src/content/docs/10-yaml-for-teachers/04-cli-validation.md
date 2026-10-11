@@ -4,7 +4,7 @@ description: Run the Novedu CLI's validate command on an activity file, pick the
 sidebar:
   order: 4
 audience: teacher
-keywords: [validate, CLI, novedu-cli, check YAML, kind, error, quiz, tutor, eval]
+keywords: [validate, CLI, novedu-cli, check YAML, kind, error, quiz, tutor, cloze, eval]
 related:
   - 40-ai-llms/01-novedu-cli
   - 10-yaml-for-teachers/03-json-schemas-vscode
@@ -42,11 +42,12 @@ npx @novedu/cli validate ./activities/examples/shared/general-fragments.yaml --k
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-quiz.yaml --kind quiz
 npx @novedu/cli validate ./activities/examples/review-writing/restaurant-review-letter.yaml --kind writing
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-visualizer.yaml --kind coding
+npx @novedu/cli validate ./activities/examples/future-forms/sue-fresh-start.yaml --kind cloze
 ```
 
-`--kind` accepts `tutor` (the default), `fragment`, `quiz`, `writing`, `coding`, or `eval`. Getting it right matters: if you validate a quiz without `--kind quiz`, the CLI checks it against the rules for a tutor and reports errors that have nothing to do with your quiz. When a perfectly good file seems to fail, check the `--kind` first.
+`--kind` accepts `tutor` (the default), `fragment`, `quiz`, `writing`, `coding`, `cloze`, or `eval`. Getting it right matters: if you validate a quiz without `--kind quiz`, the CLI checks it against the rules for a tutor and reports errors that have nothing to do with your quiz. When a perfectly good file seems to fail, check the `--kind` first.
 
-The `eval` kind checks a golden-answer file, a small test file for a quiz's grading, together with the quiz it points at. The chapter on testing how a quiz grades explains what those files are and how to run them.
+The `eval` kind checks an eval file, a small test file for a quiz's grading, a tutor's behaviour, or a cloze exercise's grading, together with the activity it points at. The chapter on testing how a quiz grades explains what those files are and how to run them.
 
 Two more things worth knowing:
 

@@ -70,7 +70,7 @@ questions:
 - Golden answers are **teacher-authored synthetic data** — nothing a student ever
   wrote is involved, and nothing is stored anywhere.
 - Text only: a question with `imageInput` can be evaluated on its typed answers, but
-  photo cases are out of scope for v1.
+  photo cases are not supported.
 
 ### The tutor kind
 

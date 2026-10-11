@@ -18,7 +18,7 @@ Students can flag a notable AI answer to you: something brilliant, something wro
 
 ## What students can report
 
-A small **Report** button sits in every chat: a tutor conversation, a quiz discussion, and the feedback chat in a writing activity. It also sits next to every graded quiz answer. Coding activities have no in-app chat, so they have no Report button.
+A small **Report** button sits in every chat: a tutor conversation, a quiz discussion, and the feedback chat in a writing activity. It also sits next to every graded quiz answer. Coding activities have no in-app chat, so they have no Report button. Cloze exercises have no Report button either.
 
 Filing a report takes two clicks. The student picks one of four reactions and can add a short note:
 

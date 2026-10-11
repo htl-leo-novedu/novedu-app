@@ -43,7 +43,7 @@ A plain-text file behaves like any other document you already work with, and tha
 
 ## Start from an example, not a blank page
 
-The recommended way to author is not to write a file from scratch. Novedu comes with a set of complete, validated example activities covering all four kinds. Pick the example closest to what you want, copy it, and change the parts that are yours: the topic, the instructions, the questions. The overall shape of the file stays the same, so you rarely need to invent structure.
+The recommended way to author is not to write a file from scratch. Novedu comes with a set of complete, validated example activities covering all five kinds. Pick the example closest to what you want, copy it, and change the parts that are yours: the topic, the instructions, the questions. The overall shape of the file stays the same, so you rarely need to invent structure.
 
 ## Small mistakes matter, and they get caught
 

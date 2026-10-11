@@ -2,7 +2,7 @@
 
 A **fragment library** is a reusable, parameterized collection of prompt pieces — a
 persona, a safety policy, a set of ground rules — written once and pulled into any
-activity (tutor, quiz, writing, coding) by declaring the library under
+activity (tutor, quiz, writing, coding, cloze) by declaring the library under
 `fragment_files:` and dropping inline `{{fragment "alias.id" …}}` markers into the
 activity's own instructions. Fragments are a **cross-cutting** capability, not an
 activity module of their own.

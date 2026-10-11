@@ -17,7 +17,7 @@ You share a coding activity exactly like any other: create the code and hand its
 
 ## Sharing works like any other activity
 
-Creating a coding code follows the same steps as a tutor, quiz, or writing code: pick the activity file, add a note, set an availability window if you want one, and select **Create code**. The code's page then shows the same share link every other kind of activity gets. Send it to your class however you'd share any other link: your learning platform, the projector, or the board. Students can also type the code on the Novedu start page.
+Creating a coding code follows the same steps as any other code: pick the activity file, add a note, set an availability window if you want one, and select **Create code**. The code's page then shows the same share link every other kind of activity gets. Send it to your class however you'd share any other link: your learning platform, the projector, or the board. Students can also type the code on the Novedu start page.
 
 ## What a student sees
 

@@ -168,7 +168,7 @@ independently.
 
 - **Usage** (`loadStudentUsage`) — `novedu_usage_by_user` grouped by Vienna-local
   day over the whole history: active hours, the per-day counters (messages, quiz
-  answers, writing saves, coding requests) and the coding hours. A range scan on
+  answers, writing saves, coding requests, cloze submissions) and the coding hours. A range scan on
   the PK `(user_id, hour)`.
 - **Keys** (`listOwnKeyDates`, `lib/coding-key-store.ts`) — the Vienna-local issue
   dates of the user's own coding keys, oldest first; nothing else leaves the

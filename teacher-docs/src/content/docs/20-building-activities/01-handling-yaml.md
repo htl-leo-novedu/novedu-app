@@ -37,7 +37,7 @@ One thing to get right: Novedu reads the **pushed** version, not the copy on you
 The Files page in Novedu lets you create and edit activity files without any hosting of your own. The app stores the file and serves it at a public address.
 
 1. Open the Files page and select **New file**.
-2. Give the file a name (letters, digits, hyphens, and underscores only, no spaces) and pick its kind: tutor, fragment, quiz, writing, or coding.
+2. Give the file a name (letters, digits, hyphens, and underscores only, no spaces) and pick its kind: tutor, fragment, quiz, writing, coding, or cloze.
 3. Write the YAML in the editor, or select **Upload file…** to load a file from your computer into it.
 4. Select **Validate** to check the YAML without saving, as often as you like.
 5. Select **Validate & create** to save.

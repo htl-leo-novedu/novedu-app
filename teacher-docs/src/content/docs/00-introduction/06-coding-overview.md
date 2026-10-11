@@ -17,7 +17,7 @@ As with every other kind of activity, you don't train an AI model. You write a p
 
 ## How coding differs from the other kinds
 
-Tutors, quizzes, and writing tasks all run as a page inside Novedu. A coding activity doesn't: there is no chat page in the app. Instead, the student's own coding tool connects to Novedu using the code, and every question the student asks goes through Novedu on its way to the AI. On that way through, Novedu adds your instructions and answers with the model you chose.
+Tutors, quizzes, writing tasks, and cloze exercises all run as a page inside Novedu. A coding activity doesn't: there is no chat page in the app. Instead, the student's own coding tool connects to Novedu using the code, and every question the student asks goes through Novedu on its way to the AI. On that way through, Novedu adds your instructions and answers with the model you chose.
 
 The effect: the student works in a normal programming setup, with files, a terminal, and an assistant that edits and runs code on their machine, yet the help always stays within the limits you set. Students never see your instructions or which model answers; they simply notice that the assistant teaches the way you asked it to.
 
