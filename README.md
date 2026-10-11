@@ -332,7 +332,7 @@ From source, put `NOVEDU_AUTH_MODE=demo` in `.env.local` together with empty
 lines and a `DATABASE_URL` naming a database of its own (a demo build refuses a database
 that ever had a Microsoft sign-in, and an Entra build refuses a demo database), then
 restart `npm run dev` — the mode is fixed when the server starts. The published Docker
-image also comes as **`rstropek/novedu-chat-mvp:demo`** (and `:<version>-demo`): the
+image also comes as **`ghcr.io/htl-leo-novedu/novedu-app:demo`** (and `:<version>-demo`): the
 same app built in demo mode, which the image can never leave. It needs only
 `DATABASE_URL` (password auth), `AUTH_SECRET`, `AUTH_URL` (the address visitors open,
 e.g. `http://localhost:3000` — without it the browser's sign-in fails the origin check)

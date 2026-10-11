@@ -86,6 +86,8 @@ Basic tier, **admin user disabled** (`crnovedu.azurecr.io`). One repository,
 `novedu`, holding the images the stages run. Every tag is an immutable version
 tag, `<package.json version>.<workflow run number>` (e.g. `0.1.0.126`); there is
 no `:latest` here, because a stage must always name the exact version it runs.
+The stages pull only from here, never from GHCR, so starting a container
+(including a scale-from-zero) depends on no registry outside Azure.
 
 Pushing is the pipeline's job (*Deploying and running* below). The Basic tier
 has **no retention policy**, so old versions accumulate until someone purges
@@ -477,7 +479,7 @@ built one.
 
 | Step | Where | What happens |
 |---|---|---|
-| Publish | `.github/workflows/docker-publish.yml` | QA gate, then the image is built **once** under the version tag and pushed to Docker Hub (`rstropek/novedu-chat-mvp`, the version tag plus `:latest`) — the build artifact the next step copies. |
+| Publish | `.github/workflows/docker-publish.yml` | QA gate, then the image is built **once** under the version tag and pushed to GHCR (`ghcr.io/htl-leo-novedu/novedu-app`, a public package; the version tag plus `:latest`) — the build artifact the next step copies. |
 | Deploy to dev | its `deploy-dev` job | Copies that very image registry-to-registry into `crnovedu` (same digest) and deploys it to `ca-novedu-dev`. A red `deploy-dev` leaves production untouched. |
 | Promote to prod | `.github/workflows/promote.yml`, manual | Verifies the version exists in `crnovedu` and deploys it to `ca-novedu-prod`. **No image is built.** Then publishes the teacher guide, built from that image's commit (in a job without Azure access), to `swa-novedu-docs`. |
 
@@ -519,6 +521,11 @@ what the prod identity's federated subject matches, so it is part of the trust
 chain, not a convenience. A required reviewer can be added to it without
 touching the workflow. The two `*_BASE_URL` variables carry the stages'
 custom domains, `https://dev.novedu.at` and `https://app.novedu.at`.
+
+The GHCR package **`novedu-app`** must be **Public** (package settings →
+visibility). `promote.yml` reads the image's commit from it without logging in,
+so a private package fails every promote with `unauthorized`; `compose.yaml`
+pulls its `:demo` and `:fake-llm` images from it anonymously too.
 
 ### Constraints the pipeline respects
 

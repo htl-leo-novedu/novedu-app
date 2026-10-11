@@ -23,7 +23,7 @@ run untrusted PR code.**
 | --- | --- | --- | --- |
 | **`qa.yml`** | `pull_request` to `main`, `workflow_call` | **Yes** | **No** — secret-free |
 | **`docs.yml`** | `pull_request` to `main` (teacher-docs paths) | **Yes** | **No** — secret-free |
-| **`docker-publish.yml`** | `push` to `main`, `workflow_dispatch` | No | Yes — in `build-and-push` and `build-and-push-demo` only |
+| **`docker-publish.yml`** | `push` to `main`, `workflow_dispatch` | No | **No stored secret** — `GITHUB_TOKEN` + OIDC |
 | **`promote.yml`** | `workflow_dispatch`; job `promote` in the environment `production` | No | **No stored secret** — OIDC only |
 
 - **`qa.yml`** is the per-PR quality gate (biome, typecheck, unit + component
@@ -59,8 +59,8 @@ run untrusted PR code.**
     also builds the fake LLM image, boots `compose.yaml` on both and runs
     `scripts/ci/compose-smoke.mjs` — the stack's passwords are the published
     dummies in `compose.yaml`, and its ports stay on the runner's loopback. It is **also
-    secret-free**: it never logs in to a registry and **`push: false`**, so no
-    `DOCKER_*` credentials are needed; it only **reads** the layer cache
+    secret-free**: it never logs in to a registry and **`push: false`**, so it
+    needs no registry access; it only **reads** the layer cache
     (`cache-from: type=gha` in the publish jobs' per-image scopes, no cache export —
     write is restricted for fork PR tokens). On a `main` push
     (`workflow_call`) this job is skipped because `docker-publish.yml` does the real
@@ -70,21 +70,23 @@ run untrusted PR code.**
   tests, workspace typecheck, `docs:build`. It runs untrusted fork code like
   `qa.yml`, so the same rule applies: **no secrets, no env, `contents: read`** —
   and none are needed, the docs build touches no app code.
-- **`docker-publish.yml`** holds the real secrets (`DOCKER_USERNAME` /
-  `DOCKER_PASSWORD`) — all of them in its two image-publishing jobs,
-  `build-and-push` (the production image) and `build-and-push-demo` (the `:demo`
-  image, built with `NOVEDU_AUTH_MODE=demo`, tagged `:demo` and `:<version>-demo`,
-  plus the fake LLM image `:fake-llm` / `:<version>-fake-llm` for `compose.yaml`),
-  the only places in the repo that reference a `secrets.*` value at all. Nothing
-  deploys either image: `deploy-dev` needs only `build-and-push`, and `promote.yml`'s
-  version check rejects a suffixed version. It triggers **only** on `push` to `main` (a
-  maintainer merge) and manual `workflow_dispatch`. A fork PR cannot produce a
-  push to `main`, so it can never reach these secrets. It reuses `qa.yml` via
+- **`docker-publish.yml`** builds the images and pushes them to GHCR
+  (`ghcr.io/htl-leo-novedu/novedu-app`) with the run's built-in `GITHUB_TOKEN`
+  — **no stored registry credential**. The workflow's default token is
+  `contents: read`; only its two image-publishing jobs are granted
+  `packages: write`: `build-and-push` (the production image) and
+  `build-and-push-demo` (the `:demo` image, built with `NOVEDU_AUTH_MODE=demo`,
+  tagged `:demo` and `:<version>-demo`, plus the fake LLM image `:fake-llm` /
+  `:<version>-fake-llm` for `compose.yaml`). The called `qa.yml` never gets
+  write access. Nothing deploys the demo or fake LLM image: `deploy-dev` needs
+  only `build-and-push`, and `promote.yml`'s version check rejects a suffixed
+  version. It triggers **only** on `push` to `main` (a maintainer merge) and
+  manual `workflow_dispatch`. A fork PR cannot produce a push to `main`, so it
+  can never obtain the package-write token. It reuses `qa.yml` via
   `workflow_call` as a gate, then builds/publishes/deploys.
   - The **`deploy-dev`** job hands the same image to the dev stage
-    (`docs/azure-runtime-env.md`). It is **secret-free**: it
-    reaches Azure by OIDC (below) and holds none of the Docker Hub credentials
-    above.
+    (`docs/azure-runtime-env.md`). It is **secret-free**: it reads the image
+    from GHCR with a `packages: read` token and reaches Azure by OIDC (below).
 - **`promote.yml`** deploys an image version that already sits in the Azure
   registry to the prod stage and publishes the teacher guide built from that
   image's commit (already on `main` — no PR code). No image is rebuilt. Its

@@ -88,9 +88,9 @@ az webapp config appsettings set -n novedu-chat-mvp-at -g Novedu-Chat-MVP \
 az webapp restart -n novedu-chat-mvp-at -g Novedu-Chat-MVP
 ```
 
-The image is pinned to the version the old app last ran: the pipeline still
-pushes `:latest` to Docker Hub, and a newer image would migrate the old database
-forward.
+The image is pinned to the version the old app last ran, which stays in the
+Docker Hub repository `rstropek/novedu-chat-mvp`: a newer image would migrate
+the old database forward.
 
 ## The new environment
 
