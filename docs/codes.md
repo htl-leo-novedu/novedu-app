@@ -424,7 +424,7 @@ counts a teacher's identified students through `chattersOfTeacherStatement`
 stores' subselects; only counts and dates leave that statement (`docs/home.md`). It is
 privacy-gated by the activity YAML's **`anonymous` flag, whose default is
 module-specific** (tutor/quiz default `true`; **writing defaults `false`** —
-`docs/writing.md`): when anonymous, nothing is written — chats cannot be attributed
+`docs/writing.md`; coding and cloze are always anonymous): when anonymous, nothing is written — chats cannot be attributed
 to a student. Only an activity with `anonymous: false` records `(thread_id, code,
 user_id)`; `recordUserChat` (`lib/user-chat-store.ts`, called from the runtime route
 off the response path via `after()` — only after a token-verified run got a 2xx —

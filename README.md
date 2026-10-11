@@ -39,7 +39,7 @@ See [`docs/azure-runtime-env.md`](docs/azure-runtime-env.md).
 | --- | --- |
 | **Next.js 16 app** (`app/`) | App Router UI. `app/page.tsx` is the start page — by effective role a student's code field, progress and badges, or a teacher's dashboard over their own codes ([`docs/home.md`](docs/home.md)); students and teachers set their preferences on `/settings`; `app/[code]/page.tsx` checks the code and **dispatches by its `module`** to the tutor/quiz/writing/coding/cloze renderer. Teachers create, list, and edit **codes** under `/codes` (new at `/codes/new`, edit at `/codes/edit/<code>`), author **app-hosted YAML files** under `/files` and **images** under `/images`, triage **student reports** under `/reports` ([`docs/reports.md`](docs/reports.md)), and see usage on the `/usage` dashboard. See [`docs/codes.md`](docs/codes.md). Lists filter in the DB — see [`docs/filtered-lists.md`](docs/filtered-lists.md). |
 | **Prompt-fragment core** (`lib/prompt-fragments/`) | The shared, framework-agnostic pipeline every activity kind builds on: fetch → parse YAML → Zod schema-validate → consistency-check → assemble with Handlebars. `assembleFragmentPrompt` resolves a document-level fragment block into a prompt string (a structured result, never throws); tutor, quiz, writing, coding and cloze all call it. Handlebars is confined to this module (grep-guard enforced). Fragment files can be referenced by absolute `http(s)` URL or by a path **relative** to the activity YAML, and fragment inputs may declare **defaults**. See [`docs/prompt-fragments.md`](docs/prompt-fragments.md) and [`activities/tutors/README.md`](activities/tutors/README.md) (the authoring guide). |
-| **Mastra agents** (`app/mastra/`) | The `tutor`, `quizDiscussion`, and `writing` agents resolve their instructions + model per request and persist conversations via Mastra `Memory`; the server-only graders `quizEvaluator` and `clozeEvaluator` and the eval agents `evalJudge` + `evalTutor` are never web-reachable by students (their only web callers are the teacher-only `/api/eval/*` routes). Agents are registered in `app/mastra/index.ts`. Storage is **Azure Database for PostgreSQL** via `@mastra/pg`, on the app's one shared pool, authenticated with Microsoft Entra ID (`az login` locally, Managed Identity on Azure). (The `coding` module has **no** Mastra agent — it is a thin proxy; `cloze` runs only the memory-less `clozeEvaluator` from server actions.) |
+| **Mastra agents** (`app/mastra/`) | The `tutor`, `quizDiscussion`, and `writing` agents resolve their instructions + model per request and persist conversations via Mastra `Memory`; the server-only graders `quizEvaluator` and `clozeEvaluator` and the eval agents `evalJudge` + `evalTutor` are never web-reachable by students: the graders run only from the student server actions (`submitAnswer`; `gradeCloze` / `explainCloze`), which build the prompts server-side, and the only web routes reaching `quizEvaluator` and the eval agents are the teacher-only `/api/eval/*` routes. Agents are registered in `app/mastra/index.ts`. Storage is **Azure Database for PostgreSQL** via `@mastra/pg`, on the app's one shared pool, authenticated with Microsoft Entra ID (`az login` locally, Managed Identity on Azure). (The `coding` module has **no** Mastra agent — it is a thin proxy; `cloze` runs only the memory-less `clozeEvaluator` from server actions.) |
 | **CopilotKit + AG-UI** | The chat UI is CopilotKit (`@copilotkit/react-core/v2`). Mastra agents are served to it through the AG-UI route handler at `app/api/copilotkit/[[...slug]]/route.ts`. See [`docs/chat.md`](docs/chat.md). |
 | **Coding proxy** (`app/api/coding/**`, `lib/coding-proxy.ts`, `lib/coding-key-store.ts`) | A **public**, OpenAI-compatible `POST /api/coding/v1/chat/completions` (plus `GET /api/coding/v1/models` as the sanctioned key-validity check) that authenticates with a **per-user API key** minted on the code's page (`novedu_coding_keys`; key row + code row re-verified on every request), appends the teacher's system prompt, pins the model, and streams the upstream's response straight back. See [`docs/coding.md`](docs/coding.md). |
 | **Images** (`app/images/**`, `lib/image-*.ts`) | Teacher-uploaded images stored under a configured filesystem root (`IMAGE_STORAGE_ROOT` — an Azure Files mount in production), streamed through the app on upload and served through the app's own cookie-session route `GET /api/image-content/<id>` — no signed URL of any kind, no direct-to-storage traffic. See [`docs/images.md`](docs/images.md). |
@@ -396,7 +396,7 @@ fake's models once at boot.
 ## Activities
 
 The `activities/` directory contains sample YAML for each module — `tutors/`, `quizzes/`,
-`writings/`, and `coding/` — each with its own `README.md` authoring guide (see also
+`writings/`, `coding/` and `cloze/` — each with its own `README.md` authoring guide (see also
 [`activities/README.md`](activities/README.md)). The `@novedu/cli` package (`cli/`) validates
 an activity file with the exact checks the app enforces, dumps the prompts an activity
 produces (`prompts`), runs evals against golden answers or scripted conversations
@@ -430,8 +430,8 @@ the same coding-workshop flow.
 ## Documentation
 
 Per-subsystem deep references live in [`docs/`](docs/): codes & modules
-([`codes.md`](docs/codes.md)), the start page, achievements, saved quiz results and
-Settings ([`home.md`](docs/home.md)), the registry and `codes sync`
+([`codes.md`](docs/codes.md)), the start page, achievements, saved quiz and cloze results
+and Settings ([`home.md`](docs/home.md)), the registry and `codes sync`
 ([`registry.md`](docs/registry.md)), tutor tools ([`tutor-tools.md`](docs/tutor-tools.md)),
 CLI prompt dumps and evals ([`cli-prompts.md`](docs/cli-prompts.md),
 [`cli-eval.md`](docs/cli-eval.md)), LLM diagnostics ([`diagnostics.md`](docs/diagnostics.md)),
@@ -468,10 +468,10 @@ teacher guide corpus + docs site ([`teacher-docs.md`](docs/teacher-docs.md)).
   `resourceId`, so every thread is grouped under it. A user↔chat link is written to
   `novedu_user_chats` **only** for activities that opt out of anonymity
   (`anonymous: false`); the default is module-specific (tutor/quiz default anonymous,
-  writing does not). See `docs/codes.md`. Three sanctioned exceptions record a user
+  writing does not, coding and cloze are always anonymous). See `docs/codes.md`. Three sanctioned exceptions record a user
   beside a code, each behind an explicit on-page notice: a voluntary **report** always
   records the reporter (`docs/reports.md`), a **coding key** records its holder
-  (`docs/coding.md`), and a student's **saved quiz result**, stored only on their own
+  (`docs/coding.md`), and a student's **saved quiz or cloze result**, stored only on their own
   choice and read only by them (`docs/home.md`). Full mechanics —
   the credential chain, the one shared pool, the privilege model — are in
   `docs/database.md`.

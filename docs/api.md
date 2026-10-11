@@ -228,7 +228,7 @@ any page, and its handler re-validates the session itself on top of that.
 - **`PUT /api/files/<name>`** (`app/api/files/[name]/route.ts`, teacher-only;
   the GET on the same URL stays public) — **upsert** via `upsertFileForUser`
   (`lib/file-service.ts`): create if the name is free (`kind` then required —
-  a missing one fails naming the five kinds), else a new version validated
+  a missing one fails naming the six kinds), else a new version validated
   against the **stored** kind; a supplied `kind` that mismatches the stored
   one fails **loudly** with `409` (never silently ignored; a create race on
   the name is 409 too). Body `{ kind?, content }`; `200` with

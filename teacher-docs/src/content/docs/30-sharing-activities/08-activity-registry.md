@@ -75,7 +75,7 @@ You can also add your own extra lines to an entry, for example a chapter number.
 The name in front of each entry (`welcome`, `number-systems`, `sorting` in the example) is yours to pick, and it is what your material will refer to. Two rules apply:
 
 - Lowercase letters, digits, and hyphens only, up to 64 characters.
-- Unique across the whole file, not just within a group. One list of names covers all four groups.
+- Unique across the whole file, not just within a group. One list of names covers all five groups.
 
 Pick names that will still make sense next year: a chapter slug usually beats a number.
 

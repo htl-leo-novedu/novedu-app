@@ -111,7 +111,7 @@ and never re-implement any of it.
      `ASSEMBLY_ERROR` backstop.
   Returns `{ ok: true, prompts, warnings }` or `{ ok: false, errors, warnings }` (the
   wrapper: `prompt`). Every kind funnels through this ONE pipeline — the tutor passes
-  `tutor_instructions`, writing/coding pass `instructions`, and quiz passes its two
+  `tutor_instructions`, writing/coding/cloze pass `instructions`, and quiz passes its two
   optional host texts, the top-level `instructions` + `discussion.instructions`.
 - **`host-template.ts`** — owns the **isolated `Handlebars.create()` instance** with
   the `fragment` + `array` + `file` helpers, so those helpers exist ONLY when rendering

@@ -11,7 +11,7 @@ related:
   - 10-yaml-for-teachers/04-cli-validation
 ---
 
-Every activity you build in Novedu, whether a tutor, a quiz, a writing task, or a coding activity, is a single plain-text file written in YAML. You can open and edit it in any text editor. There is no special software to install and no programming to learn: you fill in named fields, and most of what you write is ordinary teaching language, the instructions you want the AI to follow.
+Every activity you build in Novedu, whether a tutor, a quiz, a writing task, a coding activity, or a cloze exercise, is a single plain-text file written in YAML. You can open and edit it in any text editor. There is no special software to install and no programming to learn: you fill in named fields, and most of what you write is ordinary teaching language, the instructions you want the AI to follow.
 
 ## One file you can actually read
 

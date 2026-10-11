@@ -28,7 +28,7 @@ You create a code from an activity you have already written. In the Codes area y
 
 ## What students do with a code
 
-Students open the link in a browser and sign in with their school account. They then land directly in the activity: a tutor chat, a quiz, or a writing editor, depending on the kind.
+Students open the link in a browser and sign in with their school account. They then land directly in the activity: a tutor chat, a quiz, a writing editor, a coding activity's key page, or a gap text, depending on the kind.
 
 If a student only has the code text, they can open the Novedu start page and type or paste it there. The start page also remembers codes a student used recently, so returning to yesterday's activity is one click.
 

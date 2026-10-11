@@ -84,8 +84,8 @@ npx @novedu/cli prompts ./sorting-quiz.yaml --kind quiz --json \
   `validate`'s; relative `fragment_files` / `quiz_files` / `text_files` resolve
   against the activity's own location (sibling file, or sibling URL). "Offline"
   means no app server, no database and no LLM call — not "no network".
-- `--kind` accepts `tutor` (default), `quiz`, `writing` or `coding` — the same
-  caller-declared flag as `validate`. There is no `fragment` kind: a library has
+- `--kind` accepts `tutor` (default), `quiz`, `writing`, `coding` or `cloze` — the
+  same caller-declared flag as `validate`. There is no `fragment` kind: a library has
   no prompt of its own; its fragments appear **rendered in place** inside the
   activity that places them.
 - Every dump comes out of the app's own prompt builders and runtime loaders (no
@@ -480,7 +480,7 @@ activity-codes:
   welcome: cu4afwoa23
 ```
 
-- **Groups decide the module:** `quizzes`, `tutors`, `writing`, `coding`. Each
+- **Groups decide the module:** `quizzes`, `tutors`, `writing`, `coding`, `cloze`. Each
   entry gives either `file` (relative to `base-url`, which must end in `/`) or
   an absolute `url`, plus any of `start`/`end` (ISO 8601 **with an offset or
   `Z`**, whole seconds), `note`, and an `llm: {provider, model, reasoning?}`
