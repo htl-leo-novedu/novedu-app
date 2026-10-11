@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The cloze server actions (docs/cloze.md). The I/O seams are mocked — the session, the
-// code gate, the exercise load, the Mastra agent, the usage counter and telemetry — while
+// code gate, the exercise load, the Mastra agent, the usage counter, the per-gap counts
+// store and telemetry — while
 // the security-critical pure parts stay real: the result-token HMAC, the pre-pass, both
 // prompt builders, the grounding filter and `effectiveLlm`.
 
@@ -14,6 +15,7 @@ const generate = vi.hoisted(() => vi.fn());
 const emitEvent = vi.hoisted(() => vi.fn());
 const recordError = vi.hoisted(() => vi.fn());
 const recordClozeSubmission = vi.hoisted(() => vi.fn());
+const recordClozeGapCounts = vi.hoisted(() => vi.fn());
 const getAgent = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/session", () => ({ getSession }));
@@ -24,6 +26,7 @@ vi.mock("@/lib/code-store", async (importOriginal) => ({
 vi.mock("@/lib/cloze-fetch", () => ({ loadCloze }));
 vi.mock("@/app/mastra", () => ({ mastra: { getAgent } }));
 vi.mock("@/lib/usage-store", () => ({ recordClozeSubmission }));
+vi.mock("@/lib/cloze-counts-store", () => ({ recordClozeGapCounts }));
 vi.mock("@/lib/telemetry", () => ({ emitEvent, recordError }));
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
 
@@ -218,6 +221,7 @@ describe("gradeCloze", () => {
     expect(result).toEqual({ ok: false, message: "Couldn't check your answers — try again." });
     expect(generate).toHaveBeenCalledTimes(2);
     expect(recordClozeSubmission).not.toHaveBeenCalled();
+    expect(recordClozeGapCounts).not.toHaveBeenCalled();
   });
 
   it("fails with the generic message when the model call throws", async () => {
@@ -235,6 +239,22 @@ describe("gradeCloze", () => {
     await gradeCloze(gradeInput(["is going to", "", ""], "retry"));
     expect(recordClozeSubmission).toHaveBeenCalledTimes(2);
     expect(recordClozeSubmission).toHaveBeenCalledWith({ code: CODE, userId: USER });
+  });
+
+  it("adds a first round's verdicts to the per-gap counts, keyed by the reference", async () => {
+    await gradeCloze(gradeInput(["is going to", "start", ""], "first"));
+    expect(recordClozeGapCounts).toHaveBeenCalledTimes(1);
+    expect(recordClozeGapCounts).toHaveBeenCalledWith(CODE, [
+      { gap: 1, reference: "is going to", verdict: "correct" },
+      { gap: 2, reference: "starts", verdict: "partial" },
+      { gap: 3, reference: "", verdict: "correct" },
+    ]);
+  });
+
+  it("never adds a practice round to the per-gap counts", async () => {
+    await gradeCloze(gradeInput(["is going to", "", ""], "retry"));
+    expect(recordClozeSubmission).toHaveBeenCalledTimes(1);
+    expect(recordClozeGapCounts).not.toHaveBeenCalled();
   });
 
   it("reports the round content-free — no answer, reference or criteria in telemetry", async () => {
@@ -373,9 +393,10 @@ describe("explainCloze", () => {
     expect(telemetryText()).not.toContain("Note one.");
   });
 
-  it("does not meter a submission", async () => {
+  it("neither meters nor counts a submission", async () => {
     await explainCloze(input());
     expect(recordClozeSubmission).not.toHaveBeenCalled();
+    expect(recordClozeGapCounts).not.toHaveBeenCalled();
   });
 });
 

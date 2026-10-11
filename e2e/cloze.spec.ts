@@ -9,7 +9,8 @@ import { LIVE_CLOZE_URL, mintCode, VALID_CLOZE_URL } from "./code.utils";
 // returns one "Fake LLM pattern" over the non-correct gaps plus a note per gap. The
 // fixture (test-fixtures/activities/cloze/test-cloze.yaml) has three gaps: 1 "is going
 // to", 2 "starts" (hint "start"), 3 "" (nothing belongs there). Minting a code writes
-// the DB directly, hence @live-db (runs in CI). The last spec is @live-llm: a REAL
+// the DB directly, hence @live-db (runs in CI); the teacher detail page then shows the
+// per-gap counts of the first round only. The last spec is @live-llm: a REAL
 // model must honour both structured outputs (local only, `npm run test:e2e:live-llm`).
 
 test.use({ storageState: TEACHER_STORAGE_STATE });
@@ -37,14 +38,17 @@ test.describe("cloze", { tag: ["@live", "@live-db"] }, () => {
 
     await page.goto(`/codes/${code}`);
     await expect(page.getByText(code)).toBeVisible();
-    await expect(page.getByTestId("cloze-inventory")).toContainText("3 gaps");
+    await expect(page.getByTestId("cloze-first-submissions")).toContainText("0");
+    await expect(page.getByTestId("cloze-key-gap-2")).toContainText("starts");
     const html = await page.content();
     expect(html).not.toContain('class="function');
 
     expect(errors).toEqual([]);
   });
 
-  test("fill → submit → verdicts → patterns → Try again", async ({ page }) => {
+  test("fill → submit → verdicts → patterns → Try again → the detail counts round one", async ({
+    page,
+  }) => {
     test.setTimeout(120_000);
     const code = await mintCode({ module: "cloze", file: VALID_CLOZE_URL });
     await page.goto(`/${code}`);
@@ -96,6 +100,28 @@ test.describe("cloze", { tag: ["@live", "@live-db"] }, () => {
     await page.getByRole("button", { name: "Submit anyway" }).click();
     await expect(page.getByText("All 3 gaps correct.")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Practice round")).toBeVisible();
+
+    // The teacher detail counts the first submission only — the all-correct practice
+    // round would have turned gap 1 correct. The counts land off the response path.
+    const rows = page.getByTestId("cloze-gap-table").locator("tbody tr");
+    await expect(async () => {
+      await page.goto(`/codes/${code}`);
+      await expect(page.getByTestId("cloze-first-submissions")).toContainText("1", {
+        timeout: 2_000,
+      });
+    }).toPass({ timeout: 30_000 });
+    await expect(rows.nth(0)).toContainText("0 · 0%");
+    await expect(rows.nth(0).locator("td").nth(4)).toHaveText("1 · 100%");
+    await expect(rows.nth(1).locator("td").nth(3)).toHaveText("1 · 100%");
+    await expect(rows.nth(2).locator("td").nth(2)).toHaveText("1 · 100%");
+    await expect(page.getByTestId("cloze-key-gap-1").getByRole("img")).toHaveAccessibleName(
+      "0 correct, 0 partial, 1 wrong of 1",
+    );
+
+    // The /codes list shows the same number in its count column.
+    await page.goto(`/codes?owner=all&module=cloze&q=${code}`);
+    await expect(page.getByRole("columnheader", { name: "Submissions" })).toBeVisible();
+    await expect(page.getByTitle("First submissions")).toHaveText("1");
   });
 });
 

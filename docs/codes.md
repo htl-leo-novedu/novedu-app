@@ -136,7 +136,8 @@ shareable activities.
   `novedu_coding_keys` — the code string itself opens nothing. `cloze` is the
   gap-fill exercise (`docs/cloze.md`): no `runtime` either — its `gradeCloze` /
   `explainCloze` server actions run the internal `clozeEvaluator` agent — and its
-  `renderDetail` shows the code's facts and the gap inventory.
+  `renderDetail` shows the code's facts, the answer key with per-gap verdict counts
+  of first submissions and the per-gap table (`novedu_cloze_gap_counts`).
 
 Student **rendering** is also NOT a registry seam: it is a thin `switch (entry.module)`
 in `app/[code]/page.tsx` delegating to each module's own server component
@@ -315,7 +316,9 @@ they have none), window in local time (an open bound shows as **"No start"** /
 **"No end"**), an
 **interaction** count (qualifying Mastra threads under
 `resourceId = code` — `getInteractionCounts`, ONE aggregate query for the whole
-filtered set, no per-row query), a stats link, an Open link (active codes only), a
+filtered set, no per-row query; a cloze row shows its "first submissions" instead,
+from `countClozeSubmissions` — one query for the page's cloze codes — and filtered
+to cloze the column is headed "Submissions", `docs/cloze.md`), a stats link, an Open link (active codes only), a
 Copy button, and an **Edit** link. Deletion is the list's **"Delete Selected"**
 multi-delete (tick the rows, confirm; it wipes each selected code and all of its
 conversation data — see Lifecycle and `docs/filtered-lists.md`).
@@ -480,7 +483,10 @@ isolation and is unaffected.
   (kept as the hover `title`) when no name is recorded yet (see `docs/auth.md`).
   "Interaction" = a Mastra thread with ≥ 1 `role = 'user'` message (opened-but-silent
   threads do not count). **Writing** renders its savers list instead
-  (`docs/writing.md`), or falls back to `ConversationStats` when anonymous. Anonymity
+  (`docs/writing.md`), or falls back to `ConversationStats` when anonymous. **Cloze**
+  renders its facts ("First submissions"), the answer key with a verdict bar per gap
+  and the per-gap counts table (`docs/cloze.md`, "Teacher view") — counts only, never
+  an answer or a student. Anonymity
   is enforced **at the data layer**: `ConversationStats` passes the code's frozen
   `anonymous` flag into `getCodeStats`, which for an anonymous code forces every
   `userId` **and resolved name** to `null` and `studentCount` to `0` *before

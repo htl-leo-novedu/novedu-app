@@ -86,6 +86,7 @@ import {
   getInteractionCounts,
 } from "@/lib/code-stats-store";
 import {
+  clozeGapCounts,
   codes,
   codingKeys,
   quizResults,
@@ -368,12 +369,14 @@ describe("deleteCodesAndData", () => {
       writingSubmissions,
       reports,
       quizResults,
+      clozeGapCounts,
       codes,
       userChats,
       recentCodes,
       writingSubmissions,
       reports,
       quizResults,
+      clozeGapCounts,
       codes,
     ]);
   });
@@ -398,12 +401,14 @@ describe("deleteCodesAndData", () => {
       writingSubmissions,
       reports,
       quizResults,
+      clozeGapCounts,
       codes,
       userChats,
       recentCodes,
       writingSubmissions,
       reports,
       quizResults,
+      clozeGapCounts,
       codes,
     ]);
   });
@@ -421,6 +426,7 @@ describe("deleteCodesAndData", () => {
       writingSubmissions,
       reports,
       quizResults,
+      clozeGapCounts,
       codes,
     ]);
   });

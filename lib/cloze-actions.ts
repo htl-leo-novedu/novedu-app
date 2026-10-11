@@ -9,6 +9,7 @@ import {
   CLOZE_EVAL_PROVIDER,
   CLOZE_EVAL_REASONING,
 } from "@/app/mastra/cloze-agents";
+import { recordClozeGapCounts } from "@/lib/cloze-counts-store";
 import { buildClozeFeedbackMessage, buildClozeFeedbackPrompt } from "@/lib/cloze-feedback-prompt";
 import { buildClozeGradingMessage, buildClozeGradingPrompt } from "@/lib/cloze-grading-prompt";
 import { type ClozeGapNote, type ClozePattern, groundClozeFeedback } from "@/lib/cloze-grounding";
@@ -121,7 +122,8 @@ function coversExactly(output: ClozeGradingOutput | undefined, undecided: number
  * Step 1 of a submission: grades every gap. Re-verifies the session and the code,
  * reloads the exercise, requires one answer per gap, decides what the pre-pass can and
  * sends only the rest to the model. Every successful grading — practice rounds
- * included — counts as one `cloze_submissions` in the usage buckets.
+ * included — counts as one `cloze_submissions` in the usage buckets; a first-round
+ * grading also adds its verdicts to the per-gap counts (lib/cloze-counts-store.ts).
  */
 export async function gradeCloze(
   input: ClozeCodeInput & { attemptId: string; round: "first" | "retry"; answers: string[] },
@@ -167,8 +169,17 @@ export async function gradeCloze(
     getClozeResultSecret(),
   );
 
-  // Off the response path (the store never throws).
+  // Off the response path (both stores never throw). Only a FIRST submission adds to
+  // the teacher's per-gap counts; practice rounds are metered but never counted.
   after(() => recordClozeSubmission({ code: ctx.code, userId: ctx.userId }));
+  if (input.round === "first") {
+    const gaps = ctx.cloze.gaps.map((gap, i) => ({
+      gap: gap.number,
+      reference: gap.reference,
+      verdict: verdicts[i] ?? "incorrect",
+    }));
+    after(() => recordClozeGapCounts(ctx.code, gaps));
+  }
   emitEvent("cloze.graded", {
     code: ctx.code,
     round: input.round,

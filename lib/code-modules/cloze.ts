@@ -6,8 +6,9 @@ import type { CodeModuleDef } from "./registry";
 // CopilotKit runtime — there is no chat; grading and feedback run through the
 // `gradeCloze` / `explainCloze` server actions (lib/cloze-actions.ts), which call the
 // internal `clozeEvaluator` agent. It is always anonymous (the code row freezes `true`,
-// `readAnonymousFlag` answers `true`). The teacher detail shows the code's facts and the
-// current gap inventory.
+// `readAnonymousFlag` answers `true`). The teacher detail shows the code's facts, the
+// answer key with the per-gap verdict counts of first submissions, and the per-gap
+// table (lib/cloze-counts-store.ts).
 //
 // SERVER-ONLY. Calls the ClozeDetail server component as a plain function so no JSX
 // lives in this registry .ts file.

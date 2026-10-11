@@ -537,6 +537,29 @@ export const quizResults = pgTable(
   ],
 );
 
+// Per-gap verdict counts of a cloze code (docs/cloze.md → Teacher view): how many
+// FIRST submissions (practice rounds never count) answered each gap correctly,
+// partly or wrongly. Anonymous by construction — no user id, no answer text, no
+// time buckets; the only text is the teacher's own reference. Keyed by the
+// reference too, so an edited or renumbered gap starts a fresh row and stale rows
+// are never mixed in. `lib/cloze-counts-store.ts` is the only access (one
+// multi-row increment-upsert per first-round grading); rows are dropped with
+// their code (lib/code-stats-store.ts). No foreign keys.
+export const clozeGapCounts = pgTable(
+  "novedu_cloze_gap_counts",
+  {
+    code: varchar("code", { length: 32 }).notNull(),
+    gap: integer("gap").notNull(),
+    reference: text("reference").notNull(),
+    correct: integer("correct").notNull().default(0),
+    partial: integer("partial").notNull().default(0),
+    incorrect: integer("incorrect").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  // The PK's leading `code` also serves the per-code read and the delete.
+  (t) => [primaryKey({ columns: [t.code, t.gap, t.reference] })],
+);
+
 // Per-user preferences (the Settings page, docs/home.md). A table of its own
 // because `novedu_user` is owned by better-auth. A missing row means every
 // default; `lib/user-settings-store.ts` is the only access.

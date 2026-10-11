@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { iconButtonVariants } from "@/components/ui/icon-button";
 import { Input, Select } from "@/components/ui/input";
+import { countClozeSubmissions } from "@/lib/cloze-counts-store";
 import { deleteSelectedCodesAction } from "@/lib/code-actions";
 import {
   CODE_MODULES,
@@ -67,8 +68,16 @@ interface CodeRow {
   validFromSeconds: number | null;
   validUntilSeconds: number | null;
   status: WindowStatus;
-  /** Qualifying-interaction count, or null when the count query failed. */
+  /**
+   * Qualifying-interaction count (a cloze code's first submissions), or null when
+   * the count query failed.
+   */
   interactionCount: number | null;
+}
+
+/** A row's count from its query's map; null when that query failed. */
+function countOf(counts: Map<string, number> | undefined, code: string): number | null {
+  return counts === undefined ? null : (counts.get(code) ?? 0);
 }
 
 function statusBadge(status: WindowStatus) {
@@ -164,7 +173,14 @@ export default async function CodesPage({
   // One round trip for all interaction counts (no per-row query), and only for
   // the codes on THIS page. `undefined` = the count query failed; the column then
   // shows "—" rather than a wrong zero.
-  const counts = await getInteractionCounts(result.rows.map((entry) => entry.code));
+  // Cloze codes have no conversations: their count is "first submissions" from the
+  // per-gap counts store (docs/cloze.md), likewise one round trip.
+  const [counts, clozeCounts] = await Promise.all([
+    getInteractionCounts(result.rows.map((entry) => entry.code)),
+    countClozeSubmissions(
+      result.rows.filter((entry) => entry.module === "cloze").map((entry) => entry.code),
+    ),
+  ]);
   const now = new Date();
 
   const rows: CodeRow[] = result.rows.map((entry) => ({
@@ -177,7 +193,7 @@ export default async function CodesPage({
     validFromSeconds: entry.validFrom ? seconds(entry.validFrom) : null,
     validUntilSeconds: entry.validUntil ? seconds(entry.validUntil) : null,
     status: windowStatus(entry, now),
-    interactionCount: counts === undefined ? null : (counts.get(entry.code) ?? 0),
+    interactionCount: countOf(entry.module === "cloze" ? clozeCounts : counts, entry.code),
   }));
 
   const columns: ListColumn<CodeRow, keyof typeof CODE_SORT_COLUMNS>[] = [
@@ -219,9 +235,14 @@ export default async function CodesPage({
       render: (row) => <LocalTime seconds={row.validUntilSeconds} fallback="No end" />,
     },
     {
-      header: "Interactions",
+      // Filtered to cloze, the column is the module's own count ("Submissions").
+      header: moduleFilter === "cloze" ? codeModuleLabels.cloze.countColumn : "Interactions",
       kind: "numeric",
-      render: (row) => (row.interactionCount === null ? "—" : row.interactionCount),
+      render: (row) => (
+        <span title={row.module === "cloze" ? "First submissions" : undefined}>
+          {row.interactionCount === null ? "—" : row.interactionCount}
+        </span>
+      ),
     },
     {
       header: "Actions",

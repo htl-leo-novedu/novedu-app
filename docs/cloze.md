@@ -16,7 +16,8 @@ It covers the **authoring** layer (the `cloze` file kind with its strict validat
 the gap parser, the lenient runtime parser with the public projection, the generated
 JSON schema, `novedu-cli validate --kind cloze`, the `/files` editor's Cloze kind) and
 the **student activity** (the `cloze` module, the two-step grading pipeline, the
-result token, metering and `novedu-cli prompts --kind cloze`).
+result token, metering and `novedu-cli prompts --kind cloze`) and the **teacher view**
+(the per-gap counts, the detail page and the `/codes` list count).
 
 ## The YAML
 
@@ -198,8 +199,8 @@ for a cloze code, and `/info` lists none. The code row freezes `anonymous: true`
   and delegates to `render-cloze.tsx`, which loads the exercise and hands only
   `toPublicCloze(cloze)` to the client `ClozeRunner` (`app/[code]/_cloze/`). No thread
   and no thread token are minted. A load failure shows a notice.
-- **Teacher detail.** `renderDetail` is `ClozeDetail` (`app/[code]/_cloze/cloze-detail.tsx`):
-  the file link, the window, the effective model and the current gap inventory.
+- **Teacher detail.** `renderDetail` is `ClozeDetail` (`app/[code]/_cloze/cloze-detail.tsx`),
+  described under "Teacher view" below.
 - **Registry.** `codes sync` mints cloze codes from the activity registry's `cloze`
   group (`docs/registry.md`).
 
@@ -260,7 +261,9 @@ page loaded: "reload the page"). Every rejection is a fixed message.
    `references[i]` is "a possible answer", `""` = leave empty) or `{ ok: false, message }`.
    It runs the pre-pass, then — only if gaps are left — one grading call; on success
    `recordClozeSubmission` bumps `cloze_submissions` off the response path (every
-   successful grading, practice rounds included) and a content-free `cloze.graded`
+   successful grading, practice rounds included), a `round: "first"` grading adds its
+   verdicts to the per-gap counts (`recordClozeGapCounts`, also via `after()`; see
+   "Teacher view"), and a content-free `cloze.graded`
    event carries `code`, `round`, `gaps`, `modelGaps`, `latencyMs`. `round`
    (`"first"` | `"retry"`) is client-claimed.
 2. **`explainCloze({ code, attemptId, answers, verdicts, resultToken })`** →
@@ -342,6 +345,51 @@ student gets `{ title, explanation, gaps (ascending), nextTime }` and `{ gap, no
 - **Accepted trust gaps:** `round` is client-claimed, and there is no rate limit
   beyond `checkCode`.
 
+## Teacher view
+
+**Per-gap counts — `novedu_cloze_gap_counts`** (`lib/db/schema.ts`, no foreign keys):
+`code`, `gap`, `reference`, the counters `correct` / `partial` / `incorrect` and
+`updated_at`; PK `(code, gap, reference)`. No user id, no answer text, no time buckets —
+the only text is the teacher's own reference.
+
+- **`lib/cloze-counts-store.ts`** is the only access. `recordClozeGapCounts(code, gaps)`
+  writes ONE multi-row increment-upsert per first-round `gradeCloze` (a 1 in the
+  verdict's counter per gap); `listClozeGapCounts(code)` and
+  `countClozeSubmissions(codes)` read. They never throw (a failure is reported
+  through `reportStoreFailure` — a fixed message plus the SQLSTATE). The exception is
+  `deleteGapCountsForCode(executor, code)`, which runs inside the code-delete
+  transaction (`deleteCodeRows`, `lib/code-stats-store.ts`) and throws so the delete
+  rolls back.
+- **Only first submissions count** — everyone's, teachers' test runs included.
+  Practice rounds (`round: "retry"`) are metered but never counted. `round` is
+  client-claimed: a student could inflate the anonymous counts (accepted).
+- **Keyed by the reference**: an unchanged gap keeps its counts; a gap whose reference
+  or number changed starts a fresh row, and the old row is never mixed in.
+
+**Detail page** (`ClozeDetail` loads the exercise and the counts in parallel and hands
+plain data to `ClozeDetailView`, `app/[code]/_cloze/cloze-detail-view.tsx`):
+
+- **Facts**: the file link, the window, the effective model and **"First
+  submissions"** — the largest per-gap total among the code's stored rows — with the
+  note "Counts each first submission, including teachers' test runs. Practice rounds
+  aren't counted."
+- **Answer key with results** (`cloze-answer-key.tsx`): the current text read-only
+  through the student's `ClozeText`, each gap replaced by its number, reference
+  (`(empty)` for `[[]]`), hint and a compact correct/partial/wrong bar with `n`.
+- **Results per gap**: one row per current gap — reference, correct / partial / wrong
+  as count and percentage, `n`; "No submissions yet" where `n` is 0. Stored rows that
+  match no current (gap, reference) pair are hidden; when any exist, a note says that
+  the statistics of changed or renumbered gaps start from zero.
+- **Load failure**: a notice with the loader's message, then the stored counts listed
+  by gap number and reference. A failed counts read shows "—" and a notice.
+- Deliberately absent: what students wrote, who submitted, any time series, any reset
+  (deleting the code is the only reset).
+
+**`/codes` list**: a cloze row's count column shows the same "first submissions"
+number (`countClozeSubmissions`, one query for the page's cloze codes, beside the
+conversation counts of the other modules); filtered to cloze, the column is headed
+"Submissions".
+
 ## Metering
 
 `cloze_submissions` is an `int` counter in both `novedu_usage_by_code` and
@@ -387,8 +435,9 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
 - `lib/cloze-prompts.unit.test.ts` — both builders, the user-message wrappers, and the
   dump byte-identical to them.
 - `lib/cloze-actions.unit.test.ts` — check order, `checkCode` on every call, the
-  pre-pass skipping the model, the coverage retry, the token, metering, content-free
-  telemetry, and `lib/cloze-verify.ts` without `"use server"`.
+  pre-pass skipping the model, the coverage retry, the token, metering, the per-gap
+  counts only for a first round, content-free telemetry, and `lib/cloze-verify.ts`
+  without `"use server"`.
 - `lib/code-modules/cloze.unit.test.ts`, `app/[code]/render-cloze.unit.test.tsx` (the
   projection is all the runner receives), `app/[code]/page.unit.test.tsx`, the runtime
   route's `clozeEvaluator` 404s (`app/api/copilotkit/[[...slug]]/route.unit.test.ts`),
@@ -397,7 +446,13 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
   labelled inputs in tab order, the counter, the empty-gap confirmation, chips before
   the feedback, the all-correct and no-pattern lines, both failure states with their
   retry, Try again → "Practice round" with `round: "retry"` and a fresh attempt id.
+- `lib/cloze-counts-store.unit.test.ts` — the one multi-row upsert and its
+  increments, never-throw reads and writes, the throwing delete;
+  `lib/code-stats-store.unit.test.ts` — the counts deleted with the code.
+- `tests/component/cloze-detail.browser.test.tsx` — the detail body: first
+  submissions, the bars, the table with percentages, hidden stale rows + note, the
+  load-failure fallback, unavailable counts.
 - `e2e/cloze.spec.ts` (`@live-db`, fake LLM) — `/<code>` and `/codes/<code>` open
   without errors; fill → submit → verdicts → pattern → gap panel → Try again → all
-  correct. Its `@live-llm` test proves a real model honours both structured outputs
+  correct, and the detail page then counts the first round but not the practice round. Its `@live-llm` test proves a real model honours both structured outputs
   (`test-fixtures/activities/cloze/live-cloze.yaml`).

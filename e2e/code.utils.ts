@@ -156,6 +156,7 @@ export async function purgeCodes(codes: string[]): Promise<void> {
     "novedu_recent_codes",
     "novedu_writing_submissions",
     "novedu_quiz_results",
+    "novedu_cloze_gap_counts",
     "novedu_coding_keys",
     "novedu_codes",
   ]) {

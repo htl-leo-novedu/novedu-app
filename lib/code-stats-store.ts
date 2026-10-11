@@ -1,6 +1,7 @@
 import type { Message } from "@ag-ui/core";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { mastra } from "@/app/mastra";
+import { deleteGapCountsForCode } from "@/lib/cloze-counts-store";
 import { deleteCodingKeysForCodes } from "@/lib/coding-key-store";
 import { collapseReplayedRuns, toAguiMessage } from "@/lib/conversation-collapse";
 import { type DbExecutor, getDb } from "@/lib/db";
@@ -301,8 +302,9 @@ async function deleteCodeConversations(code: string): Promise<boolean> {
  * Deletes ONE code's app-owned Drizzle rows on the given executor — user_chats
  * (attribution), recent_codes (shortcuts), writing_submissions (the writing
  * module's saved texts), reports (student-submitted reports, which have NO FK
- * to the code and so must be dropped explicitly) and saved quiz results (through
- * their store, which reveals nothing about them) first, then the code row LAST
+ * to the code and so must be dropped explicitly), saved quiz results (through
+ * their store, which reveals nothing about them) and the cloze per-gap counts
+ * first, then the code row LAST
  * (while it exists the code still appears in the list, so a mid-way failure is
  * safe to retry). The coding module's key rows are NOT here — `deleteCodesAndData`
  * drops them for the whole batch in one statement before this loop. Throws on a
@@ -314,6 +316,7 @@ async function deleteCodeRows(executor: DbExecutor, code: string): Promise<void>
   await executor.delete(writingSubmissions).where(eq(writingSubmissions.code, code));
   await executor.delete(reports).where(eq(reports.code, code));
   await deleteResultsForCode(executor, code);
+  await deleteGapCountsForCode(executor, code);
   await executor.delete(codesTable).where(eq(codesTable.code, code));
 }
 
