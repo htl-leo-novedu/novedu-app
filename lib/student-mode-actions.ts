@@ -11,9 +11,10 @@ import { STUDENT_MODE_COOKIE } from "./student-mode";
 export async function enterStudentModeAction() {
   // Only real teachers may enter the simulation (the UI only offers it to
   // them; this is the enforcement). Note: deliberately NOT the effective-
-  // teacher check — it would be false once the mode is active.
-  await requireTeacher();
-  (await cookies()).set(STUDENT_MODE_COOKIE, "1", {
+  // teacher check — it would be false once the mode is active. The value binds
+  // the mode to this session (lib/student-mode.ts).
+  const session = await requireTeacher();
+  (await cookies()).set(STUDENT_MODE_COOKIE, session.session.id, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

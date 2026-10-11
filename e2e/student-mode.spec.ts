@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { STUDENT_MODE_COOKIE } from "../lib/student-mode-constants";
-import { STORAGE_STATE, TEACHER_STORAGE_STATE } from "./auth.constants";
+import { E2E_TEACHER, STORAGE_STATE, TEACHER_STORAGE_STATE } from "./auth.constants";
+import { mintSession, sessionCookie, studentModeCookie } from "./principal.utils";
 
 // "Student mode": a teacher temporarily experiences the app as a student. While
 // active, every teacher surface must deny them exactly like a real student —
@@ -45,15 +45,32 @@ test("a student gains nothing by setting the student-mode cookie", async ({ brow
   // STUDENT state plus a hand-set cookie and confirm no teacher surface opens
   // and no pill appears (the pill is teacher-only chrome).
   const context = await browser.newContext({ storageState: STORAGE_STATE });
-  await context.addCookies([
-    { name: STUDENT_MODE_COOKIE, value: "1", domain: "localhost", path: "/" },
-  ]);
+  await context.addCookies([await studentModeCookie(context)]);
   const page = await context.newPage();
 
   await page.goto("/");
   await expect(page.getByText("Student mode")).toHaveCount(0);
   await page.goto("/codes/new");
   await expect(page.getByRole("heading", { name: "Access denied" })).toBeVisible();
+
+  await context.close();
+});
+
+test("a new sign-in never inherits student mode from an earlier session", async ({ browser }) => {
+  // The cookie names the session that entered the mode. A cookie left behind
+  // (no sign-out: an expired session, a reset database, a restored browser)
+  // must not put the next session of a teacher into student mode.
+  const context = await browser.newContext({ storageState: TEACHER_STORAGE_STATE });
+  await context.addCookies([await studentModeCookie(context)]);
+  const page = await context.newPage();
+  await page.goto("/codes/new");
+  await expect(page.getByText("Student mode")).toBeVisible();
+
+  // A new sign-in: a fresh session for the same teacher, the stale cookie kept.
+  await context.addCookies([await sessionCookie(await mintSession(E2E_TEACHER, true))]);
+  await page.goto("/codes/new");
+  await expect(page.getByRole("button", { name: "Create code" })).toBeVisible();
+  await expect(page.getByText("Student mode")).toHaveCount(0);
 
   await context.close();
 });

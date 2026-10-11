@@ -1,9 +1,13 @@
 import { expect, type Page, test } from "@playwright/test";
 import { BRAND } from "../lib/brand";
-import { STUDENT_MODE_COOKIE } from "../lib/student-mode-constants";
 import { STORAGE_STATE, TEACHER_STORAGE_STATE } from "./auth.constants";
 import { watchErrors } from "./page.utils";
-import { deletePrincipal, signInFreshStudent, signInFreshTeacher } from "./principal.utils";
+import {
+  deletePrincipal,
+  signInFreshStudent,
+  signInFreshTeacher,
+  studentModeCookie,
+} from "./principal.utils";
 
 // Smoke: the start page opens without an error for every kind of visitor — a
 // student, a teacher (the dashboard), a teacher viewing as a student (the
@@ -105,9 +109,7 @@ test.describe("as the teacher principal", () => {
   });
 
   test("in view-as-student mode the start page is the student page", async ({ page, context }) => {
-    await context.addCookies([
-      { name: STUDENT_MODE_COOKIE, value: "1", domain: "localhost", path: "/" },
-    ]);
+    await context.addCookies([await studentModeCookie(context)]);
     const errors = watchErrors(page);
     await expectHomeRendered(page);
     await expect(page.getByText("Student mode")).toBeVisible();

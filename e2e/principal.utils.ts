@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
 import type { BrowserContext } from "@playwright/test";
+import { STUDENT_MODE_COOKIE } from "../lib/student-mode-constants";
 import { COOKIE_NAME } from "./auth.constants";
 import { query } from "./db";
 import { sessionCookieValue } from "./session-cookie";
@@ -67,6 +68,22 @@ export async function sessionCookie(token: string) {
     sameSite: "Lax" as const,
     expires: Math.floor(Date.now() / 1000) + SESSION_DAYS * 24 * 60 * 60,
   };
+}
+
+/**
+ * The student-mode cookie for the session signed in on `context`, as "View as
+ * student" would set it: its value is that session's id (docs/auth.md,
+ * "Student mode"), looked up from the session token in the context's cookie.
+ */
+export async function studentModeCookie(context: BrowserContext) {
+  const cookie = (await context.cookies()).find((c) => c.name === COOKIE_NAME);
+  if (!cookie) throw new Error("No session cookie in this context — sign in first.");
+  const token = decodeURIComponent(cookie.value).split(".")[0];
+  const [row] = await query<{ id: string }>(`SELECT id FROM novedu_session WHERE token = $1`, [
+    token,
+  ]);
+  if (!row) throw new Error("The context's session cookie names no novedu_session row.");
+  return { name: STUDENT_MODE_COOKIE, value: row.id, domain: "localhost", path: "/" };
 }
 
 /**

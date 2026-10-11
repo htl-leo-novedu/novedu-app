@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { STUDENT_MODE_COOKIE } from "../lib/student-mode-constants";
 import { STORAGE_STATE, TEACHER_STORAGE_STATE } from "./auth.constants";
 import { sendAndExpectReply } from "./chat.utils";
 import { LIVE_TUTOR_URL, mintCode } from "./code.utils";
+import { studentModeCookie } from "./principal.utils";
 
 // Reasoning display is TEACHER-ONLY, and "teacher-only" here means the chain of
 // thought must never be WRITTEN to a student's stream — not merely hidden in the
@@ -168,9 +168,7 @@ test("a teacher in view-as-student mode receives ZERO reasoning frames", {
   // differs. Setting it directly keeps this spec about the reasoning gate; the
   // user-menu enter/exit journey is `e2e/student-mode.spec.ts`'s job.
   expect(teacherReasoningFrames, "the teacher leg must prove this code thinks").toBeGreaterThan(0);
-  await page
-    .context()
-    .addCookies([{ name: STUDENT_MODE_COOKIE, value: "1", domain: "localhost", path: "/" }]);
+  await page.context().addCookies([await studentModeCookie(page.context())]);
 
   await captureRuntimeStreams(page);
   await page.goto(`/${code}`);

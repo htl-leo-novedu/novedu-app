@@ -7,9 +7,13 @@ import { STUDENT_MODE_COOKIE } from "@/lib/student-mode-constants";
 // ONLY teacher capability that remains is exiting the mode again.
 //
 // State lives in an httpOnly SESSION cookie (no max-age, gone when the browser
-// closes — the mode is meant to be temporary). The cookie grants nothing, it
-// only RESTRICTS: a student setting it by hand merely opts into what they
-// already are, so it needs no signing. Only entering the mode is gated (see
+// closes — the mode is meant to be temporary) whose value is the id of the
+// Novedu session that entered the mode. It applies only while that session is
+// the current one: a new sign-in, an expired session or a reset database never
+// inherits a cookie left behind (browsers restore session cookies, and a
+// `localhost` cookie spans every port). The cookie grants nothing, it only
+// RESTRICTS: a student setting it by hand merely opts into what they already
+// are, so it needs no signing. Only entering the mode is gated (see
 // lib/student-mode-actions.ts).
 //
 // Kept OUT of auth.ts on purpose: auth.ts is the auth INSTANCE (provider, tables,
@@ -19,8 +23,11 @@ import { STUDENT_MODE_COOKIE } from "@/lib/student-mode-constants";
 // Re-exported so the rule and the cookie name stay one import for server callers.
 export { STUDENT_MODE_COOKIE };
 
-export async function isStudentMode(): Promise<boolean> {
-  return (await cookies()).get(STUDENT_MODE_COOKIE)?.value === "1";
+/** The raw cookie read: does the cookie name THIS session? */
+export async function isStudentMode(session: Session | null): Promise<boolean> {
+  const sessionId = session?.session?.id;
+  if (!sessionId) return false;
+  return (await cookies()).get(STUDENT_MODE_COOKIE)?.value === sessionId;
 }
 
 export interface TeacherView {
@@ -47,7 +54,7 @@ export interface TeacherView {
  */
 export async function teacherViewForSession(session: Session | null): Promise<TeacherView> {
   const realTeacher = session?.user?.isTeacher ?? false;
-  const studentMode = realTeacher && (await isStudentMode());
+  const studentMode = realTeacher && (await isStudentMode(session));
   return { realTeacher, studentMode, effectiveTeacher: realTeacher && !studentMode };
 }
 

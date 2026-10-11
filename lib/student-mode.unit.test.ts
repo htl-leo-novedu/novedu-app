@@ -14,7 +14,7 @@ const cookies = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/session", () => ({ getSession, requireTeacher }));
 vi.mock("next/headers", () => ({ cookies }));
 
-import { studentModeCookies } from "@/tests/mocks/student-mode-cookies";
+import { studentModeCookies, TEST_SESSION_ID } from "@/tests/mocks/student-mode-cookies";
 import {
   effectiveTeacherForSession,
   getTeacherView,
@@ -25,8 +25,19 @@ import {
   teacherViewForSession,
 } from "./student-mode";
 
-const TEACHER = { user: { id: "u1", isTeacher: true } } as unknown as Session;
-const STUDENT = { user: { id: "u2", isTeacher: false } } as unknown as Session;
+const TEACHER = {
+  session: { id: TEST_SESSION_ID },
+  user: { id: "u1", isTeacher: true },
+} as unknown as Session;
+const STUDENT = {
+  session: { id: TEST_SESSION_ID },
+  user: { id: "u2", isTeacher: false },
+} as unknown as Session;
+/** The same teacher after a new sign-in: a different session id. */
+const TEACHER_NEW_SESSION = {
+  session: { id: "test-session-2" },
+  user: { id: "u1", isTeacher: true },
+} as unknown as Session;
 
 function setStudentMode(active: boolean) {
   cookies.mockResolvedValue(studentModeCookies(active));
@@ -37,11 +48,21 @@ beforeEach(() => {
 });
 
 describe("isStudentMode", () => {
-  it("is true only for the exact cookie value the mode writes", async () => {
+  it("is true only when the cookie names the current session", async () => {
     setStudentMode(true);
-    await expect(isStudentMode()).resolves.toBe(true);
-    cookies.mockResolvedValue(studentModeCookies(true, "yes"));
-    await expect(isStudentMode()).resolves.toBe(false);
+    await expect(isStudentMode(TEACHER)).resolves.toBe(true);
+    cookies.mockResolvedValue(studentModeCookies(true, "1"));
+    await expect(isStudentMode(TEACHER)).resolves.toBe(false);
+  });
+
+  it("ignores a cookie left behind by an earlier session", async () => {
+    setStudentMode(true);
+    await expect(isStudentMode(TEACHER_NEW_SESSION)).resolves.toBe(false);
+  });
+
+  it("is false without a session", async () => {
+    setStudentMode(true);
+    await expect(isStudentMode(null)).resolves.toBe(false);
   });
 });
 
@@ -60,6 +81,15 @@ describe("teacherViewForSession (the one definition of the rule)", () => {
       realTeacher: true,
       studentMode: true,
       effectiveTeacher: false,
+    });
+  });
+
+  it("starts a new session of the same teacher as a teacher, despite a stale cookie", async () => {
+    setStudentMode(true);
+    await expect(teacherViewForSession(TEACHER_NEW_SESSION)).resolves.toEqual({
+      realTeacher: true,
+      studentMode: false,
+      effectiveTeacher: true,
     });
   });
 
@@ -116,6 +146,15 @@ describe("getTeacherView (the same rule, over the session it fetches itself)", (
       realTeacher: true,
       studentMode: true,
       effectiveTeacher: false,
+    });
+  });
+
+  it("starts a new session of the same teacher as a teacher, despite a stale cookie", async () => {
+    setStudentMode(true);
+    await expect(teacherViewForSession(TEACHER_NEW_SESSION)).resolves.toEqual({
+      realTeacher: true,
+      studentMode: false,
+      effectiveTeacher: true,
     });
   });
 
