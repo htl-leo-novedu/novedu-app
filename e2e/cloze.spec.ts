@@ -10,7 +10,8 @@ import { LIVE_CLOZE_URL, mintCode, VALID_CLOZE_URL } from "./code.utils";
 // fixture (test-fixtures/activities/cloze/test-cloze.yaml) has three gaps: 1 "is going
 // to", 2 "starts" (hint "start"), 3 "" (nothing belongs there). Minting a code writes
 // the DB directly, hence @live-db (runs in CI); the teacher detail page then shows the
-// per-gap counts of the first round only. The last spec is @live-llm: a REAL
+// per-gap counts of the first round only, and only the first round offers saving the
+// result. The last spec is @live-llm: a REAL
 // model must honour both structured outputs (local only, `npm run test:e2e:live-llm`).
 
 test.use({ storageState: TEACHER_STORAGE_STATE });
@@ -46,7 +47,7 @@ test.describe("cloze", { tag: ["@live", "@live-db"] }, () => {
     expect(errors).toEqual([]);
   });
 
-  test("fill → submit → verdicts → patterns → Try again → the detail counts round one", async ({
+  test("fill → submit → verdicts → patterns → save → Try again → the detail counts round one", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -86,6 +87,10 @@ test.describe("cloze", { tag: ["@live", "@live-db"] }, () => {
     await expect(panel).toContainText("starts");
     await expect(panel).toContainText("Fake LLM note for gap 2.");
 
+    // The first round offers the saved-results choice; "This time" stores the counts.
+    await page.getByRole("button", { name: "This time" }).click();
+    await expect(page.getByText(/^Saved to your personal statistics/)).toBeVisible();
+
     // Try again: a practice round with every gap cleared.
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByText("Practice round")).toBeVisible();
@@ -100,6 +105,7 @@ test.describe("cloze", { tag: ["@live", "@live-db"] }, () => {
     await page.getByRole("button", { name: "Submit anyway" }).click();
     await expect(page.getByText("All 3 gaps correct.")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Practice round")).toBeVisible();
+    await expect(page.getByText(/Save this result/)).toHaveCount(0);
 
     // The teacher detail counts the first submission only — the all-correct practice
     // round would have turned gap 1 correct. The counts land off the response path.

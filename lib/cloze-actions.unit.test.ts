@@ -17,6 +17,9 @@ const recordError = vi.hoisted(() => vi.fn());
 const recordClozeSubmission = vi.hoisted(() => vi.fn());
 const recordClozeGapCounts = vi.hoisted(() => vi.fn());
 const getAgent = vi.hoisted(() => vi.fn());
+const storeQuizResult = vi.hoisted(() => vi.fn());
+const invalidateHome = vi.hoisted(() => vi.fn());
+const revalidatePath = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/session", () => ({ getSession }));
 vi.mock("@/lib/code-store", async (importOriginal) => ({
@@ -29,13 +32,16 @@ vi.mock("@/lib/usage-store", () => ({ recordClozeSubmission }));
 vi.mock("@/lib/cloze-counts-store", () => ({ recordClozeGapCounts }));
 vi.mock("@/lib/telemetry", () => ({ emitEvent, recordError }));
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
+vi.mock("@/lib/quiz-result-store", () => ({ saveQuizResult: storeQuizResult }));
+vi.mock("@/lib/home-data", () => ({ invalidateHome }));
+vi.mock("next/cache", () => ({ revalidatePath }));
 
 import {
   CLOZE_EVAL_INSTRUCTIONS,
   CLOZE_EVAL_MODEL,
   CLOZE_EVAL_PROVIDER,
 } from "@/app/mastra/cloze-agents";
-import { explainCloze, gradeCloze } from "@/lib/cloze-actions";
+import { explainCloze, gradeCloze, saveClozeResult } from "@/lib/cloze-actions";
 import { getClozeResultSecret, signClozeResultToken } from "@/lib/cloze-result-token";
 import { parseCloze } from "@/lib/cloze-yaml";
 import type { QuizVerdict } from "@/lib/quiz-types";
@@ -84,6 +90,7 @@ beforeEach(() => {
   loadCloze.mockResolvedValue({ ok: true, cloze });
   getAgent.mockReturnValue({ generate });
   generate.mockResolvedValue(modelVerdicts([{ gap: 2, result: "partial" }]));
+  storeQuizResult.mockResolvedValue("saved");
 });
 
 const gradeInput = (answers: string[], round: "first" | "retry" = "first") => ({
@@ -397,6 +404,114 @@ describe("explainCloze", () => {
     await explainCloze(input());
     expect(recordClozeSubmission).not.toHaveBeenCalled();
     expect(recordClozeGapCounts).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveClozeResult", () => {
+  // The mocked exercise has three gaps: a result must cover exactly three slots.
+  const valid = {
+    code: CODE,
+    attemptId: ATTEMPT.toUpperCase(),
+    counts: { correct: 1, partial: 1, incorrect: 0, unanswered: 1 },
+    total: 3,
+    mode: "this-time" as const,
+  };
+
+  it("saves the session user's counts into the shared store and invalidates their home", async () => {
+    await expect(saveClozeResult(valid)).resolves.toEqual({ ok: true, saved: true });
+    expect(storeQuizResult).toHaveBeenCalledWith(
+      USER,
+      { id: ATTEMPT, code: CODE, correct: 1, partial: 1, incorrect: 0, unanswered: 1, total: 3 },
+      "this-time",
+    );
+    expect(invalidateHome).toHaveBeenCalledWith(USER);
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+    // Nothing about the exercise comes back.
+    expect(JSON.stringify(await saveClozeResult(valid))).not.toMatch(/SECRET|is going to/);
+  });
+
+  it.each(["this-time", "always", "automatic"] as const)(
+    "passes mode %s to the store",
+    async (mode) => {
+      await saveClozeResult({ ...valid, mode });
+      expect(storeQuizResult).toHaveBeenCalledWith(USER, expect.anything(), mode);
+    },
+  );
+
+  it("an automatic save with the setting off is not an error: saved = false, nothing invalidated", async () => {
+    storeQuizResult.mockResolvedValue("not-saved");
+    await expect(saveClozeResult({ ...valid, mode: "automatic" })).resolves.toEqual({
+      ok: true,
+      saved: false,
+    });
+    expect(invalidateHome).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["an attempt id that is not a uuid", { attemptId: "attempt-1" }],
+    ["an unknown mode", { mode: "forever" }],
+    ["a negative count", { counts: { correct: 3, partial: 1, incorrect: -1, unanswered: 0 } }],
+    ["a fractional count", { counts: { correct: 1.5, partial: 1.5, incorrect: 0, unanswered: 0 } }],
+    [
+      "a count beyond int4",
+      { counts: { correct: 2 ** 31, partial: 0, incorrect: 0, unanswered: 0 }, total: 2 ** 31 },
+    ],
+    [
+      "a count that is a string",
+      { counts: { correct: "1", partial: 1, incorrect: 0, unanswered: 1 } },
+    ],
+    ["counts that don't sum to total", { total: 4 }],
+    ["nothing answered", { counts: { correct: 0, partial: 0, incorrect: 0, unanswered: 3 } }],
+    ["missing counts", { counts: undefined }],
+  ])("rejects %s — before any I/O", async (_name, override) => {
+    const result = await saveClozeResult({ ...valid, ...override } as typeof valid);
+    expect(result.ok).toBe(false);
+    expect(getSession).not.toHaveBeenCalled();
+    expect(storeQuizResult).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["fewer", { counts: { correct: 1, partial: 1, incorrect: 0, unanswered: 0 }, total: 2 }],
+    ["more", { counts: { correct: 1, partial: 1, incorrect: 0, unanswered: 2 }, total: 4 }],
+  ])("rejects a total with %s slots than the re-loaded exercise has gaps", async (_, override) => {
+    const result = await saveClozeResult({ ...valid, ...override });
+    expect(result).toEqual({ ok: false, message: expect.stringContaining("exercise changed") });
+    expect(storeQuizResult).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["no session", () => getSession.mockResolvedValue(null)],
+    ["an unknown code", () => checkCode.mockResolvedValue({ ok: false, reason: "unknown-code" })],
+    ["an expired code", () => checkCode.mockResolvedValue({ ok: false, reason: "expired" })],
+    [
+      "a code of another module",
+      () => checkCode.mockResolvedValue({ ok: true, entry: { ...entry, module: "quiz" } }),
+    ],
+  ])("rejects %s without touching the store", async (_name, arrange) => {
+    arrange();
+    const result = await saveClozeResult(valid);
+    expect(result.ok).toBe(false);
+    expect(storeQuizResult).not.toHaveBeenCalled();
+  });
+
+  it("re-runs checkCode on every call", async () => {
+    await saveClozeResult(valid);
+    await saveClozeResult(valid);
+    expect(checkCode).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a deleted code and a store failure as messages, never throws", async () => {
+    storeQuizResult.mockResolvedValue("code-gone");
+    await expect(saveClozeResult(valid)).resolves.toEqual({
+      ok: false,
+      message: expect.stringContaining("no longer exists"),
+    });
+    storeQuizResult.mockResolvedValue(undefined);
+    await expect(saveClozeResult(valid)).resolves.toEqual({
+      ok: false,
+      message: expect.stringContaining("could not be saved"),
+    });
+    expect(invalidateHome).not.toHaveBeenCalled();
   });
 });
 

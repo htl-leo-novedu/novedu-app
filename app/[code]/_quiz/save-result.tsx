@@ -6,7 +6,7 @@ import { Spinner } from "@/components/spinner";
 import { Button } from "@/components/ui/button";
 import { cardVariants } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field";
-import { saveQuizResult } from "@/lib/quiz-actions";
+import { type SaveQuizResultResult, saveQuizResult } from "@/lib/quiz-actions";
 import { cn } from "@/lib/utils";
 
 // The Finish page's "save to your personal statistics" step (docs/home.md →
@@ -16,7 +16,9 @@ import { cn } from "@/lib/utils";
 // setting, so a stale "on" can never save) and says so, linking to Settings.
 // An automatic save that finds the setting off falls back to asking. A failure
 // shows its message and keeps the choices, so the student can try again.
-// Never mounted for an attempt with nothing answered.
+// Never mounted for an attempt with nothing answered. Shared with the cloze
+// results screen, which passes its own `save` action (`saveClozeResult`); both
+// write the same store under the same setting.
 
 export interface AttemptCounts {
   correct: number;
@@ -24,6 +26,15 @@ export interface AttemptCounts {
   incorrect: number;
   unanswered: number;
 }
+
+/** A save action: `saveQuizResult` or `saveClozeResult` (the same input and result). */
+export type SaveAction = (input: {
+  code: string;
+  attemptId: string;
+  counts: AttemptCounts;
+  total: number;
+  mode: "this-time" | "always" | "automatic";
+}) => Promise<SaveQuizResultResult>;
 
 type State =
   | { kind: "ask"; error?: string }
@@ -43,6 +54,7 @@ export function SaveResult({
   counts,
   total,
   autoSave,
+  save: saveAction = saveQuizResult,
 }: {
   code: string;
   attemptId: string;
@@ -50,6 +62,8 @@ export function SaveResult({
   total: number;
   /** The user's setting at page render — a display hint; the server decides. */
   autoSave: boolean;
+  /** The server action that saves; the quiz's by default. */
+  save?: SaveAction;
 }) {
   const [state, setState] = useState<State>(autoSave ? { kind: "saving" } : { kind: "ask" });
   const autoStarted = useRef(false);
@@ -57,7 +71,7 @@ export function SaveResult({
   async function save(mode: "this-time" | "always" | "automatic") {
     setState({ kind: "saving" });
     // A dropped connection rejects the call; it must not escape the effect below.
-    const result = await saveQuizResult({ code, attemptId, counts, total, mode }).catch(() => ({
+    const result = await saveAction({ code, attemptId, counts, total, mode }).catch(() => ({
       ok: false as const,
       message: "Your result could not be saved right now. Please try again.",
     }));

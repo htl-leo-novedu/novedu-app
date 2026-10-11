@@ -96,7 +96,7 @@ export default async function CodePage({ params }: { params: Promise<{ code: str
     case "cloze":
       // No thread either: the exercise is graded by its own server actions, which
       // re-verify the code on every submission.
-      return <RenderCloze entry={entry} code={code} />;
+      return <RenderCloze entry={entry} code={code} userId={userId} />;
     default: {
       const exhaustive: never = entry.module;
       return exhaustive;

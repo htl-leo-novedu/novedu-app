@@ -8,8 +8,10 @@ import { assert, describe, expect, it, vi } from "vitest";
 // `toPublicCloze` stay real.
 
 const loadCloze = vi.hoisted(() => vi.fn());
+const getUserSettings = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/cloze-fetch", () => ({ loadCloze }));
+vi.mock("@/lib/user-settings-store", () => ({ getUserSettings }));
 vi.mock("./_cloze/cloze-runner", () => ({
   ClozeRunner: (props: object) => (
     <div data-testid="cloze-runner" data-props={JSON.stringify(props)} />
@@ -39,16 +41,36 @@ describe("RenderCloze", () => {
       ok: true,
       cloze: { ...parsed.cloze, instructionsPreamble: "SECRET-PREAMBLE" },
     });
-    const html = renderToStaticMarkup(await RenderCloze({ entry, code: "a1b2c3d4e5" }));
+    const html = renderToStaticMarkup(
+      await RenderCloze({ entry, code: "a1b2c3d4e5", userId: "student-1" }),
+    );
     expect(html).toContain('data-testid="cloze-runner"');
     expect(html).toContain("Sue&#x27;s week");
     expect(html).toContain("start");
     expect(html).not.toContain("SECRET");
   });
 
+  it("passes the user's result-save setting as the runner's autoSave hint", async () => {
+    loadCloze.mockResolvedValue({ ok: true, cloze: parsed.cloze });
+    getUserSettings.mockResolvedValue({ saveQuizResults: true });
+    const on = renderToStaticMarkup(
+      await RenderCloze({ entry, code: "a1b2c3d4e5", userId: "student-1" }),
+    );
+    expect(getUserSettings).toHaveBeenCalledWith("student-1");
+    expect(on).toContain("&quot;autoSave&quot;:true");
+    // A failed settings read asks.
+    getUserSettings.mockResolvedValue(undefined);
+    const failed = renderToStaticMarkup(
+      await RenderCloze({ entry, code: "a1b2c3d4e5", userId: "student-1" }),
+    );
+    expect(failed).toContain("&quot;autoSave&quot;:false");
+  });
+
   it("shows a friendly notice when the exercise cannot be loaded", async () => {
     loadCloze.mockResolvedValue({ ok: false, message: "This exercise could not be found." });
-    const html = renderToStaticMarkup(await RenderCloze({ entry, code: "a1b2c3d4e5" }));
+    const html = renderToStaticMarkup(
+      await RenderCloze({ entry, code: "a1b2c3d4e5", userId: "student-1" }),
+    );
     expect(html).toContain("This exercise cannot be opened");
     expect(html).toContain("This exercise could not be found.");
   });

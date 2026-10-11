@@ -61,6 +61,7 @@ export function ClozeResults({
   feedback,
   onRetryFeedback,
   onTryAgain,
+  save,
 }: {
   text: string;
   gaps: ClozeGapPublic[];
@@ -68,6 +69,8 @@ export function ClozeResults({
   feedback: Feedback;
   onRetryFeedback: () => void;
   onTryAgain: () => void;
+  /** The "save this result" offer — only after a first round with an answer. */
+  save?: ReactNode;
 }) {
   const { verdicts, answers, references } = graded;
   const total = verdicts.length;
@@ -167,6 +170,8 @@ export function ClozeResults({
           />
         </div>
       </section>
+
+      {save}
 
       <section className={cardVariants({ pad: "section" })}>
         <ClozeText text={text} renderGap={renderChip} />

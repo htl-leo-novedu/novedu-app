@@ -16,8 +16,9 @@ It covers the **authoring** layer (the `cloze` file kind with its strict validat
 the gap parser, the lenient runtime parser with the public projection, the generated
 JSON schema, `novedu-cli validate --kind cloze`, the `/files` editor's Cloze kind) and
 the **student activity** (the `cloze` module, the two-step grading pipeline, the
-result token, metering and `novedu-cli prompts --kind cloze`) and the **teacher view**
-(the per-gap counts, the detail page and the `/codes` list count).
+result token, metering and `novedu-cli prompts --kind cloze`) the **teacher view**
+(the per-gap counts, the detail page and the `/codes` list count) and **saved
+results** (a first round's counts in the shared quiz-result store).
 
 ## The YAML
 
@@ -239,9 +240,12 @@ nothing else. Answers live in page state only: a reload starts over.
   first non-correct gap) shows "Your answer", "A possible answer" (`(leave empty)` for
   an empty reference) and its note. Pattern and note text from the model is rendered
   as plain text, never Markdown.
+- **Saving.** After a first round with at least one non-empty answer, the shared
+  `SaveResult` choice ("Save this result to your personal statistics?") sits under the
+  feedback card, wired to `saveClozeResult` (see "Saved results").
 - **Try again** clears every gap, mints a new attempt id and switches to
-  `round: "retry"`; the header shows "Practice round" from then on. A feedback that
-  arrives after Try again is dropped.
+  `round: "retry"`; the header shows "Practice round" from then on and no save is
+  offered. A feedback that arrives after Try again is dropped.
 - **Errors.** A failed `gradeCloze` keeps the answers and shows its message under the
   Submit button (submitting again retries). A failed `explainCloze` keeps the verdicts
   and offers **Retry**, which re-calls only `explainCloze` with the same token.
@@ -340,7 +344,9 @@ student gets `{ title, explanation, gaps (ascending), nextTime }` and `{ gap, no
 - **`lib/cloze-verify.ts` carries no `"use server"`** (guard-tested): it returns the
   loaded exercise, and as a server action it would leak the references and
   `evaluation`. `lib/cloze-actions.ts` re-exports nothing.
-- **Anonymous.** No user↔answer link is stored; telemetry carries ids, counts and
+- **Anonymous.** No user↔answer link is stored: the per-gap counts carry no user id,
+  and the only user↔code row is a saved result the student chose to keep (counts
+  only, the sanctioned `novedu_quiz_results` link). Telemetry carries ids, counts and
   durations only — never an answer, a reference or feedback text.
 - **Accepted trust gaps:** `round` is client-claimed, and there is no rate limit
   beyond `checkCode`.
@@ -390,6 +396,23 @@ number (`countClozeSubmissions`, one query for the page's cloze codes, beside th
 conversation counts of the other modules); filtered to cloze, the column is headed
 "Submissions".
 
+## Saved results
+
+A student may keep a FIRST round's counts — never an answer — in the shared
+`novedu_quiz_results` store (`docs/home.md`, "Saving a quiz result" → "Cloze results"):
+one slot per gap, an empty wrong gap counting as unanswered. The results screen
+reuses the quiz's `SaveResult` (No / This time / Always, the same `save_quiz_results`
+setting and notice; `render-cloze.tsx` reads the setting as the display hint). It is
+never offered for a practice round or when nothing was answered.
+
+`saveClozeResult` (`lib/cloze-actions.ts`) mirrors `saveQuizResult`: cheap checks
+first (uuid attempt id, mode, non-negative int4 counts summing to `total`, at least
+one answer), then session → `checkCode()` → `module === "cloze"` → the exercise
+reloaded → `total === gapCount`, then the store's one transaction (advisory lock on
+`(user, code)`, the code row `FOR SHARE`, insert, prune). Scores, medals, refresh
+nudges, the quiz badges and XP treat a saved cloze result like a quiz's; the start
+page and Settings say "quiz or exercise" there.
+
 ## Metering
 
 `cloze_submissions` is an `int` counter in both `novedu_usage_by_code` and
@@ -436,8 +459,10 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
   dump byte-identical to them.
 - `lib/cloze-actions.unit.test.ts` — check order, `checkCode` on every call, the
   pre-pass skipping the model, the coverage retry, the token, metering, the per-gap
-  counts only for a first round, content-free telemetry, and `lib/cloze-verify.ts`
-  without `"use server"`.
+  counts only for a first round, content-free telemetry, `saveClozeResult`'s
+  validations (incl. `total === gapCount`), and `lib/cloze-verify.ts` without
+  `"use server"`; `lib/quiz-result-isolation.unit.test.ts` allows the cloze actions
+  only the store's `saveQuizResult`.
 - `lib/code-modules/cloze.unit.test.ts`, `app/[code]/render-cloze.unit.test.tsx` (the
   projection is all the runner receives), `app/[code]/page.unit.test.tsx`, the runtime
   route's `clozeEvaluator` 404s (`app/api/copilotkit/[[...slug]]/route.unit.test.ts`),
@@ -445,7 +470,8 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
 - `tests/component/cloze-runner.browser.test.tsx` — the runner with mocked actions:
   labelled inputs in tab order, the counter, the empty-gap confirmation, chips before
   the feedback, the all-correct and no-pattern lines, both failure states with their
-  retry, Try again → "Practice round" with `round: "retry"` and a fresh attempt id.
+  retry, Try again → "Practice round" with `round: "retry"` and a fresh attempt id,
+  and the save offer (first rounds with an answer only, the counts it saves).
 - `lib/cloze-counts-store.unit.test.ts` — the one multi-row upsert and its
   increments, never-throw reads and writes, the throwing delete;
   `lib/code-stats-store.unit.test.ts` — the counts deleted with the code.
@@ -454,5 +480,6 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
   load-failure fallback, unavailable counts.
 - `e2e/cloze.spec.ts` (`@live-db`, fake LLM) — `/<code>` and `/codes/<code>` open
   without errors; fill → submit → verdicts → pattern → gap panel → Try again → all
-  correct, and the detail page then counts the first round but not the practice round. Its `@live-llm` test proves a real model honours both structured outputs
+  correct, with the first round's result saved, and the detail page then counts the
+  first round but not the practice round. Its `@live-llm` test proves a real model honours both structured outputs
   (`test-fixtures/activities/cloze/live-cloze.yaml`).

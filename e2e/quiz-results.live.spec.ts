@@ -273,10 +273,10 @@ test("seeded results show on the start page, the Settings page deletes them, bad
     // the browser's router cache — counts and deletes them; the earned badges stay.
     await page.getByRole("button", { name: /Quinn Quizzer/ }).click();
     await page.getByRole("menuitem", { name: "Settings" }).click();
-    await expect(page.getByText("You have 2 saved quiz results.")).toBeVisible();
+    await expect(page.getByText("You have 2 saved results.")).toBeVisible();
     await page.getByRole("button", { name: "Delete my saved results" }).click();
     await page.getByRole("button", { name: "Delete", exact: true }).click();
-    await expect(page.getByText("You have no saved quiz results.")).toBeVisible();
+    await expect(page.getByText("You have no saved results.")).toBeVisible();
     // Back (no reload) must not restore the deleted medals from that cache.
     await page.goBack();
     await expect(page.getByText(/^Save a result on a quiz's summary page/)).toBeVisible();

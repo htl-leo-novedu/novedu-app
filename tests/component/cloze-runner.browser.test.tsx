@@ -7,12 +7,19 @@ import { type ClozePublic, clozeGapPlaceholder } from "@/lib/cloze-types";
 // reading order, the counter, the empty-gap confirmation, the verdict chips that show
 // as soon as `gradeCloze` returns (before the feedback), both failure states with
 // their retry, and Try again → a "Practice round" with `round: "retry"` and a fresh
-// attempt id. The two server actions are mocked; their verification, the pre-pass,
-// the grounding and the token live in lib/cloze-actions.unit.test.ts.
+// attempt id, and the "save this result" offer — only after a first round with an
+// answer, saving through `saveClozeResult`. The server actions are mocked; their
+// verification, the pre-pass, the grounding, the token and the save's validations live
+// in lib/cloze-actions.unit.test.ts.
 
 const gradeCloze = vi.hoisted(() => vi.fn());
 const explainCloze = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/cloze-actions", () => ({ gradeCloze, explainCloze }));
+const saveClozeResult = vi.hoisted(() => vi.fn());
+// The shared save offer imports the quiz's action as its default; it must never run.
+const saveQuizResult = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/quiz-actions", () => ({ saveQuizResult }));
+vi.mock("next/link", () => import("@/tests/mocks/next-link"));
+vi.mock("@/lib/cloze-actions", () => ({ gradeCloze, explainCloze, saveClozeResult }));
 
 import { ClozeRunner } from "@/app/[code]/_cloze/cloze-runner";
 
@@ -74,7 +81,7 @@ async function fillAll(screen: Awaited<ReturnType<typeof render>>) {
 }
 
 test("renders the text with one labelled input per gap, in reading order, with its hint", async () => {
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await expect.element(screen.getByRole("heading", { name: "Sue's fresh start" })).toBeVisible();
   await expect.element(screen.getByText("Complete the whole text")).toBeVisible();
   await expect.element(screen.getByRole("heading", { name: "A plan" })).toBeVisible();
@@ -92,7 +99,7 @@ test("renders the text with one labelled input per gap, in reading order, with i
 });
 
 test("counts the filled gaps; typing keeps the focus in the gap", async () => {
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await expect.element(screen.getByText("0 / 3")).toBeVisible();
   await screen.getByRole("textbox", { name: "Gap 2" }).click();
   await userEvent.keyboard("starts");
@@ -105,7 +112,7 @@ test("counts the filled gaps; typing keeps the focus in the gap", async () => {
 });
 
 test("empty gaps ask for confirmation before submitting", async () => {
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await screen.getByRole("textbox", { name: "Gap 1" }).fill("will");
   await screen.getByRole("button", { name: "Submit exercise" }).click();
   await expect.element(screen.getByText("2 gaps are empty — submit anyway?")).toBeVisible();
@@ -126,7 +133,7 @@ test("empty gaps ask for confirmation before submitting", async () => {
 test("verdict chips show before the feedback; the feedback then fills in", async () => {
   const explained = deferred<typeof FEEDBACK>();
   explainCloze.mockReturnValue(explained.promise);
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await fillAll(screen);
   await screen.getByRole("button", { name: "Submit exercise" }).click();
 
@@ -170,7 +177,7 @@ test("verdict chips show before the feedback; the feedback then fills in", async
 
 test("all gaps correct: no feedback call", async () => {
   gradeCloze.mockResolvedValue({ ...GRADED, verdicts: ["correct", "correct", "correct"] });
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await fillAll(screen);
   await screen.getByRole("button", { name: "Submit exercise" }).click();
   await expect.element(screen.getByText("All 3 gaps correct.")).toBeVisible();
@@ -180,7 +187,7 @@ test("all gaps correct: no feedback call", async () => {
 test("no surviving pattern over several misses says so", async () => {
   gradeCloze.mockResolvedValue({ ...GRADED, verdicts: ["incorrect", "partial", "incorrect"] });
   explainCloze.mockResolvedValue({ ok: true, patterns: [], gapNotes: [] });
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await fillAll(screen);
   await screen.getByRole("button", { name: "Submit exercise" }).click();
   await expect
@@ -193,7 +200,7 @@ test("a failed grading keeps the answers and lets the student submit again", asy
     ok: false,
     message: "Couldn't check your answers — try again.",
   });
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await fillAll(screen);
   await screen.getByRole("button", { name: "Submit exercise" }).click();
   await expect
@@ -212,7 +219,7 @@ test("a failed feedback keeps the verdicts and retries only the feedback", async
     ok: false,
     message: "Couldn't load the feedback — try again.",
   });
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await fillAll(screen);
   await screen.getByRole("button", { name: "Submit exercise" }).click();
   await expect
@@ -227,7 +234,7 @@ test("a failed feedback keeps the verdicts and retries only the feedback", async
 });
 
 test("Try again clears the gaps for a practice round with a fresh attempt", async () => {
-  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} />);
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
   await expect.element(screen.getByText("Practice round")).not.toBeInTheDocument();
   await fillAll(screen);
   await screen.getByRole("button", { name: "Submit exercise" }).click();
@@ -246,4 +253,43 @@ test("Try again clears the gaps for a practice round with a fresh attempt", asyn
   expect(first.round).toBe("first");
   expect(retry.round).toBe("retry");
   expect(retry.attemptId).not.toBe(first.attemptId);
+});
+
+test("a first round offers the save and saves the counts through saveClozeResult", async () => {
+  saveClozeResult.mockResolvedValue({ ok: true, saved: true });
+  gradeCloze.mockResolvedValue({ ...GRADED, verdicts: ["incorrect", "partial", "incorrect"] });
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
+  await screen.getByRole("textbox", { name: "Gap 1" }).fill("will");
+  await screen.getByRole("textbox", { name: "Gap 2" }).fill("start");
+  await screen.getByRole("button", { name: "Submit exercise" }).click();
+  await screen.getByRole("button", { name: "Submit anyway" }).click();
+
+  await screen.getByRole("button", { name: "This time" }).click();
+  await expect.element(screen.getByText(/Saved to your personal statistics/)).toBeVisible();
+  // Gap 3 was left empty and is wrong: "unanswered", not "incorrect".
+  expect(saveClozeResult).toHaveBeenCalledWith({
+    code: CODE,
+    attemptId: gradeCloze.mock.calls[0]?.[0].attemptId,
+    counts: { correct: 0, partial: 1, incorrect: 1, unanswered: 1 },
+    total: 3,
+    mode: "this-time",
+  });
+  expect(saveQuizResult).not.toHaveBeenCalled();
+});
+
+test("no save offer for a practice round or when nothing was answered", async () => {
+  gradeCloze.mockResolvedValue({ ...GRADED, verdicts: ["incorrect", "incorrect", "correct"] });
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
+  await screen.getByRole("button", { name: "Submit exercise" }).click();
+  await screen.getByRole("button", { name: "Submit anyway" }).click();
+  await expect.element(screen.getByText("Your feedback")).toBeVisible();
+  await expect.element(screen.getByText(/Save this result/)).not.toBeInTheDocument();
+
+  await screen.getByRole("button", { name: "Try again" }).click();
+  await fillAll(screen);
+  await screen.getByRole("button", { name: "Submit exercise" }).click();
+  await expect.element(screen.getByText("Your feedback")).toBeVisible();
+  await expect.element(screen.getByText("Practice round")).toBeVisible();
+  await expect.element(screen.getByText(/Save this result/)).not.toBeInTheDocument();
+  expect(saveClozeResult).not.toHaveBeenCalled();
 });

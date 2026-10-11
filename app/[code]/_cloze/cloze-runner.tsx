@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { cardVariants } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { explainCloze, gradeCloze } from "@/lib/cloze-actions";
+import { explainCloze, gradeCloze, saveClozeResult } from "@/lib/cloze-actions";
 import { type ClozePublic, MAX_CLOZE_ANSWER_LENGTH } from "@/lib/cloze-types";
 import { cn } from "@/lib/utils";
 import { MarkdownRenderer } from "../../markdown-renderer";
+import { SaveResult } from "../_quiz/save-result";
 import { ClozeResults, type Feedback, type Graded } from "./cloze-results";
 import { ClozeText } from "./cloze-text";
 
@@ -22,15 +23,37 @@ import { ClozeText } from "./cloze-text";
 // needs for the consolidated feedback (patterns + per-gap notes); the verdict chips
 // show as soon as step 1 returns, the feedback fills in after step 2 (skipped when
 // every gap is correct). Try again clears the gaps for a PRACTICE round (`round:
-// "retry"`, never counted). The code travels with every action so the server
-// re-verifies it; answers live in page state only — a reload starts over.
+// "retry"`, never counted). After a FIRST round with at least one answer, the results
+// screen offers the quiz's "save to your personal statistics" choice (`SaveResult` with
+// `saveClozeResult`, docs/home.md) — never for a practice round. The code travels with
+// every action so the server re-verifies it; answers live in page state only — a reload
+// starts over.
 
 const RUNNER = "mx-auto flex w-full max-w-5xl flex-col gap-4";
 const MUTED = "text-foreground/60 text-sm";
 
 type Round = "first" | "retry";
 
-export function ClozeRunner({ code, cloze }: { code: string; cloze: ClozePublic }) {
+/** A graded round's slot counts for the saved result — an empty wrong gap is "unanswered". */
+function resultCounts({ verdicts, answers }: Graded) {
+  const counts = { correct: 0, partial: 0, incorrect: 0, unanswered: 0 };
+  verdicts.forEach((verdict, i) => {
+    if (verdict === "incorrect" && (answers[i] ?? "").trim() === "") counts.unanswered += 1;
+    else counts[verdict] += 1;
+  });
+  return counts;
+}
+
+export function ClozeRunner({
+  code,
+  cloze,
+  autoSave,
+}: {
+  code: string;
+  cloze: ClozePublic;
+  /** The user's result-save setting at page render — a display hint; the server decides. */
+  autoSave: boolean;
+}) {
   const total = cloze.gaps.length;
   const [answers, setAnswers] = useState<string[]>(() => cloze.gaps.map(() => ""));
   // The attempt's identity, minted on page load and again on Try again.
@@ -189,6 +212,18 @@ export function ClozeRunner({ code, cloze }: { code: string; cloze: ClozePublic 
           feedback={feedback}
           onRetryFeedback={() => void explain(graded)}
           onTryAgain={tryAgain}
+          save={
+            round === "first" && graded.answers.some((answer) => answer.trim() !== "") ? (
+              <SaveResult
+                code={code}
+                attemptId={graded.attemptId}
+                counts={resultCounts(graded)}
+                total={total}
+                autoSave={autoSave}
+                save={saveClozeResult}
+              />
+            ) : null
+          }
         />
       ) : (
         <section className={cardVariants({ pad: "section" })}>

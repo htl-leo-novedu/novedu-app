@@ -24,14 +24,14 @@ test("reached from the user menu; the quiz-results switch persists", {
     await page.getByRole("menuitem", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings$/);
     await expect(page.getByText(`${BRAND} / Settings`, { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Quiz results" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Quiz and exercise results" })).toBeVisible();
 
     const toggle = page.getByRole("switch", {
-      name: "Save my quiz results for my personal statistics",
+      name: "Save my quiz and exercise results for my personal statistics",
     });
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(page.getByText(/Only you can see them — your teacher cannot\./)).toBeVisible();
-    await expect(page.getByText("You have no saved quiz results.")).toBeVisible();
+    await expect(page.getByText("You have no saved results.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Delete my saved results" })).toBeDisabled();
 
     await toggle.click();
@@ -39,7 +39,9 @@ test("reached from the user menu; the quiz-results switch persists", {
     await expect(toggle).toBeEnabled();
     await page.reload();
     await expect(
-      page.getByRole("switch", { name: "Save my quiz results for my personal statistics" }),
+      page.getByRole("switch", {
+        name: "Save my quiz and exercise results for my personal statistics",
+      }),
     ).toHaveAttribute("aria-checked", "true");
     expect(errors).toEqual([]);
   } finally {

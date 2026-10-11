@@ -1,6 +1,7 @@
 "use server";
 
 import { RequestContext } from "@mastra/core/request-context";
+import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { mastra } from "@/app/mastra";
 import {
@@ -35,7 +36,9 @@ import {
   verifyAndLoadCloze,
   verifyClozeCode,
 } from "@/lib/cloze-verify";
+import { invalidateHome } from "@/lib/home-data";
 import { providerUnavailableReason } from "@/lib/llm/availability";
+import { type SaveMode, saveQuizResult as storeQuizResult } from "@/lib/quiz-result-store";
 import { withTruncationRetry } from "@/lib/quiz-truncation-retry";
 import type { QuizVerdict } from "@/lib/quiz-types";
 import { emitEvent, recordError } from "@/lib/telemetry";
@@ -57,7 +60,9 @@ import { recordClozeSubmission } from "@/lib/usage-store";
 //      matching token, then the grounding filter.
 //
 // Both calls run the memory-less `clozeEvaluator` agent: nothing about an attempt is
-// persisted. Telemetry is content-free (ids, counts, durations — never an answer, a
+// persisted but the anonymous per-gap counts of a first round. Only on the student's
+// explicit choice does `saveClozeResult` store a first round's COUNTS in the shared
+// saved-results store (lib/quiz-result-store.ts, docs/home.md). Telemetry is content-free (ids, counts, durations — never an answer, a
 // reference or feedback text).
 //
 // The verification preamble lives in the non-`"use server"` lib/cloze-verify.ts —
@@ -81,6 +86,9 @@ export type GradeClozeResult =
 export type ExplainClozeResult =
   | { ok: true; patterns: ClozePattern[]; gapNotes: ClozeGapNote[] }
   | { ok: false; message: string };
+
+/** Same shape as the quiz's save result, so the shared `SaveResult` takes either action. */
+export type SaveClozeResultResult = { ok: true; saved: boolean } | { ok: false; message: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VERDICTS: readonly QuizVerdict[] = ["correct", "partial", "incorrect"];
@@ -353,4 +361,91 @@ export async function explainCloze(
     recordError(error, { "novedu.area": "cloze", stage: "explain" });
     return { ok: false, message: EXPLAIN_FAILED };
   }
+}
+
+const INT4_MAX = 2_147_483_647;
+const SAVE_MODES: readonly SaveMode[] = ["this-time", "always", "automatic"];
+const SAVE_REJECTED = "This result cannot be saved.";
+const SAVE_FAILED = "Your result could not be saved right now. Please try again.";
+const CODE_GONE = "This exercise no longer exists, so the result cannot be saved.";
+
+function isCount(value: unknown): value is number {
+  return (
+    typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= INT4_MAX
+  );
+}
+
+/**
+ * Saves the session user's FIRST-round result to the shared saved-results store
+ * (lib/quiz-result-store.ts, docs/home.md → Saving a quiz result) — one slot per gap.
+ * Mirrors `saveQuizResult` (lib/quiz-actions.ts): runs the same verification as
+ * `gradeCloze` on every call (session, the stored code row, module = cloze, the
+ * exercise re-loaded) and REJECTS — never clamps — a malformed attempt id, a count
+ * that is not a non-negative int4, counts that don't sum to `total`, an attempt with
+ * nothing answered, and a `total` other than the exercise's gap count. The store runs
+ * the advisory lock, the code row `FOR SHARE`, the insert and the prune in one
+ * transaction. Only the results screen of a first round offers the save; like the
+ * quiz's counts, the result is client-claimed, the student's own and seen only by them.
+ */
+export async function saveClozeResult(
+  input: ClozeCodeInput & {
+    attemptId: string;
+    counts: { correct: number; partial: number; incorrect: number; unanswered: number };
+    total: number;
+    mode: SaveMode;
+  },
+): Promise<SaveClozeResultResult> {
+  // Cheap checks before any I/O.
+  const counts = input?.counts;
+  if (
+    typeof input?.attemptId !== "string" ||
+    !UUID.test(input.attemptId) ||
+    !SAVE_MODES.includes(input.mode) ||
+    typeof counts !== "object" ||
+    counts === null ||
+    ![counts.correct, counts.partial, counts.incorrect, counts.unanswered, input.total].every(
+      isCount,
+    )
+  ) {
+    return { ok: false, message: SAVE_REJECTED };
+  }
+  const { correct, partial, incorrect, unanswered } = counts;
+  if (correct + partial + incorrect + unanswered !== input.total) {
+    return { ok: false, message: SAVE_REJECTED };
+  }
+  if (correct + partial + incorrect === 0) {
+    return { ok: false, message: "Answer at least one gap to save a result." };
+  }
+
+  const ctx = await verifyAndLoadCloze(input);
+  if (!ctx.ok) return ctx;
+  if (input.total !== ctx.cloze.gaps.length) {
+    return {
+      ok: false,
+      message:
+        "This exercise changed while you were working on it, so this result cannot be saved. You can do it again.",
+    };
+  }
+
+  const outcome = await storeQuizResult(
+    ctx.userId,
+    {
+      id: input.attemptId.toLowerCase(),
+      code: ctx.code,
+      correct,
+      partial,
+      incorrect,
+      unanswered,
+      total: input.total,
+    },
+    input.mode,
+  );
+  if (outcome === undefined) return { ok: false, message: SAVE_FAILED };
+  if (outcome === "code-gone") return { ok: false, message: CODE_GONE };
+  if (outcome === "not-saved") return { ok: true, saved: false };
+  // The server's per-user cache AND the browser's router cache: a start page
+  // visited earlier must not come back from Back/Forward without the result.
+  invalidateHome(ctx.userId);
+  revalidatePath("/");
+  return { ok: true, saved: true };
 }

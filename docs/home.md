@@ -41,9 +41,10 @@ only counts — it never names a student.
 | `lib/home-data.ts` | server | per audience: load → evaluate → insert new grants → the page's plain view model |
 | `lib/achievement-actions.ts` | `"use server"` | `markAchievementsSeen` |
 | `lib/quiz-actions.ts` → `saveQuizResult` | `"use server"` | the Finish page's save |
+| `lib/cloze-actions.ts` → `saveClozeResult` | `"use server"` | the cloze results screen's save (first rounds only), into the same store |
 | `lib/user-settings-actions.ts` | `"use server"` | `updateUserSettings`, `deleteMyQuizResults` |
 | `app/page.tsx`, `app/_home/**` | UI | the role switch, both shells and their Suspense sections |
-| `app/[code]/_quiz/save-result.tsx` | UI | the Finish page's consent and automatic save |
+| `app/[code]/_quiz/save-result.tsx` | UI | the Finish page's consent and automatic save; the cloze results screen reuses it with its own `save` action |
 | `app/settings/**` | UI | the Settings page |
 
 ## Time rules
@@ -339,7 +340,7 @@ A student refreshing in a loop must not load the database.
   in the router cache never comes back from Back/Forward with stale results
   (`markAchievementsSeen` does not: it would re-render the page being viewed).
 - **Not cached**: a load with any failed group (or a failed grant insert).
-- **Invalidation**: `markAchievementsSeen`, `saveQuizResult`,
+- **Invalidation**: `markAchievementsSeen`, `saveQuizResult`, `saveClozeResult`,
   `updateUserSettings` and `deleteMyQuizResults` invalidate the user's keys; so do
   the acting teacher's code writes (`createCodeAction`, `updateCodeAction`,
   `deleteSelectedCodesAction`) and report writes (mark resolved, reopen, delete),
@@ -351,7 +352,10 @@ A student refreshing in a loop must not load the database.
 
 Quiz grading itself persists nothing. Only on the student's explicit choice does
 the Finish page store the attempt's **counts** — never an answer — in
-`novedu_quiz_results`, the third sanctioned user↔code link (`docs/codes.md`).
+`novedu_quiz_results`, the third sanctioned user↔code link (`docs/codes.md`). A
+cloze exercise saves into the same table, one slot per gap (see "Cloze results"
+below), so medals, refresh nudges, the quiz badges and XP count quizzes and cloze
+exercises alike; the student-facing wording says "quiz or exercise" there.
 
 - **Finish page** (`save-result.tsx`). With the setting off it asks "Save this
   result to your personal statistics? Only you can see it — your teacher cannot."
@@ -382,9 +386,28 @@ the Finish page store the attempt's **counts** — never an answer — in
 - **No teacher surface, by construction**: the store's functions are keyed by the
   session user id (plus `deleteResultsForCode`, which returns nothing). A guard
   test (`lib/quiz-result-isolation.unit.test.ts`) fixes its importers —
-  `lib/quiz-actions.ts`, `lib/student-facts-store.ts`, `lib/code-stats-store.ts`,
-  `lib/user-settings-actions.ts`, `app/settings/page.tsx` — and fails if any other
-  module under `lib/` or `app/` names the table.
+  `lib/quiz-actions.ts`, `lib/cloze-actions.ts`, `lib/student-facts-store.ts`,
+  `lib/code-stats-store.ts`, `lib/user-settings-actions.ts`, `app/settings/page.tsx`
+  — and fails if any other module under `lib/` or `app/` names the table.
+
+### Cloze results
+
+- **Results screen** (`app/[code]/_cloze/cloze-runner.tsx`): after a **first round**
+  with at least one non-empty answer, the same `SaveResult` choice (No / This time /
+  Always, the same `save_quiz_results` setting and notice) appears under the feedback
+  card, wired to `saveClozeResult`. Never for a practice round (Try again) and never
+  when nothing was answered.
+- **Counts**: one slot per gap — `correct` / `partial` from the verdicts, an empty
+  wrong gap is `unanswered`, any other wrong gap `incorrect`; `total` = the gap count.
+- **`saveClozeResult`** (`lib/cloze-actions.ts`) mirrors `saveQuizResult`: the same
+  cheap checks before any I/O (uuid attempt id, a known mode, non-negative int4
+  counts summing to `total`, at least one answer), then the cloze verification
+  (session, `checkCode`, module = cloze, the exercise re-loaded via
+  `verifyAndLoadCloze`) and `total === gapCount` ("this exercise changed" otherwise),
+  then the store's `saveQuizResult` — the same transaction, advisory lock, `FOR
+  SHARE` and prune. It imports only `saveQuizResult` from the store (guard-tested).
+- **Trust**: as for the quiz, the counts and the first-round claim come from the
+  browser — accepted for the same reason.
 
 ## Settings page
 
@@ -394,7 +417,7 @@ its own: `novedu_user` belongs to better-auth; a missing row means every default
 The page and its actions act only on the session user's own row — no teacher gate,
 no bearer route.
 
-- **Quiz results**: the switch "Save my quiz results for my personal statistics"
+- **Quiz and exercise results**: the switch "Save my quiz and exercise results for my personal statistics"
   (`save_quiz_results`, the Finish page's "Always") with the same privacy notice,
   the number of saved results, and "Delete my saved results", confirmed first.
   Deleting results never revokes an earned badge.
@@ -421,7 +444,8 @@ parameters (user ids, counts), so `reportStoreFailure` logs and records a fixed
   `lib/achievement-store.unit.test.ts`, `lib/quiz-result-store.unit.test.ts`
   (transaction shape, fixed failure messages), `lib/achievement-actions.unit.test.ts`,
   `lib/user-settings-actions.unit.test.ts`, `saveQuizResult` in
-  `lib/quiz-actions.unit.test.ts`, the guard `lib/quiz-result-isolation.unit.test.ts`.
+  `lib/quiz-actions.unit.test.ts`, `saveClozeResult` in `lib/cloze-actions.unit.test.ts`,
+  the guard `lib/quiz-result-isolation.unit.test.ts`.
   `lib/teacher-facts-store.unit.test.ts` (every statement keyed by the teacher,
   groups failing alone, fixed failure messages, the reports and files statements'
   shapes). Loader: `lib/home-data.unit.test.ts` (both view models with their
@@ -433,7 +457,8 @@ parameters (user ids, counts), so `reportStoreFailure` logs and records a fixed
 - Browser: `app/_home/*.browser.test.tsx` (calendar keyboard/tooltip/phone layout,
   the seen marker, the disclosures, the attention counters, the school-hours
   tooltip, every badge family's disc colour and glyph contrast), `app/[code]/_quiz/save-result.browser.test.tsx`
-  (the three choices, the automatic save), `app/settings/*.browser.test.tsx`.
+  (the three choices, the automatic save), `tests/component/cloze-runner.browser.test.tsx`
+  (the cloze offer: first rounds with an answer only), `app/settings/*.browser.test.tsx`.
 - E2E: `e2e/home.spec.ts` (hermetic smoke per visitor kind — the teacher gets the
   dashboard, view-as-student the student page — including a fresh student's and a
   fresh teacher's empty state with the badges to earn), `e2e/home-teacher.live.spec.ts`
@@ -448,5 +473,6 @@ parameters (user ids, counts), so `reportStoreFailure` logs and records a fixed
   `e2e/quiz-results.live.spec.ts` (`@live-db`: the prune under two concurrent saves,
   a save racing a code delete, `always` rolling back, an automatic save racing the
   switch-off, seeded results on the start page and deleted from Settings, a code
-  delete dropping results). The Finish page's choices need a graded
+  delete dropping results); `e2e/cloze.spec.ts` saves a cloze first round through the
+  fake LLM. The Finish page's choices need a graded
   answer, i.e. an LLM, so they are covered by the component tests.

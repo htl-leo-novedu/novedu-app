@@ -334,7 +334,7 @@ export const STUDENT_CATALOG: readonly StudentAchievement[] = [
     order: 0,
     icon: "award",
     name: "First Result",
-    criterion: "Save a quiz result",
+    criterion: "Save a quiz or exercise result",
     xp: 20,
     evaluate: (facts) => milestone(quizStats(need(facts.quiz, "quiz")).results, 1),
   },
@@ -347,7 +347,10 @@ export const STUDENT_CATALOG: readonly StudentAchievement[] = [
       { n: 3, name: "Three Golds", xp: 50 },
       { n: 10, name: "Ten Golds", xp: 100 },
     ],
-    (n) => (n === 1 ? "Every answer of a quiz fully correct" : `Gold in ${n} different quizzes`),
+    (n) =>
+      n === 1
+        ? "Every answer of a quiz or exercise fully correct"
+        : `Gold in ${n} different quizzes or exercises`,
     (facts, n) => milestone(quizStats(need(facts.quiz, "quiz")).golds, n),
   ),
   {
@@ -366,7 +369,7 @@ export const STUDENT_CATALOG: readonly StudentAchievement[] = [
     order: 21,
     icon: "rotate",
     name: "Refreshed",
-    criterion: "Retake a quiz 5 or more days later",
+    criterion: "Retake a quiz or exercise 5 or more days later",
     xp: 50,
     evaluate: (facts) => once(quizStats(need(facts.quiz, "quiz")).refreshed),
   },

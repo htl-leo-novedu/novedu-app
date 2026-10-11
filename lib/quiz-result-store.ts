@@ -12,11 +12,12 @@ import {
 
 // Saved quiz results (`novedu_quiz_results`, docs/home.md → Saving a quiz
 // result) — the THIRD sanctioned user↔code link, written only by the student's
-// explicit choice on the Finish page. The ONLY access to the table, and it has
-// NO teacher reader by construction: every exported function is keyed by the
-// session user id its caller resolved, except `deleteResultsForCode` (the
-// code-delete path), which returns nothing. Guard-tested: only
-// lib/quiz-actions.ts, lib/student-facts-store.ts, lib/code-stats-store.ts,
+// explicit choice on a quiz's Finish page or a cloze exercise's results screen.
+// The ONLY access to the table, and it has NO teacher reader by construction:
+// every exported function is keyed by the session user id its caller resolved,
+// except `deleteResultsForCode` (the code-delete path), which returns nothing.
+// Guard-tested: only lib/quiz-actions.ts, lib/cloze-actions.ts,
+// lib/student-facts-store.ts, lib/code-stats-store.ts,
 // lib/user-settings-actions.ts and the Settings page import this module.
 //
 // Never throws, except `deleteResultsForCode`, which runs inside the code-delete

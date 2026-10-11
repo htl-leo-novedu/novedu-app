@@ -3,9 +3,9 @@ import { importSpecifiers, readModule, resolveImport, sourceFiles } from "@/test
 
 // Saved quiz results have NO teacher surface by construction (docs/home.md →
 // Saving a quiz result): lib/quiz-result-store.ts is the only access to
-// `novedu_quiz_results`, and only the student's own paths import it — the save
-// action, the start page's facts, the Settings page and its actions, and the
-// code-delete path (whose helper returns nothing). A new importer — a route
+// `novedu_quiz_results`, and only the student's own paths import it — the two
+// save actions (quiz and cloze), the start page's facts, the Settings page and
+// its actions, and the code-delete path (whose helper returns nothing). A new importer — a route
 // handler, a bearer endpoint, a teacher page — must fail here first, and so must
 // an existing importer reaching for a further store function (the teacher-facing
 // code-delete path may only call the delete helper).
@@ -15,6 +15,8 @@ const STORE = "lib/quiz-result-store.ts";
 // Importer → the store functions it may import (types are free).
 const ALLOWED_IMPORTS: Record<string, string[]> = {
   "app/settings/page.tsx": ["countOwnQuizResults"],
+  // The cloze exercise saves into the same store (docs/cloze.md → Saved results).
+  "lib/cloze-actions.ts": ["saveQuizResult"],
   "lib/code-stats-store.ts": ["deleteResultsForCode"],
   "lib/quiz-actions.ts": ["saveQuizResult"],
   "lib/student-facts-store.ts": ["listOwnQuizResults"],

@@ -36,7 +36,11 @@ vi.mock("./render-coding", () => ({
   ),
 }));
 vi.mock("./render-cloze", () => ({
-  RenderCloze: ({ code }: { code: string }) => <div data-testid="render-cloze">cloze {code}</div>,
+  RenderCloze: ({ code, userId }: { code: string; userId: string }) => (
+    <div data-testid="render-cloze">
+      cloze {code} {userId}
+    </div>
+  ),
 }));
 // after() schedules the recents mutation; run it inline so the call is observable.
 vi.mock("next/server", () => ({ after: (fn: () => void) => fn() }));
@@ -142,14 +146,14 @@ describe("module dispatch (valid code)", () => {
     expect(recordRecentCode).toHaveBeenCalledWith(USER_ID, CODE);
   });
 
-  it("module=cloze → records a recent and renders the cloze module", async () => {
+  it("module=cloze → records a recent and renders the cloze module with the session userId", async () => {
     checkCode.mockResolvedValue({
       ok: true,
       entry: { module: "cloze", fileUrl: "https://example.com/api/files/cz" },
     });
     const html = await renderPage();
     expect(html).toContain('data-testid="render-cloze"');
-    expect(html).toContain(`cloze ${CODE}`);
+    expect(html).toContain(`cloze ${CODE} ${USER_ID}`);
     expect(recordRecentCode).toHaveBeenCalledWith(USER_ID, CODE);
   });
 });
