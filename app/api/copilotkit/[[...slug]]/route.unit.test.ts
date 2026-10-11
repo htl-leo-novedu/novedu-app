@@ -103,7 +103,7 @@ import {
   signThreadToken,
 } from "@/lib/thread-token";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
-import { studentModeCookies } from "@/tests/mocks/student-mode-cookies";
+import { studentModeCookies, TEST_SESSION_ID } from "@/tests/mocks/student-mode-cookies";
 import { GET, POST, trimToNewTurn } from "./route";
 
 const CODE = "a1b2c3d4e5";
@@ -502,13 +502,21 @@ describe("reasoning gate (teacher-only, fail-closed)", () => {
       // THE security-critical case: "view as student" must show exactly what a
       // student sees, so the raw isTeacher claim can never be the gate.
       cookies.mockResolvedValue(studentModeCookies(true));
-      expect(strips(await chainFor({ user: { id: USER_ID, isTeacher: true } }, { kind }))).toBe(
-        true,
-      );
+      expect(
+        strips(
+          await chainFor(
+            { session: { id: TEST_SESSION_ID }, user: { id: USER_ID, isTeacher: true } },
+            { kind },
+          ),
+        ),
+      ).toBe(true);
     });
 
     it("lets an EFFECTIVE teacher through on the library's own runner (reasoning streams)", async () => {
-      const chain = await chainFor({ user: { id: USER_ID, isTeacher: true } }, { kind });
+      const chain = await chainFor(
+        { session: { id: TEST_SESSION_ID }, user: { id: USER_ID, isTeacher: true } },
+        { kind },
+      );
       expect(strips(chain)).toBe(false);
       expect(chain.at(-1)).toBeInstanceOf(InMemoryAgentRunner);
     });
@@ -534,7 +542,14 @@ describe("reasoning gate (teacher-only, fail-closed)", () => {
 
   it("FAILS CLOSED: strips reasoning when the teacher check throws", async () => {
     cookies.mockRejectedValue(new Error("cookies() blew up"));
-    expect(strips(await chainFor({ user: { id: USER_ID, isTeacher: true } }))).toBe(true);
+    expect(
+      strips(
+        await chainFor({
+          session: { id: TEST_SESSION_ID },
+          user: { id: USER_ID, isTeacher: true },
+        }),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -564,7 +579,10 @@ describe("history snapshot runner (tutor only, innermost)", () => {
   });
 
   it("teacher: failure reporting → snapshot → library runner", async () => {
-    const chain = await connectAs({ user: { id: USER_ID, isTeacher: true } });
+    const chain = await connectAs({
+      session: { id: TEST_SESSION_ID },
+      user: { id: USER_ID, isTeacher: true },
+    });
     expect(chain.map((runner) => (runner as object).constructor)).toEqual([
       RunErrorReportingRunner,
       HistorySnapshotRunner,

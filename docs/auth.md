@@ -238,9 +238,8 @@ clicking sign-in must not silently sign the next person in as that teacher. Exis
 Novedu sessions retain their fixed 30-day lifetime.
 
 `lib/auth-actions.ts`'s `signOutAction` (a server action, wired to the sign-out button
-in the user menu) deletes the student-mode cookie first — student mode must not outlive
-the session, or the next person signing in on the same browser would silently start in
-it — then calls `auth.api.signOut({ headers: await headers() })`, which deletes the
+in the user menu) deletes the student-mode cookie first (it applies only to the session
+that set it anyway — "Student mode" below) — then calls `auth.api.signOut({ headers: await headers() })`, which deletes the
 session row and clears the cookie, and redirects to `/sign-in`. This ends the Novedu
 session only; it does not sign the browser out of Microsoft.
 
@@ -318,9 +317,13 @@ per-request upsert.
 ## Student mode
 
 A real teacher can temporarily view the app as a student ("View as student" in the
-user menu). State = httpOnly session cookie `student-mode` (`lib/student-mode.ts`);
-it only RESTRICTS, never grants, so it is unsigned. It is cleared on sign-out
-(`lib/auth-actions.ts`) so it cannot leak into the next user's session. Derive ALL
+user menu). State = httpOnly session cookie `student-mode` (`lib/student-mode.ts`)
+whose value is the id of the Novedu session that entered the mode; it applies only
+while that session is the current one, so a new sign-in never inherits it — not after
+an expired session, a reset database, or a browser that restored its session cookies
+(and a `localhost` cookie spans every port, so a stale one from another local Novedu
+would otherwise apply). It only RESTRICTS, never grants, so it is unsigned. Sign-out
+also deletes it (`lib/auth-actions.ts`). Derive ALL
 teacher gating/display from **`getTeacherView()`** (or the `isEffectiveTeacher()` /
 `requireEffectiveTeacher()` shorthands) in `lib/student-mode.ts` — NOT from
 `session.user.isTeacher` / `requireTeacher()` directly, which ignore the mode
@@ -342,7 +345,7 @@ The family, all in `lib/student-mode.ts`:
 | `isEffectiveTeacher()` | boolean shorthand over `getTeacherView()` |
 | `requireEffectiveTeacher()` | the throwing gate for teacher-only server work |
 | `requireTeacherUserId()` | `requireEffectiveTeacher()` + the session user id, returned as `{ ok }` instead of thrown |
-| `isStudentMode()` | the raw cookie read |
+| `isStudentMode(session)` | the raw cookie read: does the cookie name this session? |
 
 Every other export **delegates to `teacherViewForSession`**, so the rule has
 exactly one definition, and that function is the only student-mode-aware reader
@@ -356,7 +359,9 @@ and treat `null` as a non-teacher.
 
 The cookie NAME lives in `lib/student-mode-constants.ts` (re-exported from
 `lib/student-mode.ts`), an import-free module so the Playwright specs — which set
-the cookie directly and cannot load `next/headers` — spell it from one source.
+the cookie directly and cannot load `next/headers` — spell it from one source. They
+build it with `studentModeCookie(context)` (`e2e/principal.utils.ts`), which looks up
+the context's session id.
 
 ## e2e session minting
 
