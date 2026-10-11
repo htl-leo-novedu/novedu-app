@@ -2,6 +2,8 @@ import { Notice } from "@/components/notice";
 import { Main } from "@/components/page-main";
 import { requireTeacherPage } from "@/components/require-teacher-page";
 import { resolveAppOriginOr } from "@/lib/app-origin";
+import { loadCloze } from "@/lib/cloze-fetch";
+import { formatGapInventory } from "@/lib/cloze-gaps";
 import { getCode } from "@/lib/code-store";
 import { CodeForm } from "../../code-form";
 import { ShareLinkResult } from "../../share-link-result";
@@ -42,7 +44,10 @@ export default async function EditCodePage({ params }: { params: Promise<{ code:
   const shareUrl = origin ? `${origin}/${entry.code}` : `/${entry.code}`;
   // Every module gets the same share-link result. Rendered server-side and handed
   // to the client form as a slot, so the client never touches the server-only registry.
-  const resultSlot = ShareLinkResult({ shareUrl });
+  // A cloze code also lists its gaps (the inventory the validator reported at upload).
+  const cloze = entry.module === "cloze" ? await loadCloze(entry.fileUrl) : undefined;
+  const inventory = cloze?.ok ? formatGapInventory(cloze.cloze.gaps) : undefined;
+  const resultSlot = ShareLinkResult({ shareUrl, inventory });
 
   return (
     <Main>

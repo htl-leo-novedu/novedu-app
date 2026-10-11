@@ -90,8 +90,8 @@ const INFO_RESOURCE_ID = "__info__";
  * (tutor, quiz discussion, writing — derived from the registry, never listed by
  * hand). `/info` advertises exactly these, because CopilotKit's client resolves a
  * chat's agent from the `/info` agent list and throws for an id it does not find.
- * The internal agents Mastra also knows (`quizEvaluator`, `evalJudge`,
- * `evalTutor`, `clozeEvaluator`) are deliberately absent: no module runs them through this route,
+ * The internal agents Mastra also knows (`quizEvaluator`, `evalJudge`, `evalTutor`,
+ * `clozeEvaluator`) are deliberately absent: no module runs them through this route,
  * so their names and descriptions have no business reaching a browser.
  */
 function studentFacingAgentIds(): string[] {
@@ -224,9 +224,11 @@ async function resolveThreadOwnership(
 //     not know it anyway), so the Mastra-registered but internal `quizEvaluator`
 //     grader, `evalJudge` feedback judge, `evalTutor` eval tutor and
 //     `clozeEvaluator` cloze grader are never reachable through this web route.
-//     (Their only other callers are `submitAnswer`, `gradeCloze`/`explainCloze`
-//     and the teacher-only bearer routes /api/eval/{grade,judge,respond}, which
-//     bring their own system prompts — docs/cli-eval.md.)
+//     Their only other callers: `submitAnswer` (quizEvaluator) and the
+//     `gradeCloze` / `explainCloze` actions (clozeEvaluator), which build their
+//     prompts server-side, and the teacher-only bearer routes
+//     /api/eval/{grade,judge,respond} (quizEvaluator, evalJudge, evalTutor), which
+//     bring their own system prompts — docs/cli-eval.md.
 //
 // The lone exception is GET `/info`: runtime metadata (the student-facing agent
 // list + capabilities) with no chat data, gated by AUTHENTICATION ALONE — the
@@ -319,8 +321,8 @@ async function handler(req: Request): Promise<Response> {
 
   // AGENT: each module runs exactly one agent; any other id 404s, so the
   // Mastra-registered but internal `quizEvaluator`, `evalJudge`, `evalTutor` and
-  // `clozeEvaluator` stay unreachable from the web. Defense in depth with the runtime below,
-  // which registers ONLY this module's agent.
+  // `clozeEvaluator` stay unreachable from the web. Defense in depth with the runtime
+  // below, which registers ONLY this module's agent.
   if (runtimeRequest.agentId !== def.runtime.agentId) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }

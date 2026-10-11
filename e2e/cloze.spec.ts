@@ -27,7 +27,7 @@ function trackErrors(page: Page): string[] {
 }
 
 test.describe("cloze", { tag: ["@live", "@live-db"] }, () => {
-  test("the student page and the teacher detail page open error-free", async ({ page }) => {
+  test("the student, teacher detail and edit pages open error-free", async ({ page }) => {
     const code = await mintCode({ module: "cloze", file: VALID_CLOZE_URL });
     const errors = trackErrors(page);
 
@@ -43,6 +43,12 @@ test.describe("cloze", { tag: ["@live", "@live-db"] }, () => {
     await expect(page.getByTestId("cloze-key-gap-2")).toContainText("starts");
     const html = await page.content();
     expect(html).not.toContain('class="function');
+
+    // The code's edit page (where creating a code lands) lists the gap inventory.
+    await page.goto(`/codes/edit/${code}`);
+    await expect(page.getByTestId("cloze-gap-inventory")).toHaveText(
+      'Gaps: 3 gaps · 1 "is going to" · 2 "starts" (start) · 3 (empty)',
+    );
 
     expect(errors).toEqual([]);
   });

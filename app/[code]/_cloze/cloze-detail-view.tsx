@@ -37,8 +37,12 @@ export function firstSubmissions(counts: readonly ClozeGapCount[]): number {
 
 const percent = (part: number, whole: number) => `${Math.round((part / whole) * 100)}%`;
 
-function countCell(verdict: "correct" | "partial" | "incorrect") {
+/** What a count shows when the counts could not be read. */
+const UNKNOWN = "—";
+
+function countCell(verdict: "correct" | "partial" | "incorrect", known: boolean) {
   return (row: GapResult) => {
+    if (!known) return UNKNOWN;
     const n = gapTotal(row);
     if (n === 0) return verdict === "correct" ? "No submissions yet" : null;
     return (
@@ -49,7 +53,8 @@ function countCell(verdict: "correct" | "partial" | "incorrect") {
   };
 }
 
-const COLUMNS: ListColumn<GapResult>[] = [
+/** The table's columns; `known: false` (the counts read failed) shows "—" for every count. */
+const columns = (known: boolean): ListColumn<GapResult>[] => [
   { header: "Gap", kind: "numeric", render: (row) => row.gap },
   {
     header: "Reference",
@@ -64,19 +69,19 @@ const COLUMNS: ListColumn<GapResult>[] = [
       </>
     ),
   },
-  { header: "Correct", kind: "numeric", render: countCell("correct") },
-  { header: "Partial", kind: "numeric", render: countCell("partial") },
-  { header: "Wrong", kind: "numeric", render: countCell("incorrect") },
-  { header: "n", kind: "numeric", render: (row) => gapTotal(row) },
+  { header: "Correct", kind: "numeric", render: countCell("correct", known) },
+  { header: "Partial", kind: "numeric", render: countCell("partial", known) },
+  { header: "Wrong", kind: "numeric", render: countCell("incorrect", known) },
+  { header: "n", kind: "numeric", render: (row) => (known ? gapTotal(row) : UNKNOWN) },
 ];
 
-function GapTable({ rows }: { rows: GapResult[] }) {
+function GapTable({ rows, known = true }: { rows: GapResult[]; known?: boolean }) {
   return (
     <div data-testid="cloze-gap-table">
       <ListTable
         rows={rows}
         getRowKey={(row) => `${row.gap}\u0000${row.reference}`}
-        columns={COLUMNS}
+        columns={columns(known)}
       />
     </div>
   );
@@ -165,14 +170,14 @@ export function ClozeDetailView({ data }: { data: ClozeDetailData }) {
               Answer key with results
             </h2>
             <div className="rounded-lg border border-foreground/15 bg-card px-5 py-3">
-              <ClozeAnswerKey text={exercise.text} gaps={rows} />
+              <ClozeAnswerKey text={exercise.text} gaps={rows} known={counts !== undefined} />
             </div>
           </section>
           <section aria-labelledby="cloze-gap-results">
             <h2 id="cloze-gap-results" className="mb-2 font-semibold text-lg">
               Results per gap
             </h2>
-            <GapTable rows={rows} />
+            <GapTable rows={rows} known={counts !== undefined} />
             {hiddenRows > 0 ? (
               <p className={cn("mt-2", NOTE)} data-testid="cloze-stale-note">
                 Some gaps were changed or renumbered since students submitted. Their statistics
@@ -193,7 +198,9 @@ export function ClozeDetailView({ data }: { data: ClozeDetailData }) {
           <h2 id="cloze-gap-results" className="font-semibold text-lg">
             Stored results per gap
           </h2>
-          {counts && counts.length > 0 ? (
+          {counts === undefined ? (
+            <p className={NOTE}>{UNKNOWN}</p>
+          ) : counts.length > 0 ? (
             <GapTable rows={counts} />
           ) : (
             <p className={NOTE}>No submissions yet.</p>

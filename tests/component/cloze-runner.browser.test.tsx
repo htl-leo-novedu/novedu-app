@@ -1,5 +1,5 @@
-import { userEvent } from "@vitest/browser/context";
 import { beforeEach, expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { type ClozePublic, clozeGapPlaceholder } from "@/lib/cloze-types";
 
@@ -231,6 +231,39 @@ test("a failed feedback keeps the verdicts and retries only the feedback", async
   await expect.element(screen.getByRole("heading", { name: "Plans already made" })).toBeVisible();
   expect(gradeCloze).toHaveBeenCalledTimes(1);
   expect(explainCloze).toHaveBeenCalledTimes(2);
+});
+
+test("a rejected call (e.g. a dropped connection) reaches the same failure states", async () => {
+  gradeCloze.mockRejectedValueOnce(new Error("Failed to fetch"));
+  explainCloze.mockRejectedValueOnce(new Error("Failed to fetch"));
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
+  await fillAll(screen);
+  await screen.getByRole("button", { name: "Submit exercise" }).click();
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent("Couldn't check your answers — try again.");
+  await expect.element(screen.getByRole("textbox", { name: "Gap 1" })).toHaveValue("will");
+
+  await screen.getByRole("button", { name: "Submit exercise" }).click();
+  await expect
+    .element(screen.getByRole("alert"))
+    .toHaveTextContent("Couldn't load the feedback — try again.");
+  await screen.getByRole("button", { name: "Retry" }).click();
+  await expect.element(screen.getByRole("heading", { name: "Plans already made" })).toBeVisible();
+});
+
+test("the results screen swaps the task box for a reading note", async () => {
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
+  await expect.element(screen.getByText("future forms")).toBeVisible();
+  await fillAll(screen);
+  await screen.getByRole("button", { name: "Submit exercise" }).click();
+  await expect
+    .element(screen.getByTestId("cloze-results-note"))
+    .toHaveTextContent('A possible answer" is an example, not the only acceptable wording.');
+  await expect.element(screen.getByText("future forms")).not.toBeInTheDocument();
+
+  await screen.getByRole("button", { name: "Try again" }).click();
+  await expect.element(screen.getByText("future forms")).toBeVisible();
 });
 
 test("Try again clears the gaps for a practice round with a fresh attempt", async () => {

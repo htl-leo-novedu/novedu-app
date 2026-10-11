@@ -5,8 +5,9 @@ import { CopyableLinkRow } from "./copyable-link-row";
 // three modules, so it gets the identical result body — the student visits it,
 // signs in, and mints their personal API key (app/[code]/render-coding.tsx).
 // Called directly by the create/edit page as a plain function, so no JSX lives in
-// the server-only registry.
-export function ShareLinkResult({ shareUrl }: { shareUrl: string }) {
+// the server-only registry. `inventory` is a cloze exercise's gap inventory
+// (docs/cloze.md), shown under the link so the teacher can check the gaps once more.
+export function ShareLinkResult({ shareUrl, inventory }: { shareUrl: string; inventory?: string }) {
   return (
     <section className="flex flex-col gap-2 self-stretch rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-3.5">
       <h2 className="font-bold">Share link</h2>
@@ -15,6 +16,11 @@ export function ShareLinkResult({ shareUrl }: { shareUrl: string }) {
         type on the start page. It only works within the chosen time window.
       </p>
       <CopyableLinkRow link={shareUrl} label="Share link" />
+      {inventory ? (
+        <p className="text-foreground/60 text-sm" data-testid="cloze-gap-inventory">
+          Gaps: {inventory}
+        </p>
+      ) : null}
     </section>
   );
 }

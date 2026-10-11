@@ -17,11 +17,15 @@ export type GapResult = ClozeGapCount & { hint?: string };
 
 const SEGMENTS = ["correct", "partial", "incorrect"] as const;
 
-/** A thin three-segment bar of one gap's verdict shares, with its `n`. */
-export function GapBar({ gap }: { gap: GapResult }) {
-  const n = gapTotal(gap);
-  const label =
-    n === 0
+/**
+ * A thin three-segment bar of one gap's verdict shares, with its `n`. `known: false`
+ * (the counts could not be read) shows an empty bar and "n=—".
+ */
+export function GapBar({ gap, known = true }: { gap: GapResult; known?: boolean }) {
+  const n = known ? gapTotal(gap) : 0;
+  const label = !known
+    ? "results unavailable"
+    : n === 0
       ? "no submissions yet"
       : `${gap.correct} correct, ${gap.partial} partial, ${gap.incorrect} wrong of ${n}`;
   return (
@@ -44,12 +48,21 @@ export function GapBar({ gap }: { gap: GapResult }) {
             )
           : null}
       </span>
-      <span className="text-foreground/60 text-xs tabular-nums">n={n}</span>
+      <span className="text-foreground/60 text-xs tabular-nums">n={known ? n : "—"}</span>
     </span>
   );
 }
 
-export function ClozeAnswerKey({ text, gaps }: { text: string; gaps: GapResult[] }) {
+export function ClozeAnswerKey({
+  text,
+  gaps,
+  known = true,
+}: {
+  text: string;
+  gaps: GapResult[];
+  /** False when the counts could not be read: every bar shows "—". */
+  known?: boolean;
+}) {
   function renderGap(number: number): ReactNode {
     const gap = gaps[number - 1];
     if (!gap) return null;
@@ -65,7 +78,7 @@ export function ClozeAnswerKey({ text, gaps }: { text: string; gaps: GapResult[]
           <em className="text-foreground/60 text-sm">(empty)</em>
         )}
         {gap.hint ? <span className="text-foreground/55 text-sm">({gap.hint})</span> : null}
-        <GapBar gap={gap} />
+        <GapBar gap={gap} known={known} />
       </span>
     );
   }

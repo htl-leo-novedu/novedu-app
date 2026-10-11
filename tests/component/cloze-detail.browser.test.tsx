@@ -131,7 +131,7 @@ describe("ClozeDetailView", () => {
     await expect.element(screen.getByTestId("cloze-first-submissions")).toHaveTextContent("4");
   });
 
-  test("says when the statistics are unavailable", async () => {
+  test("says when the statistics are unavailable, and shows no counts anywhere", async () => {
     const screen = await render(<ClozeDetailView data={data({ counts: undefined })} />);
     await expect.element(screen.getByTestId("cloze-first-submissions")).toHaveTextContent("—");
     await expect
@@ -139,5 +139,12 @@ describe("ClozeDetailView", () => {
         screen.getByText("The statistics could not be loaded right now. Try again in a moment."),
       )
       .toBeVisible();
+    await expect.element(screen.getByTestId("cloze-key-gap-1")).toHaveTextContent("n=—");
+    expect(tableRows(screen.container)).toEqual([
+      ["1", "is going to", "—", "—", "—", "—"],
+      ["2", "starts(start)", "—", "—", "—", "—"],
+      ["3", "(empty)", "—", "—", "—", "—"],
+    ]);
+    expect(screen.container.textContent).not.toContain("No submissions yet");
   });
 });

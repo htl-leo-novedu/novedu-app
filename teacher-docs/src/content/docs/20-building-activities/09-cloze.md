@@ -140,6 +140,8 @@ After submitting, each answer turns into a marked chip: a tick for correct, a da
 - Up to three **patterns**, each one connecting several gaps that share a cause. Every pattern names its gaps ("See your answers: Gap 1, Gap 2, Gap 10") and ends with a **Next time** tip.
 - A panel for the selected gap, with the student's answer, **A possible answer** (your reference answer), and a short note when the answer was not correct. Selecting a gap or a gap button in a pattern switches the panel.
 
+While students read their results, the task box above the text gives way to a short note: their answers stay visible, and "A possible answer" is an example, not the only acceptable wording.
+
 When every gap is correct, the card simply says so. When several mistakes don't have a common cause, the card says that too and points students to the note on each gap instead.
 
 A cloze exercise has no discussion chat and no **Report** button, so students can't flag a verdict from the page.
@@ -215,6 +217,6 @@ npx @novedu/cli validate ./sue-fresh-start.yaml --kind cloze
 
 Read the inventory once: it is the quickest way to spot a gap you marked by mistake or a hint in the wrong place.
 
-A valid file becomes a code like any other activity: on the **New code** form, pick **Cloze** under **Activity**.
+A valid file becomes a code like any other activity: on the **New code** form, pick **Cloze** under **Activity**. The page you land on after creating the code lists the gap inventory again under the share link.
 
 To read what the AI is told, run `npx @novedu/cli prompts ./sue-fresh-start.yaml --kind cloze`. A cloze exercise has two prompts: one for grading the gaps and one for writing the feedback.

@@ -188,8 +188,9 @@ for a cloze code, and `/info` lists none. The code row freezes `anonymous: true`
 
 ## The student runner — `app/[code]/_cloze/`
 
-`ClozeRunner` (`cloze-runner.tsx`, client) receives `{ code, cloze: ClozePublic }` and
-nothing else. Answers live in page state only: a reload starts over.
+`ClozeRunner` (`cloze-runner.tsx`, client) receives `{ code, cloze: ClozePublic,
+autoSave }` and nothing else (`autoSave` is the student's own save setting, a display
+hint for the save offer). Answers live in page state only: a reload starts over.
 
 - **The text.** `ClozeText` (`cloze-text.tsx`) renders `cloze.text` through the
   sanitized `MarkdownRenderer`, extended by a small rehype plugin that splits every
@@ -226,9 +227,17 @@ nothing else. Answers live in page state only: a reload starts over.
 - **Try again** clears every gap, mints a new attempt id and switches to
   `round: "retry"`; the header shows "Practice round" from then on and no save is
   offered. A feedback that arrives after Try again is dropped.
+- **Results note.** On the results screen the task box is replaced by a reading note:
+  "Read the feedback across the exercise, then select any marked answer to explore it
+  in context." with "Your submitted answers stay visible. "A possible answer" is an
+  example, not the only acceptable wording." below it. Try again brings the task back.
 - **Errors.** A failed `gradeCloze` keeps the answers and shows its message under the
   Submit button (submitting again retries). A failed `explainCloze` keeps the verdicts
-  and offers **Retry**, which re-calls only `explainCloze` with the same token.
+  and offers **Retry**, which re-calls only `explainCloze` with the same token. A call
+  that rejects outright (a dropped connection, a redeployed server) reaches the same
+  two states with the same messages.
+- **No Report button.** A cloze exercise has no discussion chat and no Report button
+  (`docs/reports.md`).
 
 ## Submitting — two server actions (`lib/cloze-actions.ts`)
 
@@ -367,9 +376,13 @@ plain data to `ClozeDetailView`, `app/[code]/_cloze/cloze-detail-view.tsx`):
   match no current (gap, reference) pair are hidden; when any exist, a note says that
   the statistics of changed or renumbered gaps start from zero.
 - **Load failure**: a notice with the loader's message, then the stored counts listed
-  by gap number and reference. A failed counts read shows "—" and a notice.
+  by gap number and reference. A failed counts read shows a notice and "—" in place of
+  every count (first submissions, the bars, the table).
 - Deliberately absent: what students wrote, who submitted, any time series, any reset
   (deleting the code is the only reset).
+
+**Edit page**: `/codes/edit/<code>` — where creating a code lands — lists the gap
+inventory under the share link.
 
 **`/codes` list**: a cloze row's count column shows the same "first submissions"
 number (`countClozeSubmissions`, one query for the page's cloze codes, beside the

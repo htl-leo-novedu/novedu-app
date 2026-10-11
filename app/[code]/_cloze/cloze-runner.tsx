@@ -32,6 +32,11 @@ import { ClozeText } from "./cloze-text";
 const RUNNER = "mx-auto flex w-full max-w-5xl flex-col gap-4";
 const MUTED = "text-foreground/60 text-sm";
 
+// What a rejected action call (a dropped connection, a redeployed server) shows — the
+// same wording as the server's own failures, so both reach the same retry state.
+const GRADE_FAILED = "Couldn't check your answers — try again.";
+const EXPLAIN_FAILED = "Couldn't load the feedback — try again.";
+
 type Round = "first" | "retry";
 
 /** A graded round's slot counts for the saved result — an empty wrong gap is "unanswered". */
@@ -89,7 +94,7 @@ export function ClozeRunner({
       answers: result.answers,
       verdicts: result.verdicts,
       resultToken: result.resultToken,
-    });
+    }).catch(() => ({ ok: false as const, message: EXPLAIN_FAILED }));
     // A Try again while this was in flight has moved on — drop the stale answer.
     if (shownToken.current !== result.resultToken) return;
     setFeedback(
@@ -105,7 +110,10 @@ export function ClozeRunner({
     setGradeError(null);
     setGrading(true);
     const submitted = [...answers];
-    const res = await gradeCloze({ code, attemptId, round, answers: submitted });
+    const res = await gradeCloze({ code, attemptId, round, answers: submitted }).catch(() => ({
+      ok: false as const,
+      message: GRADE_FAILED,
+    }));
     setGrading(false);
     if (!res.ok) {
       setGradeError(res.message);
@@ -198,7 +206,18 @@ export function ClozeRunner({
         </div>
       </header>
 
-      {cloze.description ? (
+      {graded ? (
+        <section className={cardVariants({ pad: "compact" })} data-testid="cloze-results-note">
+          <p>
+            Read the feedback across the exercise, then select any marked answer to explore it in
+            context.
+          </p>
+          <p className={cn("mt-1", MUTED)}>
+            Your submitted answers stay visible. "A possible answer" is an example, not the only
+            acceptable wording.
+          </p>
+        </section>
+      ) : cloze.description ? (
         <section className={cardVariants({ pad: "compact" })}>
           <MarkdownRenderer content={cloze.description} />
         </section>
