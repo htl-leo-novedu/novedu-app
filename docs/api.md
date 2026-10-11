@@ -5,7 +5,7 @@ non-browser client, e.g. a future MCP server) calling app API routes with a
 **session token as a bearer** instead of a session cookie. Read it before touching
 `lib/api-auth.ts`, `app/api/me/**`, `app/api/codes/**`, `app/api/files/**`
 (the bearer handlers), `app/api/images/**`, `app/api/reports/**`,
-`app/api/eval/**` (grade, judge and respond), the public `app/api/version/route.ts` (listed here because the
+`app/api/eval/**` (grade, judge, respond and cloze), the public `app/api/version/route.ts` (listed here because the
 CLI reads it), the services
 they share with the web actions (`lib/code-service.ts`, `lib/file-service.ts`,
 `lib/image-service.ts`), the CLI commands (`cli/src/auth.ts`, `cli/src/api.ts`,
@@ -368,10 +368,27 @@ any page, and its handler re-validates the session itself on top of that.
   harmless by construction: the catalog's executors are pure / injected-effect
   (`docs/tutor-tools.md`) and the run is teacher-initiated. Usage is metered under the same
   `cli-eval` pseudo-code + `eval` module as the gradings and judgings beside it.
+- **`POST /api/eval/cloze`** (`app/api/eval/cloze/route.ts`, teacher-only) — runs ONE call
+  of the cloze pipeline for `novedu-cli eval`'s **cloze** kind (`docs/cli-eval.md`). Body
+  `{ llm: { provider?, model, reasoning? }, step: "grade" | "explain", system, user }`,
+  where `system` and `user` are the step's system prompt and user message as the CLI
+  assembled them offline (the production builders of `lib/cloze-grading-prompt.ts` /
+  `lib/cloze-feedback-prompt.ts`); `200` with `{ output, usage? }`, `output` the step's
+  structured object — `grade`: `{ gaps: [{ gap, result, reason }] }`, `explain`:
+  `{ patterns: [{ title, explanation, gaps, next_time }], gap_notes: [{ gap, note }] }`
+  (`lib/cloze-output-schemas.ts`) — **unfiltered**: the coverage check, the pre-pass and
+  the grounding filter are the CLI's. It runs the memory-less **`clozeEvaluator`** agent
+  with the step's schema and the student path's truncation retry, and **persists
+  nothing**. Failure matrix identical to the grade route (`400` malformed body / unknown
+  or unavailable provider / terminal upstream error, `413` above 256 KB, `401`/`403`,
+  `502` for no structured object or a retryable upstream failure). Same trust argument:
+  `clozeEvaluator` is never web-reachable by students, the gate has no student mode, and
+  the prompts come from the client — no stored exercise's references or `evaluation` are
+  involved. Usage is metered under the `cli-eval` pseudo-code + `eval` module.
 - **Proxy exclusion, per route:** bearer routes must not hit the cookie gate
   (a CLI has no session), so each one gets its own **path-bounded** entry in
   the `proxy.ts` matcher (`api/me(?:/|$)`, `api/codes(?:/|$)`,
-  `api/reports(?:/|$)`, `api/images(?:/|$)`, `api/eval(?:/|$)` — which bounds ALL THREE
+  `api/reports(?:/|$)`, `api/images(?:/|$)`, `api/eval(?:/|$)` — which bounds ALL FOUR
   eval routes) — never a blanket `/api` prefix. The files handlers ride
   the public `api/files` exclusion and self-gate. Adding a bearer endpoint = new route
   file gated by `requireBearerUser`/`requireBearerTeacher` + its own matcher
@@ -474,12 +491,13 @@ any page, and its handler re-validates the session itself on top of that.
   they stay web-only.
 - **`eval <evalPathOrUrl…>`** (`cli/src/commands/eval.ts`) is the second exception
   to the JSON-only rule, for the same reason as `codes sync`: it makes MANY requests
-  (one `POST /api/eval/grade` per golden answer, or one `POST /api/eval/respond` per
-  scripted conversation, × `--repeats`, bounded by
+  (one `POST /api/eval/grade` per golden answer, one `POST /api/eval/respond` per
+  scripted conversation, or up to two `POST /api/eval/cloze` per cloze submission,
+  × `--repeats`, bounded by
   `--concurrency`, plus — unless `--no-judge-feedback` — one `POST /api/eval/judge` per
   successful repeat) and prints a run report, keeping the machine-readable batch
   shape behind `--json` / `--out`. Which generation endpoint it calls follows the eval
-  file's own `kind`; a batch may mix both. It both talks to the
+  file's own `kind`; a batch may mix them. It both talks to the
   server and does substantial offline work: the prompts are assembled locally
   through the app's own dump seam. Per-case failures are handled by the command
   (`performApiRequest({ quiet: true })` + the `status` / `authFailed` markers:
@@ -564,7 +582,10 @@ any page, and its handler re-validates the session itself on top of that.
   generator, adding the message-shape matrix, the terminal 400 on an unknown
   tool name, and the production-parity assertion that the scripted turns reach
   the agent verbatim and in order alongside the `EVAL_TUTOR_*` and
-  usage-sentinel RequestContext values.
+  usage-sentinel RequestContext values. `app/api/eval/cloze/route.unit.test.ts`
+  pins the cloze route the same way, plus the `step` enum and that each step
+  hands the agent its own schema with the client's user message and the
+  `CLOZE_EVAL_*` and usage-sentinel RequestContext values.
   `app/api/codes/[code]/conversations/route.unit.test.ts` pins the export route the
   same way (mocked `getCode` + `listConversationPage`): the 401/403 matrix, the
   `limit`/`after` 400s BEFORE any lookup, the creator-only 403 without a store call,
@@ -579,7 +600,7 @@ any page, and its handler re-validates the session itself on top of that.
   and `e2e/api-reports.spec.ts` exercise the routes over HTTP with an empty
   cookie state, which also proves the proxy-matcher exclusions (a regression
   turns the expected 401 into a sign-in redirect); `e2e/api-gate.spec.ts`
-  covers the two exclusions no per-feature spec owns — `/api/eval/{grade,judge,respond}`
+  covers the two exclusions no per-feature spec owns — `/api/eval/{grade,judge,respond,cloze}`
   and the public `/api/coding/v1/*` — table-driven, one row per route, so a
   bearer route added without a gate spec is visible rather than silently
   uncovered (add the row with the route); every spec here mints its token

@@ -9,19 +9,22 @@ eval <evalPathOrUrl...> [--server <url>] [--concurrency <n>=4] [--repeats <n>=1]
                         [--json] [--out <file>] [--report <file.md>]
 ```
 
-`prompts` shows what the model is TOLD; `eval` shows what it DOES. **Two kinds**, chosen
+`prompts` shows what the model is TOLD; `eval` shows what it DOES. **Three kinds**, chosen
 by the file's own `kind:` field — there is NO `--kind` flag here, and a single invocation
-may mix both:
+may mix them:
 
 | `kind:` | Write | The run | Gates on |
 | --- | --- | --- | --- |
 | omitted / `quiz` | golden answers with their expected verdict | replays them through the real grader | the **verdict** (`expect`); the feedback judge only reports |
 | `tutor` | conversations ending on a student turn | lets the real tutor generate the next turn | **nothing but run health** — the judge only reports |
+| `cloze` | submissions: answers by gap number | grades and explains each one like the app does | each gap's **verdict** (`expect`); `expect_patterns` and the judge only report |
 
 Reach for the **quiz** kind whenever the user changes an `evaluation` prompt, suspects the
 grader is too lenient or too strict, or wants a regression gate before publishing. Reach
 for the **tutor** kind whenever they write or change tutor rules ("never solve it for
 them", "stay inside this chapter", "answer in German") and want evidence the tutor obeys.
+Reach for the **cloze** kind when they change a cloze exercise's `evaluation` or gaps and
+want to see the verdicts and the consolidated feedback a typical submission gets.
 
 Needs a signed-in teacher — it runs the model.
 
@@ -88,6 +91,35 @@ situation that tempts the model to break each one — "just fix it for me" again
 never-solve rule, an out-of-scope question against a scope rule, a foreign-language
 question against a language rule. A case that no rule speaks to teaches nothing.
 
+## The cloze eval file
+
+```yaml
+# sue-fresh-start.eval.yaml — next to the cloze exercise
+# yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/evals/eval-yaml.schema.json
+kind: cloze
+id: sue-fresh-start-eval
+target: ./sue-fresh-start.yaml
+submissions:
+  - id: will-for-every-plan          # unique; the report heading
+    answers:                         # by gap number; a gap not listed was left empty
+      1: will
+      2: will
+      4: am meet
+    expect:                          # optional, per gap: one verdict or a list — GATES
+      1: incorrect
+      4: [partial, incorrect]
+    expect_patterns:                 # optional, REPORT-ONLY: gaps one pattern should cite
+      - [1, 2]
+```
+
+- Gap numbers come from `validate --kind cloze` (it prints the inventory). A number the
+  target does not have makes the file INVALID (`EVAL_UNKNOWN_GAP`, offline).
+- Exact and empty answers are decided by the pre-pass without the model, exactly as in
+  the app — a submission that is all exact makes no model call at all.
+- The Markdown report has a section for EVERY submission: the gap table, the patterns
+  and notes the student would see, what the grounding filter dropped and why, and the
+  judge's flags (`unsupported_pattern` is the one to read first).
+
 ## Before you run it
 
 - **`validate --kind eval` first.** It is free and offline, strict-checks the
@@ -105,7 +137,7 @@ question against a language rule. A case that no rule speaks to teaches nothing.
   answer localises any server/auth/provider problem for the cost of ONE grading
   call. Always worth it before firing hundreds.
 - **It runs THROUGH the Novedu server** — `POST /api/eval/grade` for a quiz,
-  `POST /api/eval/respond` for a tutor — so the
+  `POST /api/eval/respond` for a tutor, `POST /api/eval/cloze` for a cloze — so the
   target server must actually offer the feature. Against one that doesn't (a
   deployment predating it), every case errors with "the server's response is not
   a grading verdict" — and a passing `whoami` proves nothing about this route.

@@ -196,6 +196,21 @@ conversations:
 npx @novedu/cli eval ./loops-tutor.eval.yaml --report loops.md
 ```
 
+A cloze eval lists whole submissions — answers by gap number — and checks each gap's
+verdict; the report shows the feedback a student would have seen:
+
+```yaml
+# sue-fresh-start.eval.yaml
+id: sue-fresh-start-eval
+kind: cloze
+target: ./sue-fresh-start.yaml
+submissions:
+  - id: will-for-every-plan
+    answers: { 1: will, 2: will, 3: starts, 4: am meet, 10: will }   # unlisted = empty
+    expect: { 1: incorrect, 4: [partial, incorrect] }                # optional, gates
+    expect_patterns: [[1, 2, 10]]   # optional: gaps the feedback should group (reported)
+```
+
 - Check the file first, for free: `npx @novedu/cli validate ./x.eval.yaml --kind eval`
   (offline; it also strict-checks the quiz the eval targets).
 - **`expect`** is one of `correct` / `partial` / `incorrect`, or a list of the

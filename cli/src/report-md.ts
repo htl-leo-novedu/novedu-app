@@ -4,12 +4,14 @@ import {
   type EvalBatchFile,
   type EvalBatchResult,
   type EvalCaseResult,
+  type EvalClozeCaseResult,
   type EvalLlmSpec,
   type EvalQuizCaseResult,
   type EvalRunLlm,
   type EvalRunResult,
   type EvalTutorCaseResult,
   type EvalUsage,
+  isClozeCase,
   isTutorCase,
 } from "./eval-run";
 
@@ -25,7 +27,11 @@ import {
 // file fills the verdict columns and lists its mismatches, a TUTOR file leaves them as em
 // dashes (it has no verdict to measure) and its deliverables are the "Missing tool calls"
 // section — the deterministic `required_tools` check — and the "Flagged responses" one,
-// the judge's findings over each generated turn.
+// the judge's findings over each generated turn. A CLOZE file fills the verdict columns
+// (per-gap `expect`) and is the one exception to "details only for what went wrong":
+// every submission gets a section, because the consolidated feedback it produced — the
+// patterns that survived the grounding filter, what was dropped and why — is what a
+// cloze eval exists to show.
 //
 // Two deliberate rules:
 //   * DETAILS ONLY FOR WHAT WENT WRONG — mismatched, errored and unstable cases,
@@ -316,7 +322,7 @@ function caseSection(evalCase: EvalQuizCaseResult, questionText: string | undefi
 function flaggedSection(result: EvalRunResult, questionText: Map<string, string>): string[] {
   const flagged = result.cases.filter(
     (evalCase): evalCase is EvalQuizCaseResult =>
-      evalCase.feedbackFlagged && !isTutorCase(evalCase),
+      evalCase.feedbackFlagged && !isTutorCase(evalCase) && !isClozeCase(evalCase),
   );
   if (flagged.length === 0) return [];
 
@@ -484,6 +490,121 @@ function tutorFlaggedSection(result: EvalRunResult): string[] {
   return lines;
 }
 
+/** A verdict with its expectation check: `partial ✓`, `correct ✗`, or the bare verdict. */
+function gapVerdictCell(gap: EvalClozeCaseResult["gaps"][number]): string {
+  if (!gap.verdict) return "—";
+  if (gap.passed === undefined) return `\`${gap.verdict}\``;
+  return `\`${gap.verdict}\` ${gap.passed ? "✓" : "✗ **mismatch**"}`;
+}
+
+/**
+ * ONE cloze submission: the gap table (answer, possible answer, expected, got, decided
+ * by, the grader's reason), the `expect_patterns` check, then per repeat the feedback a
+ * student would have seen, what the grounding filter dropped and why, and the judge's
+ * flags. A gap answered by nobody reads `(empty)`.
+ */
+function clozeCaseSection(evalCase: EvalClozeCaseResult): string[] {
+  const outcome =
+    evalCase.status === "errored"
+      ? "error"
+      : evalCase.status === "failed"
+        ? "❌ failed"
+        : "✅ passed";
+  const unstable = evalCase.unstable ? " *(unstable)*" : "";
+  const lines = [`### \`${cell(evalCase.submissionId)}\` — ${outcome}${unstable}`, ""];
+
+  const firstGraded = evalCase.repeats.find((repeat) => repeat.cloze)?.cloze;
+  lines.push(
+    row(["Gap", "Answer", "Possible answer", "Expected", "Got", "Decided by", "Grader's reason"]),
+    row(["---:", "---", "---", "---", "---", "---", "---"]),
+  );
+  evalCase.gaps.forEach((gap, i) => {
+    const reason = firstGraded?.gaps[i]?.reason;
+    lines.push(
+      row([
+        String(gap.gap),
+        gap.answer ? cell(gap.answer) : "*(empty)*",
+        gap.reference ? cell(gap.reference) : "*(empty)*",
+        gap.expected ? gap.expected.join(" \\| ") : "",
+        gapVerdictCell(gap),
+        gap.decidedBy ?? "—",
+        reason ? cell(reason) : "",
+      ]),
+    );
+  });
+  lines.push("");
+
+  if (evalCase.patternChecks) {
+    lines.push("**Expected patterns** *(reported only)*", "");
+    for (const check of evalCase.patternChecks) {
+      const result =
+        check.of === 0
+          ? "no feedback to check"
+          : `${check.grouped === 0 ? "not grouped" : "grouped"} in ${check.grouped}/${check.of} repeat(s)`;
+      lines.push(`- gaps ${check.gaps.join(", ")} — ${result}`);
+    }
+    lines.push("");
+  }
+
+  const several = evalCase.repeats.length > 1;
+  for (const repeat of evalCase.repeats) {
+    if (several) lines.push(`#### Repeat #${repeat.repeatIndex + 1}`, "");
+    if (repeat.error !== undefined) {
+      lines.push("**Error**", "", quote(errorMessage(repeat.error)), "");
+      continue;
+    }
+    const detail = repeat.cloze;
+    if (!detail) continue;
+    if (detail.feedbackError) {
+      lines.push("**Feedback failed**", "", quote(detail.feedbackError), "");
+    } else if (!detail.feedback) {
+      lines.push("_Every gap correct — no feedback is asked for._", "");
+    } else {
+      const { patterns, gapNotes, dropped } = detail.feedback;
+      lines.push("**Patterns**", "");
+      if (patterns.length === 0) lines.push("- *(none)*");
+      for (const pattern of patterns) {
+        lines.push(
+          `- **${inline(pattern.title)}** (gaps ${pattern.gaps.join(", ")}) — ` +
+            `${inline(pattern.explanation)} *Next time:* ${inline(pattern.nextTime)}`,
+        );
+      }
+      lines.push("");
+      if (dropped.patterns.length > 0) {
+        lines.push("**Dropped patterns** *(the student never sees these)*", "");
+        for (const { pattern, reason } of dropped.patterns) {
+          lines.push(
+            `- ${inline(pattern.title)} (gaps ${pattern.gaps.join(", ")}) — \`${reason}\``,
+          );
+        }
+        lines.push("");
+      }
+      lines.push("**Gap notes**", "");
+      if (gapNotes.length === 0) lines.push("- *(none)*");
+      for (const note of gapNotes) lines.push(`- Gap ${note.gap} — ${inline(note.note)}`);
+      lines.push("");
+      if (dropped.gapNotes.length > 0) {
+        lines.push("**Dropped notes**", "");
+        for (const { note, reason } of dropped.gapNotes) {
+          lines.push(`- Gap ${note.gap} — ${inline(note.note)} — \`${reason}\``);
+        }
+        lines.push("");
+      }
+    }
+    const issues = repeat.judge?.issues ?? [];
+    if (issues.length > 0) {
+      lines.push("**Judge flags** *(reported only)*", "");
+      for (const issue of issues) {
+        lines.push(`- \`${cell(issue.criterion)}\` — ${inline(issue.note)}`);
+      }
+      lines.push("");
+    } else if (repeat.judgeError) {
+      lines.push(`_The judge call failed: ${inline(repeat.judgeError)}_`, "");
+    }
+  }
+  return lines;
+}
+
 /** One file's details section, or `[]` when the file has nothing to report. */
 function fileDetails(file: EvalBatchFile): string[] {
   const name = shortSource(file.source);
@@ -508,6 +629,7 @@ function fileDetails(file: EvalBatchFile): string[] {
   const flagged = tutor ? tutorFlaggedSection(result) : flaggedSection(result, questionText);
   const missingTools = tutor ? tutorMissingToolsSection(result) : [];
   if (
+    result.kind !== "cloze" &&
     detailed.length === 0 &&
     skipped === 0 &&
     !result.aborted &&
@@ -523,11 +645,14 @@ function fileDetails(file: EvalBatchFile): string[] {
     lines.push(`> The run was aborted: ${inline(result.aborted.message)}`);
     lines.push("");
   }
-  for (const evalCase of detailed) {
+  for (const evalCase of result.kind === "cloze" ? result.cases : detailed) {
+    if (evalCase.status === "skipped") continue;
     lines.push(
       ...(isTutorCase(evalCase)
         ? tutorErrorSection(evalCase)
-        : caseSection(evalCase, questionText.get(evalCase.questionId))),
+        : isClozeCase(evalCase)
+          ? clozeCaseSection(evalCase)
+          : caseSection(evalCase, questionText.get(evalCase.questionId))),
     );
   }
   if (skipped > 0) {
@@ -535,7 +660,7 @@ function fileDetails(file: EvalBatchFile): string[] {
     // hundreds of identical "never attempted" blocks.
     const reason = result.aborted ? ` (${inline(result.aborted.message)})` : "";
     lines.push(
-      `**${count(skipped)} ${tutor ? "conversation" : "case"}(s) were never attempted**${reason} — the run is incomplete, so it cannot pass.`,
+      `**${count(skipped)} ${tutor ? "conversation" : result.kind === "cloze" ? "submission" : "case"}(s) were never attempted**${reason} — the run is incomplete, so it cannot pass.`,
     );
     lines.push("");
   }
@@ -638,7 +763,7 @@ export function renderEvalMarkdownReport(batch: EvalBatchResult, meta: EvalRepor
     lines.push("");
   } else {
     lines.push(
-      "_Below: only the mismatched, errored and unstable cases, plus anything the judge flagged. Clean cases live in the `--json` report._",
+      "_Below: only the mismatched, errored and unstable cases, plus anything the judge flagged and every cloze submission. Other clean cases live in the `--json` report._",
     );
     lines.push("");
     lines.push(...details);

@@ -740,10 +740,13 @@ describe("expandSources", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.sources).toHaveLength(9);
+    expect(result.sources).toHaveLength(12);
     expect(result.sources.map((s) => s.split("/").pop())).toEqual([
+      "broken-cloze-eval.yaml",
       "broken-eval.yaml",
       "broken-tutor-eval.yaml",
+      "cloze-eval.yaml",
+      "cloze-mismatch-eval.yaml",
       "judge-eval.yaml",
       "mismatch-eval.yaml",
       "test-eval.yaml",

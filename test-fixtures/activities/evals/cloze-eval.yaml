@@ -1,0 +1,26 @@
+# Submissions for cloze/test-cloze.yaml (gaps: 1 "is going to", 2 "starts", 3 empty),
+# tuned to the fixtures server's fake /api/eval/cloze: a gap's verdict is its answer's
+# `[grade:<verdict>]` marker, `incorrect` without one. Every expectation MATCHES, so a
+# run over this file exits 0. The first submission's answer to gap 2 plants a
+# `[judge:…]` marker, which reaches the judge's subject through the answers block.
+kind: cloze
+id: cloze-eval
+target: ../cloze/test-cloze.yaml
+submissions:
+  - id: two-wrong-forms
+    answers:
+      1: "[grade:partial] going to"
+      2: "start [judge:unsupported_pattern]"
+    expect:
+      1: partial
+      2: [partial, incorrect]
+      3: correct
+    expect_patterns:
+      - [1, 2]
+  - id: all-exact
+    answers:
+      1: is going to
+      2: starts
+    expect:
+      1: correct
+      2: correct

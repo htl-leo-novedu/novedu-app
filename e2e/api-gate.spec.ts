@@ -29,6 +29,7 @@ const EVAL_ROUTES = [
   { path: "/api/eval/grade", body: { subject: "x", systemPrompt: "x" } },
   { path: "/api/eval/judge", body: { subject: "x", systemPrompt: "x", criteria: ["x"] } },
   { path: "/api/eval/respond", body: { systemPrompt: "x", messages: [] } },
+  { path: "/api/eval/cloze", body: { step: "grade", system: "x", user: "x" } },
 ] as const;
 
 for (const { path, body } of EVAL_ROUTES) {

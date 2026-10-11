@@ -23,8 +23,8 @@ its own tests:
 - `GET /api/version` — the build-identity probe, with a configurable CLI version.
 - `GET`/`POST /api/codes` — list and mint (in-memory store, deterministic
   `synced0001…` codes) for `codes sync` (`docs/registry.md`).
-- `POST /api/eval/grade`, `/api/eval/respond`, `/api/eval/judge` — a deterministic
-  grader, tutor and judge for `eval`, steered by markers in the fixtures and with
+- `POST /api/eval/grade`, `/api/eval/respond`, `/api/eval/cloze`, `/api/eval/judge` — a deterministic
+  grader, tutor, cloze pipeline and judge for `eval`, steered by markers in the fixtures and with
   injectable failures for the retry paths (`docs/cli-eval.md`).
 - `POST /api/images/<name>` — the one-shot multipart image upload for `images upload`.
 
@@ -61,7 +61,9 @@ activities/
              judge-eval.yaml, broken-eval.yaml;
              tutor evals: tutor-eval.yaml, tutor-judge-eval.yaml, broken-tutor-eval.yaml
              (→ tutors/eval-tutor.yaml), tutor-tools-eval.yaml,
-             tutor-old-server-eval.yaml (→ tutors/tools-tutor.yaml)
+             tutor-old-server-eval.yaml (→ tutors/tools-tutor.yaml);
+             cloze evals (→ cloze/test-cloze.yaml): cloze-eval.yaml,
+             cloze-mismatch-eval.yaml, broken-cloze-eval.yaml
   registry/  broken-activities.yaml  (an INVALID activity registry — the valid
              one is written to a temp dir by the test, its base-url carries the
              fixtures server's ephemeral port)

@@ -135,7 +135,8 @@ shareable activities.
   own public `/api/coding/v1` routes, authenticated by a per-user API key from
   `novedu_coding_keys` — the code string itself opens nothing. `cloze` is the
   gap-fill exercise (`docs/cloze.md`): no `runtime` either — its `gradeCloze` /
-  `explainCloze` server actions run the internal `clozeEvaluator` agent — and its
+  `explainCloze` server actions (and the teacher-only `POST /api/eval/cloze`) run the
+  internal `clozeEvaluator` agent — and its
   `renderDetail` shows the code's facts, the answer key with per-gap verdict counts
   of first submissions and the per-gap table (`novedu_cloze_gap_counts`).
 

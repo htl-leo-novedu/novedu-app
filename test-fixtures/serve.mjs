@@ -32,7 +32,16 @@
 // field entirely — the shape of a server too old to report tool calls, which the CLI must
 // turn into a loud failure rather than a silent "nothing missing".
 //
-// `/api/eval/judge` (the judge, shared by both eval kinds) follows the same convention one level up:
+// `/api/eval/cloze` (the CLOZE eval kind's two calls) mirrors the fake LLM's cloze rules
+// (fake-llm/markers.mjs): `step: "grade"` gives each listed gap the verdict of a
+// `[grade:<verdict>]` marker in its answer (`incorrect` without one; `[grade:omit]`
+// leaves the gap out, so the CLI's coverage retry and its failure are exercised), and
+// `step: "explain"` answers one "Fixtures pattern" over every non-correct gap (when there
+// are two or more), one pattern citing only the first non-correct gap (which the CLI's
+// grounding filter must DROP as too few gaps), and one note per non-correct gap. Every
+// cloze request is appended to `clozeRequests`.
+//
+// `/api/eval/judge` (the judge, shared by every eval kind) follows the same convention one level up:
 // it answers an EMPTY `issues` list unless the request's `subject` carries
 // `[judge:<criterion>]` markers — one issue per marker. (The judge's DEGRADE breaker
 // is unit-tested in `cli/src/eval-run.unit.test.ts`; exercising it against the built
@@ -84,7 +93,8 @@ const CLI_PACKAGE_VERSION = JSON.parse(
  * N `/api/eval/grade` requests answer 504 and `options.respondFailures` does the same
  * for `/api/eval/respond` (retry testing); every graded request is appended to the
  * returned `evalRequests` array, every generated one to `respondRequests`, and every
- * judged `/api/eval/judge` request to `judgeRequests`, and every accepted
+ * judged `/api/eval/judge` request to `judgeRequests`, every `/api/eval/cloze`
+ * request to `clozeRequests`, and every accepted
  * `/api/images/<name>` upload to `imageUploads`. `options.cliVersion` overrides the
  * `cliVersion` `/api/version` reports (default: the real `cli/package.json` one), so
  * `eval`'s mismatch warning can be exercised.
@@ -95,7 +105,7 @@ const CLI_PACKAGE_VERSION = JSON.parse(
  *
  * @param {number} [port]
  * @param {{ codes?: Array<Record<string, unknown>>, evalFailures?: number, respondFailures?: number, cliVersion?: string }} [options]
- * @returns {Promise<{ server: import("node:http").Server, baseUrl: string, codes: Array<Record<string, unknown>>, evalRequests: Array<Record<string, unknown>>, respondRequests: Array<Record<string, unknown>>, judgeRequests: Array<Record<string, unknown>>, imageUploads: Array<{ name: string, mime: string, credit: string | null, fileName: string, bytes: Buffer }>, exportRequests: Array<{ code: string, limit: string | null, after: string | null }> }>}
+ * @returns {Promise<{ server: import("node:http").Server, baseUrl: string, codes: Array<Record<string, unknown>>, evalRequests: Array<Record<string, unknown>>, respondRequests: Array<Record<string, unknown>>, judgeRequests: Array<Record<string, unknown>>, clozeRequests: Array<Record<string, unknown>>, imageUploads: Array<{ name: string, mime: string, credit: string | null, fileName: string, bytes: Buffer }>, exportRequests: Array<{ code: string, limit: string | null, after: string | null }> }>}
  */
 export function startFixturesServer(port = 0, options = {}) {
   const codes = options.codes ?? [];
@@ -106,6 +116,8 @@ export function startFixturesServer(port = 0, options = {}) {
   const respondRequests = [];
   /** @type {Array<Record<string, unknown>>} */
   const judgeRequests = [];
+  /** @type {Array<Record<string, unknown>>} */
+  const clozeRequests = [];
   /** @type {Array<{ name: string, mime: string, credit: string | null, fileName: string, bytes: Buffer }>} */
   const imageUploads = [];
   /** @type {Array<{ code: string, limit: string | null, after: string | null }>} */
@@ -142,6 +154,10 @@ export function startFixturesServer(port = 0, options = {}) {
       }
       if (url.pathname === "/api/eval/respond") {
         await handleEvalRespond(req, res, respondState, respondRequests);
+        return;
+      }
+      if (url.pathname === "/api/eval/cloze") {
+        await handleEvalCloze(req, res, clozeRequests);
         return;
       }
       if (url.pathname === "/api/eval/judge") {
@@ -192,6 +208,7 @@ export function startFixturesServer(port = 0, options = {}) {
         evalRequests,
         respondRequests,
         judgeRequests,
+        clozeRequests,
         imageUploads,
         exportRequests,
       });
@@ -493,6 +510,83 @@ async function handleEvalRespond(req, res, state, requests) {
  * marker becomes one issue with fixed note text, so an integration test can assert
  * exact flag counts.
  */
+/** The JSON list a cloze user message carries after its one-line preface, or []. */
+function clozeEntries(text) {
+  const start = text.indexOf("\n[");
+  if (start < 0) return [];
+  try {
+    const entries = JSON.parse(text.slice(start + 1));
+    return Array.isArray(entries) ? entries : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The fake `POST /api/eval/cloze` (app/api/eval/cloze/route.ts): bearer required, POST
+ * only, the same required fields — then a DETERMINISTIC structured output per step (see
+ * the header), with a plausible `usage` block.
+ */
+async function handleEvalCloze(req, res, requests) {
+  if (!/^Bearer .+/.test(req.headers.authorization ?? "")) {
+    sendJson(res, 401, { message: "Unauthorized" });
+    return;
+  }
+  if (req.method !== "POST") {
+    sendJson(res, 405, { message: "Method not allowed" });
+    return;
+  }
+  const body = await readJsonBody(req);
+  if (body === undefined) {
+    sendJson(res, 400, { message: "The request body must be JSON." });
+    return;
+  }
+  if (
+    !body?.llm?.model ||
+    !body?.system ||
+    !body?.user ||
+    (body.step !== "grade" && body.step !== "explain")
+  ) {
+    sendJson(res, 400, { message: "llm.model, step, system and user are required." });
+    return;
+  }
+
+  requests.push(body);
+  const entries = clozeEntries(String(body.user));
+  const usage = { input: 800 + String(body.system).length, cachedInput: 64, output: 30 };
+  if (body.step === "grade") {
+    const gaps = [];
+    for (const { gap, answer } of entries) {
+      const marker = /\[grade:(correct|partial|incorrect|omit)\]/.exec(String(answer));
+      const result = marker ? marker[1] : "incorrect";
+      if (result === "omit") continue;
+      gaps.push({ gap, result, reason: `fixtures reason for gap ${gap}` });
+    }
+    sendJson(res, 200, { output: { gaps }, usage });
+    return;
+  }
+  const wrong = entries.filter(({ verdict }) => verdict !== "correct").map(({ gap }) => gap);
+  const patterns = [];
+  if (wrong.length >= 2) {
+    patterns.push({
+      title: "Fixtures pattern",
+      explanation: `fixtures explanation for gaps ${wrong.join(", ")}`,
+      gaps: wrong,
+      next_time: "fixtures tip",
+    });
+  }
+  if (wrong.length >= 1) {
+    patterns.push({
+      title: "Fixtures single-gap pattern",
+      explanation: "cites one gap only",
+      gaps: [wrong[0]],
+      next_time: "fixtures tip",
+    });
+  }
+  const gap_notes = wrong.map((gap) => ({ gap, note: `fixtures note for gap ${gap}` }));
+  sendJson(res, 200, { output: { patterns, gap_notes }, usage });
+}
+
 async function handleEvalJudge(req, res, requests) {
   if (!/^Bearer .+/.test(req.headers.authorization ?? "")) {
     sendJson(res, 401, { message: "Unauthorized" });

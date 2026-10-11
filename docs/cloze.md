@@ -337,7 +337,9 @@ student gets `{ title, explanation, gaps (ascending), nextTime }` and `{ gap, no
 - **`clozeEvaluator` is never web-reachable** (beside `quizEvaluator`, `evalJudge`,
   `evalTutor`): no module names it as its `runtime.agentId`, so the CopilotKit route
   404s it and `/info` never lists it. Its callers are `gradeCloze` and `explainCloze`
-  — the prompts are built server-side; the client sends only answers.
+  — the prompts are built server-side; the client sends only answers — and the
+  teacher-only bearer route `POST /api/eval/cloze`, whose prompts the CLI assembled
+  offline from the teacher's own YAML (no stored exercise is read).
 - **`explainCloze` trusts only token-signed verdicts.** The result token binds the
   session user, the code, the attempt, the answers and the verdicts, so a client cannot
   hand the feedback writer verdicts of its own or use it as a free LLM endpoint.
@@ -428,6 +430,28 @@ predicates of the start pages (`lib/student-facts-store.ts`,
 `userMessageTemplate` and the `responseSchema` (JSON Schema) — all from the production
 builders (grep-guarded in `lib/prompt-dump.unit.test.ts`).
 
+## Evals
+
+`novedu-cli eval` has a `cloze` kind (`docs/cli-eval.md`, "The cloze kind"): an eval
+file lists SUBMISSIONS — answers by gap number, an optional per-gap `expect` (one
+verdict or a list; gates the exit code) and optional `expect_patterns` (gap sets the
+feedback should group; reported only). The example next to the sample exercise is
+`activities/examples/future-forms/sue-fresh-start.eval.yaml`.
+
+The CLI replays this pipeline per repeat with the same pure code: `dumpPrompts("cloze")`
+for both system prompts, `buildClozeGradingMessage` / `buildClozeFeedbackMessage` for the
+user messages, `runClozePrepass` locally, `clozeGradingCovers` for the coverage retry,
+and `groundClozeFeedback` locally — so the report shows what a student would have seen,
+plus the dropped patterns and notes with the filter's reason. The two model calls go
+through the teacher-only `POST /api/eval/cloze` (`{ step: "grade" | "explain", system,
+user }` → `{ output, usage? }`, `docs/api.md`), which runs `clozeEvaluator` with the
+step's schema and the same truncation retry (`clozeGradingTexts` /
+`clozeFeedbackTexts`) and persists nothing. The judge (`lib/cloze-judge.ts`, criteria
+`unsupported_pattern`, `contradicts_verdict`, `misstates_facts`,
+`ignores_instructions`, `leaks_rubric`) audits the surviving feedback against the
+feedback prompt through the kind-agnostic `POST /api/eval/judge`; it reports and never
+gates.
+
 ## Fake LLM
 
 `fake-llm/markers.mjs` answers both calls by schema (`gaps` → grading, `patterns` →
@@ -483,3 +507,8 @@ note each, and an answer containing `[explain:fail]` makes the feedback call fai
   correct, with the first round's result saved, and the detail page then counts the
   first round but not the practice round. Its `@live-llm` test proves a real model honours both structured outputs
   (`test-fixtures/activities/cloze/live-cloze.yaml`).
+- Evals: `lib/eval-validate.unit.test.ts` (the cloze arm: schema, gap numbers checked
+  against the target, the strict target check), `lib/cloze-judge.unit.test.ts`,
+  `app/api/eval/cloze/route.unit.test.ts`, `cli/src/eval-run-cloze.unit.test.ts` (the
+  runner) and `cli/test/eval.integration.test.ts` (the built CLI against the fixtures
+  server's fake `/api/eval/cloze`).

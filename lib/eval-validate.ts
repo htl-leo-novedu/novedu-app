@@ -1,4 +1,8 @@
+import type { ClozeGap } from "@/lib/cloze-gaps";
+import { loadClozeFrom } from "@/lib/cloze-resolve";
+import { loadAndCheckCloze } from "@/lib/cloze-validate";
 import {
+  type ClozeEvalYaml,
   type EvalKind,
   type EvalYaml,
   EvalYamlSchema,
@@ -7,6 +11,7 @@ import {
   type TutorEvalYaml,
 } from "@/lib/eval-schema";
 import {
+  type ClozePromptDump,
   dumpPrompts,
   type PromptDumpLlm,
   type QuizPromptDump,
@@ -94,7 +99,20 @@ export interface TutorEvalCheckOk extends EvalCheckOkBase {
   tutorDump: TutorPromptDump;
 }
 
-export type EvalCheckOk = QuizEvalCheckOk | TutorEvalCheckOk;
+/** A checked CLOZE eval: submissions plus the target exercise's two prompts and gaps. */
+export interface ClozeEvalCheckOk extends EvalCheckOkBase {
+  kind: "cloze";
+  evalFile: ClozeEvalYaml;
+  /** The target exercise's prompt dump — both calls' system prompts. */
+  clozeDump: ClozePromptDump;
+  /**
+   * The RESOLVED exercise's gaps in reading order — the run applies the pre-pass to the
+   * references locally, and the report shows them as the possible answers.
+   */
+  clozeGaps: Pick<ClozeGap, "number" | "reference" | "hint">[];
+}
+
+export type EvalCheckOk = QuizEvalCheckOk | TutorEvalCheckOk | ClozeEvalCheckOk;
 
 export type EvalCheckResult =
   | EvalCheckOk
@@ -170,18 +188,15 @@ export async function loadAndCheckEval(
   // 4. Authoring gate on the target (opt-in): the identical strict check
   // `validate --kind <target-kind>` runs, so `validate --kind eval` never asserts less.
   if (opts.strictTarget) {
+    const strictOpts = { allowedSchemes, validateLibraries: opts.validateLibraries ?? true };
     const strict =
       kind === "tutor"
         ? // The tutor's strict check IS its full build with `validateLibraries` — the
           // same call `validate --kind tutor` makes.
-          await loadAndBuildTutorPrompt(targetUrl, fetchImpl, {
-            allowedSchemes,
-            validateLibraries: opts.validateLibraries ?? true,
-          })
-        : await loadAndCheckQuiz(targetUrl, fetchImpl, {
-            allowedSchemes,
-            validateLibraries: opts.validateLibraries ?? true,
-          });
+          await loadAndBuildTutorPrompt(targetUrl, fetchImpl, strictOpts)
+        : kind === "cloze"
+          ? await loadAndCheckCloze(targetUrl, fetchImpl, strictOpts)
+          : await loadAndCheckQuiz(targetUrl, fetchImpl, strictOpts);
     warnings.push(...strict.warnings);
     if (!strict.ok) return fail(strict.errors, warnings);
   }
@@ -239,7 +254,10 @@ export async function loadAndCheckEval(
       warnings,
     };
   }
-  if (dump.kind !== "quiz" || evalFile.kind === "tutor") {
+  if (dump.kind === "cloze" && evalFile.kind === "cloze") {
+    return checkClozeEval(evalFile, dump, targetUrl, fetchImpl, allowedSchemes, warnings);
+  }
+  if (dump.kind !== "quiz" || evalFile.kind === "tutor" || evalFile.kind === "cloze") {
     // Unreachable (the two kinds are exhaustive and already cross-checked above).
     return fail(
       [error("EVAL_TARGET_ERROR", `The target is not a ${kind}.`, { url: targetUrl })],
@@ -280,6 +298,69 @@ export async function loadAndCheckEval(
     quizDump: dump,
     quizQuestions,
     caseCount: evalFile.questions.reduce((sum, question) => sum + question.answers.length, 0),
+    warnings,
+  };
+}
+
+/**
+ * The cloze arm's cross-check: every gap number a submission names — in `answers`,
+ * `expect` or `expect_patterns` — must exist in the RESOLVED exercise. The gaps come
+ * from the same runtime loader `dumpPrompts` uses; unlike the quiz's question texts they
+ * are not report-only (the run's pre-pass needs the references), so a failed load fails
+ * the check.
+ */
+async function checkClozeEval(
+  evalFile: ClozeEvalYaml,
+  dump: ClozePromptDump,
+  targetUrl: string,
+  fetchImpl: Fetcher,
+  allowedSchemes: string[] | undefined,
+  warnings: ValidationWarning[],
+): Promise<EvalCheckResult> {
+  const resolved = await loadClozeFrom(targetUrl, fetchImpl, { allowedSchemes });
+  if (!resolved.ok) {
+    return fail(
+      [
+        error("EVAL_TARGET_ERROR", `The target cloze could not be loaded: ${resolved.message}`, {
+          url: targetUrl,
+        }),
+      ],
+      warnings,
+    );
+  }
+  const gapCount = resolved.cloze.gaps.length;
+  const unknown = evalFile.submissions.flatMap((submission) => {
+    const named = [
+      ...Object.keys(submission.answers).map(Number),
+      ...Object.keys(submission.expect ?? {}).map(Number),
+      ...(submission.expect_patterns ?? []).flat(),
+    ];
+    return [...new Set(named)]
+      .filter((gap) => gap > gapCount)
+      .sort((a, b) => a - b)
+      .map((gap) =>
+        error(
+          "EVAL_UNKNOWN_GAP",
+          `Submission "${submission.id}" names gap ${gap}, but the target cloze has ${gapCount} gap(s).`,
+          { url: targetUrl },
+        ),
+      );
+  });
+  if (unknown.length > 0) return fail(unknown, warnings);
+
+  return {
+    ok: true,
+    kind: "cloze",
+    evalFile,
+    targetUrl,
+    llm: dump.llm,
+    clozeDump: dump,
+    clozeGaps: resolved.cloze.gaps.map((gap) => ({
+      number: gap.number,
+      reference: gap.reference,
+      ...(gap.hint ? { hint: gap.hint } : {}),
+    })),
+    caseCount: evalFile.submissions.length,
     warnings,
   };
 }

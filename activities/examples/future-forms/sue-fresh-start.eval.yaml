@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/evals/eval-yaml.schema.json
+# Eval for the cloze exercise next to this file. Each SUBMISSION is what one student
+# might type; `novedu-cli eval` grades and explains it through the real cloze pipeline
+# and writes what a student would have seen (`--report report.md`).
+#
+#   novedu-cli eval ./sue-fresh-start.eval.yaml --report report.md
+#
+# - `answers` lists the gaps by number; a gap that is not listed was left empty.
+# - `expect` (optional) is the verdict a gap must get — one verdict or a list of
+#   acceptable ones. A gap graded otherwise fails the run.
+# - `expect_patterns` (optional) lists gaps the feedback should connect in ONE pattern.
+#   The report says whether it did; this never fails the run.
+
+kind: cloze
+id: sue-fresh-start-eval
+target: ./sue-fresh-start.yaml
+submissions:
+  # Uses "will" for every plan: the feedback should explain plans vs. spontaneous
+  # decisions in one pattern.
+  - id: will-for-every-plan
+    answers:
+      1: will
+      2: will
+      3: starts
+      4: am meet
+      5: is going to
+      6: will
+      7: will
+      8: will be training
+      9: will have completed
+      10: will
+    expect:
+      1: incorrect
+      2: incorrect
+      4: [partial, incorrect]
+      10: incorrect
+    expect_patterns:
+      - [1, 2, 10]
+
+  # Everything right, with contractions: no gap may be marked down.
+  - id: all-correct-with-contractions
+    answers:
+      1: "'s going to"
+      2: is going to
+      3: starts
+      4: "'m meeting"
+      5: "'s going to"
+      6: "'ll"
+      7: will
+      8: will be training
+      9: will have completed
+      10: "'m going to"
+    expect:
+      1: correct
+      4: correct
+      6: correct
+      10: correct
+
+  # Half the gaps left empty: empty gaps are "not answered" without asking the model.
+  - id: half-empty
+    answers:
+      1: is going to
+      3: start
+      6: will
+    expect:
+      2: incorrect
+      3: [partial, incorrect]

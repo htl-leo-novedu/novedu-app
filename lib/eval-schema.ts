@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_CLOZE_ANSWER_LENGTH } from "@/lib/cloze-types";
 import { QUIZ_VERDICT_ENUM, QUIZ_VERDICT_VALUES } from "@/lib/quiz-verdict-schema";
 import { TUTOR_TOOL_NAMES } from "@/lib/tutor-tools/names";
 
@@ -13,6 +14,10 @@ import { TUTOR_TOOL_NAMES } from "@/lib/tutor-tools/names";
 //         exchange (student turns AND any prior tutor turns) ending with a student turn;
 //         the model under test generates exactly ONE response and an LLM judge checks it
 //         against the tutor's own system prompt plus the case's grading instructions.
+//   cloze (`kind: cloze`) — SUBMISSIONS for one cloze exercise: each fills gaps by gap
+//         number and may state the verdict a gap must get (`expect`, gating) and which
+//         gaps the feedback should group into one pattern (`expect_patterns`, reported
+//         only).
 //
 // `kind` is OPTIONAL on the quiz arm on purpose: every eval file written before the tutor
 // kind existed stays valid byte-for-byte.
@@ -34,7 +39,7 @@ import { TUTOR_TOOL_NAMES } from "@/lib/tutor-tools/names";
  * produce. `cli/src/eval-run.ts` re-exports these and pins that relationship in the type
  * system, so a kind can never be added here without a runner.
  */
-export const EVAL_KINDS = ["quiz", "tutor"] as const;
+export const EVAL_KINDS = ["quiz", "tutor", "cloze"] as const;
 
 export type EvalKind = (typeof EVAL_KINDS)[number];
 
@@ -181,8 +186,67 @@ export const TutorEvalYamlSchema = z.strictObject({
   }),
 });
 
+/** A gap number as an eval file writes it: a YAML map key (`3:`), so a numeric string. */
+const GAP_KEY = z.string().regex(/^[1-9][0-9]*$/, "Expected a gap number (1, 2, 3, …).");
+
+/** A gap set `expect_patterns` names: at least two distinct gap numbers. */
+const gapSetSchema = z
+  .array(z.number().int().min(1))
+  .min(2)
+  .refine((gaps) => new Set(gaps).size === gaps.length, {
+    message: "Each gap may be listed only once.",
+  });
+
+/** ONE cloze submission: the answers a student typed, plus the teacher's expectations. */
+export const EvalClozeSubmissionSchema = z.strictObject({
+  id: z.string().regex(EVAL_ID_PATTERN).max(MAX_ID_LENGTH).meta({
+    description:
+      "Stable identifier of this submission, shown in the run report. Letters, digits, dot, dash and underscore.",
+  }),
+  answers: z
+    .record(
+      GAP_KEY,
+      // A number is taken as written (`3: 42`), so a math gap needs no quotes.
+      z
+        .union([z.string(), z.number()])
+        .transform(String)
+        .pipe(z.string().max(MAX_CLOZE_ANSWER_LENGTH)),
+    )
+    .meta({
+      description:
+        "The student's answers by gap number (e.g. `3: starts`). A gap that is not listed was left empty.",
+    }),
+  expect: z.record(GAP_KEY, expectSchema).optional().meta({
+    description:
+      "Optional: the verdict a gap must be graded with, by gap number — one verdict or a list of acceptable ones. A gap graded otherwise fails the run.",
+  }),
+  expect_patterns: z.array(gapSetSchema).min(1).optional().meta({
+    description:
+      "Optional, reported only: gap sets the feedback should group into one pattern (e.g. [1, 2, 10]). The report says whether one pattern cited all of them; it never fails the run.",
+  }),
+});
+
+/** The CLOZE arm: submissions graded and explained through the real cloze pipeline. */
+export const ClozeEvalYamlSchema = z.strictObject({
+  kind: z.literal("cloze").meta({
+    description: 'The eval kind. "cloze" grades whole submissions of a cloze (gap-fill) exercise.',
+  }),
+  id: idSchema,
+  target: z.string().min(1).meta({
+    description:
+      "The cloze YAML this eval runs against — a path relative to THIS file, or an absolute http(s) URL.",
+  }),
+  submissions: z
+    .array(EvalClozeSubmissionSchema)
+    .min(1)
+    .refine((list) => new Set(list.map((entry) => entry.id)).size === list.length, {
+      message: "Each submission id may be used only once.",
+    })
+    .meta({ description: "The evaluated submissions — at least one; each one is a case." }),
+});
+
 /**
- * The whole eval file: quiz (the default, `kind` omissible) or tutor.
+ * The whole eval file: quiz (the default, `kind` omissible), tutor or cloze.
  *
  * A discriminated union rather than a loose one, so a `kind: tutor` file with a typo in
  * `conversations` reports THAT problem instead of "no union member matched".
@@ -190,11 +254,14 @@ export const TutorEvalYamlSchema = z.strictObject({
 export const EvalYamlSchema = z.discriminatedUnion("kind", [
   QuizEvalYamlSchema,
   TutorEvalYamlSchema,
+  ClozeEvalYamlSchema,
 ]);
 
 export type EvalYaml = z.infer<typeof EvalYamlSchema>;
 export type QuizEvalYaml = z.infer<typeof QuizEvalYamlSchema>;
 export type TutorEvalYaml = z.infer<typeof TutorEvalYamlSchema>;
+export type ClozeEvalYaml = z.infer<typeof ClozeEvalYamlSchema>;
+export type EvalClozeSubmission = z.infer<typeof EvalClozeSubmissionSchema>;
 export type EvalQuestion = z.infer<typeof EvalQuestionSchema>;
 export type EvalAnswer = z.infer<typeof EvalAnswerSchema>;
 export type EvalConversation = z.infer<typeof EvalConversationSchema>;
@@ -221,8 +288,8 @@ export function turnToMessage(turn: EvalConversationTurn): {
  * matrix keys its rows by this set — `correct|partial` must be one row no matter which
  * order the author happened to write it in.
  */
-export function normalizeExpect(expect: EvalAnswer["expect"]): EvalVerdict[] {
-  const values = Array.isArray(expect) ? expect : [expect];
+export function normalizeExpect(expect: EvalVerdict | readonly EvalVerdict[]): EvalVerdict[] {
+  const values: readonly EvalVerdict[] = typeof expect === "string" ? [expect] : expect;
   const unique = [...new Set(values)];
   return unique.sort((a, b) => EVAL_VERDICTS.indexOf(a) - EVAL_VERDICTS.indexOf(b));
 }

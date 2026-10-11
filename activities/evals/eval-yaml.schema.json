@@ -197,6 +197,120 @@
         "conversations"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "cloze",
+          "description": "The eval kind. \"cloze\" grades whole submissions of a cloze (gap-fill) exercise."
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "description": "Stable identifier of this eval, shown in the run report. Letters, digits, dot, dash and underscore."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The cloze YAML this eval runs against — a path relative to THIS file, or an absolute http(s) URL."
+        },
+        "submissions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                "description": "Stable identifier of this submission, shown in the run report. Letters, digits, dot, dash and underscore."
+              },
+              "answers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "description": "The student's answers by gap number (e.g. `3: starts`). A gap that is not listed was left empty."
+              },
+              "expect": {
+                "description": "Optional: the verdict a gap must be graded with, by gap number — one verdict or a list of acceptable ones. A gap graded otherwise fails the run.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "correct",
+                        "partial",
+                        "incorrect"
+                      ]
+                    },
+                    {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "correct",
+                          "partial",
+                          "incorrect"
+                        ]
+                      }
+                    }
+                  ],
+                  "description": "The verdict this answer must be graded with: one of \"correct\", \"partial\", \"incorrect\", or a non-empty list of acceptable verdicts (e.g. [correct, partial]) when more than one grading is defensible."
+                }
+              },
+              "expect_patterns": {
+                "description": "Optional, reported only: gap sets the feedback should group into one pattern (e.g. [1, 2, 10]). The report says whether one pattern cited all of them; it never fails the run.",
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "minItems": 2,
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                }
+              }
+            },
+            "required": [
+              "id",
+              "answers"
+            ],
+            "additionalProperties": false
+          },
+          "description": "The evaluated submissions — at least one; each one is a case."
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "target",
+        "submissions"
+      ],
+      "additionalProperties": false
     }
   ]
 }

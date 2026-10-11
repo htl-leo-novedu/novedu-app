@@ -1,0 +1,12 @@
+# A cloze eval whose expectation the fake grader does NOT meet: gap 2's answer carries
+# no marker, so it is graded `incorrect` — the run exits 1 and names the gap.
+kind: cloze
+id: cloze-mismatch-eval
+target: ../cloze/test-cloze.yaml
+submissions:
+  - id: wrong-expectation
+    answers:
+      1: is going to
+      2: start
+    expect:
+      2: correct

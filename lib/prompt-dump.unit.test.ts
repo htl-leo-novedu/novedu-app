@@ -45,6 +45,11 @@ const PURE_MODULES = [
   "lib/cloze-grading-prompt.ts",
   "lib/cloze-feedback-prompt.ts",
   "lib/cloze-output-schemas.ts",
+  // The cloze eval runner applies the app's pre-pass and grounding filter locally, and
+  // judges with the cloze criteria.
+  "lib/cloze-prepass.ts",
+  "lib/cloze-grounding.ts",
+  "lib/cloze-judge.ts",
 ];
 
 describe("prompt-dump purity invariant", () => {
