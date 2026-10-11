@@ -18,7 +18,7 @@ It asks a different question from a quiz eval. A quiz eval asks "did the AI mark
 
 ## One command, two kinds of file
 
-You already have the tool. The `eval` command runs quiz evals, tutor evals, and cloze evals, and there's no flag to pick between them. A single line in the file, `kind: tutor`, is what decides, and one run can mix the kinds of file. So nothing here is a second tool to learn; it's the same command pointed at a different kind of file.
+You already have the tool. The `eval` command runs quiz evals and tutor evals, and there's no flag to pick between them. A single line in the file, `kind: tutor`, is what decides, and one run can mix both kinds of file. So nothing here is a second tool to learn; it's the same command pointed at a different kind of file.
 
 ## Script a few conversations
 

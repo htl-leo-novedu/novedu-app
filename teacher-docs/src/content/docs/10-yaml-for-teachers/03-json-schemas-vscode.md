@@ -89,7 +89,7 @@ Two more schemas cover files that are not activities. The first is for the **act
 # yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/registry/registry-yaml.schema.json
 ```
 
-The second is for an **eval file**, the test file you run with the Novedu CLI to check a quiz's grader, a tutor's behaviour, or a cloze exercise's grading and feedback. It takes this line:
+The second is for an **eval file**, the test file you run with the Novedu CLI to check a quiz's grader or a tutor's behaviour. It takes this line:
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/evals/eval-yaml.schema.json

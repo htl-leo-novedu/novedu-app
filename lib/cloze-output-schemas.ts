@@ -6,7 +6,7 @@ import { QUIZ_VERDICT_ENUM } from "./quiz-verdict-schema";
 // cloze pipeline (docs/cloze.md, "Grading"):
 //
 //   - the GRADING call: one verdict per undecided gap, with a one-sentence reason (the
-//     reason feeds the eval report and is never shown to a student),
+//     reason is never shown to a student),
 //   - the FEEDBACK call: up to three patterns that connect the student's mistakes, and a
 //     note per non-correct gap. The server's grounding filter (lib/cloze-grounding.ts)
 //     enforces the rules the schema cannot (≤ 3 patterns, ≥ 2 non-correct gaps each), so
@@ -51,41 +51,6 @@ export const CLOZE_FEEDBACK_SCHEMA = z.object({
 });
 
 export type ClozeFeedbackOutput = z.infer<typeof CLOZE_FEEDBACK_SCHEMA>;
-
-/**
- * True when a grading output names every undecided gap exactly once and no other — the
- * grading call's contract. `gradeCloze` and the eval runner both retry a mismatch once,
- * then fail.
- */
-export function clozeGradingCovers(
-  output: ClozeGradingOutput | undefined,
-  undecided: readonly number[],
-): boolean {
-  if (!output) return false;
-  const named = output.gaps.map((entry) => entry.gap);
-  return (
-    named.length === undecided.length &&
-    new Set(named).size === named.length &&
-    undecided.every((gap) => named.includes(gap))
-  );
-}
-
-/** The free-text fields of a grading output — what the truncation retry inspects. */
-export function clozeGradingTexts(output: ClozeGradingOutput): string[] {
-  return output.gaps.map((entry) => entry.reason);
-}
-
-/** The free-text fields of a feedback output — what the truncation retry inspects. */
-export function clozeFeedbackTexts(output: ClozeFeedbackOutput): string[] {
-  return [
-    ...output.patterns.flatMap((pattern) => [
-      pattern.title,
-      pattern.explanation,
-      pattern.next_time,
-    ]),
-    ...output.gap_notes.map((note) => note.note),
-  ];
-}
 
 /** `CLOZE_GRADING_SCHEMA` as plain JSON Schema — the grading call's response contract. */
 export function clozeGradingResponseJsonSchema(): Record<string, unknown> {

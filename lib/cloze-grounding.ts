@@ -11,12 +11,10 @@ import type { QuizVerdict } from "./quiz-types";
 //   - a gap note on a correct or non-existent gap is dropped; the first note per gap
 //     wins; an empty note is dropped.
 //
-// What it cannot check — whether an explanation is TRUE of the cited answers — is the
-// eval judge's job. A non-correct gap without a note still shows its verdict and its
-// possible answer.
+// What it cannot check is whether an explanation is TRUE of the cited answers. A
+// non-correct gap without a note still shows its verdict and its possible answer.
 //
-// PURE / CLI-safe: the eval runner applies the same filter locally, so its report shows
-// exactly what a student would see — and lists what was dropped, and why.
+// PURE: no I/O.
 
 /** A surviving pattern, as the student sees it (camelCase, gaps ascending). */
 export interface ClozePattern {
@@ -33,23 +31,9 @@ export interface ClozeGapNote {
   note: string;
 }
 
-export type DroppedPatternReason =
-  | "cites-correct-gap"
-  | "cites-unknown-gap"
-  | "cites-gap-twice"
-  | "too-few-gaps"
-  | "over-limit";
-
-export type DroppedNoteReason = "correct-gap" | "unknown-gap" | "duplicate-note" | "empty-note";
-
 export interface ClozeGroundedFeedback {
   patterns: ClozePattern[];
   gapNotes: ClozeGapNote[];
-  /** What the filter removed, for the eval report — never sent to a student. */
-  dropped: {
-    patterns: { pattern: ClozeFeedbackOutput["patterns"][number]; reason: DroppedPatternReason }[];
-    gapNotes: { note: ClozeFeedbackOutput["gap_notes"][number]; reason: DroppedNoteReason }[];
-  };
 }
 
 /**
@@ -60,63 +44,34 @@ export function groundClozeFeedback(
   raw: ClozeFeedbackOutput,
   verdicts: readonly QuizVerdict[],
 ): ClozeGroundedFeedback {
-  const verdictOf = (gap: number): QuizVerdict | undefined =>
-    Number.isInteger(gap) && gap >= 1 ? verdicts[gap - 1] : undefined;
-
-  const dropped: ClozeGroundedFeedback["dropped"] = { patterns: [], gapNotes: [] };
+  const isMistake = (gap: number): boolean => {
+    const verdict = Number.isInteger(gap) && gap >= 1 ? verdicts[gap - 1] : undefined;
+    return verdict !== undefined && verdict !== "correct";
+  };
 
   const patterns: ClozePattern[] = [];
   for (const pattern of raw.patterns) {
-    const reason = patternProblem(pattern.gaps, verdictOf);
-    if (reason) {
-      dropped.patterns.push({ pattern, reason });
-      continue;
-    }
-    if (patterns.length >= MAX_CLOZE_PATTERNS) {
-      dropped.patterns.push({ pattern, reason: "over-limit" });
+    if (patterns.length >= MAX_CLOZE_PATTERNS) break;
+    const { gaps } = pattern;
+    if (gaps.length < 2 || new Set(gaps).size !== gaps.length || !gaps.every(isMistake)) {
       continue;
     }
     patterns.push({
       title: pattern.title.trim(),
       explanation: pattern.explanation.trim(),
-      gaps: [...pattern.gaps].sort((a, b) => a - b),
+      gaps: [...gaps].sort((a, b) => a - b),
       nextTime: pattern.next_time.trim(),
     });
   }
 
   const noted = new Set<number>();
   const gapNotes: ClozeGapNote[] = [];
-  for (const note of raw.gap_notes) {
-    const verdict = verdictOf(note.gap);
-    const reason: DroppedNoteReason | undefined =
-      verdict === undefined
-        ? "unknown-gap"
-        : verdict === "correct"
-          ? "correct-gap"
-          : noted.has(note.gap)
-            ? "duplicate-note"
-            : note.note.trim() === ""
-              ? "empty-note"
-              : undefined;
-    if (reason) {
-      dropped.gapNotes.push({ note, reason });
-      continue;
-    }
-    noted.add(note.gap);
-    gapNotes.push({ gap: note.gap, note: note.note.trim() });
+  for (const { gap, note } of raw.gap_notes) {
+    if (!isMistake(gap) || noted.has(gap) || note.trim() === "") continue;
+    noted.add(gap);
+    gapNotes.push({ gap, note: note.trim() });
   }
   gapNotes.sort((a, b) => a.gap - b.gap);
 
-  return { patterns, gapNotes, dropped };
-}
-
-function patternProblem(
-  gaps: readonly number[],
-  verdictOf: (gap: number) => QuizVerdict | undefined,
-): DroppedPatternReason | undefined {
-  if (gaps.some((gap) => verdictOf(gap) === undefined)) return "cites-unknown-gap";
-  if (new Set(gaps).size !== gaps.length) return "cites-gap-twice";
-  if (gaps.some((gap) => verdictOf(gap) === "correct")) return "cites-correct-gap";
-  if (gaps.length < 2) return "too-few-gaps";
-  return undefined;
+  return { patterns, gapNotes };
 }

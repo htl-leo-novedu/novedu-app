@@ -10,14 +10,11 @@ related:
   - 40-ai-llms/01-novedu-cli
   - 10-yaml-for-teachers/05-see-the-prompt
   - 20-building-activities/04-quizzes
-  - 20-building-activities/09-cloze
 ---
 
 Validation tells you your quiz file is well-formed. The prompt dump shows what the AI is told. This chapter closes the loop: it shows what the AI actually **does**. You write a handful of student answers yourself (a good one, a half one, a confidently wrong one), note the mark each should get, and the CLI's `eval` command grades them with the same grader your students meet. That's what "evaluation" means in practice, and it turns "the AI feels too lenient" into a number you can check again after every edit.
 
 A run checks both halves of a grading. Your expected marks check the **mark**. A second AI, called the judge, reads the **feedback sentence** the grader wrote for the student and checks it against your own grading instructions, so a nice-looking mark with unhelpful wording doesn't slip past you.
-
-This chapter covers quiz evals. The same `eval` command also tests a tutor's behaviour and a cloze exercise's grading and feedback, each with its own kind of eval file; the chapters on testing a tutor and on building a cloze exercise show those files. The options in this chapter, such as repeats, the judge, and reports, work for every kind.
 
 ## Write a few golden answers
 

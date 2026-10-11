@@ -7,7 +7,6 @@ import { failJson, performApiRequest } from "../api";
 import {
   anyJudged,
   batchPassed,
-  type ClozeFn,
   createJudgeBreaker,
   type EvalBatchFileInput,
   type EvalBatchIssue,
@@ -38,9 +37,6 @@ import { toUrl } from "./validate";
 //   quiz  — replay GOLDEN ANSWERS through the real grader (`POST /api/eval/grade`).
 //   tutor — generate the next tutor turn of each scripted CONVERSATION
 //           (`POST /api/eval/respond`) and let the judge check it.
-//   cloze — grade and explain each SUBMISSION of a cloze exercise
-//           (`POST /api/eval/cloze`, two steps), the pre-pass and the grounding filter
-//           applied locally, and let the judge check the feedback that survived.
 //
 // The split is deliberate: the CLI assembles every prompt OFFLINE (through the app's own
 // `dumpPrompts` seam, so unpushed local YAML works), and the server handles ONE case per
@@ -367,36 +363,6 @@ function makeJudgeFn(server: string | undefined, llm: EvalLlmSpec): JudgeFn {
   };
 }
 
-/**
- * The HTTP seam for ONE cloze call (`step: "grade"` or `"explain"`), with the run's
- * effective llm closed in — the cloze kind's sibling of {@link makeGradeFn}, sharing its
- * failure classification. The structured output is passed on unparsed: the runner checks
- * it against the step's schema, so a malformed object fails the same way everywhere.
- */
-function makeClozeFn(server: string | undefined, llm: EvalLlmSpec): ClozeFn {
-  return async ({ step, system, user }) => {
-    const response = await performApiRequest({
-      server,
-      path: "/api/eval/cloze",
-      method: "POST",
-      body: { llm, step, system, user },
-      quiet: true,
-    });
-    if (response.ok) {
-      const payload = response.payload as { output?: unknown; usage?: unknown } | null;
-      const usage = parseUsage(payload?.usage);
-      return { ok: true, output: payload?.output, ...(usage ? { usage } : {}) };
-    }
-    return {
-      ok: false,
-      // No status ⇒ the request never reached the server (network) ⇒ worth retrying.
-      retryable: response.status === undefined || response.status >= 500,
-      ...(response.authFailed ? { auth: true as const } : {}),
-      error: response.error,
-    };
-  };
-}
-
 /** Budget for the one version probe — a hung check must never hold up a run. */
 const VERSION_CHECK_TIMEOUT_MS = 5_000;
 
@@ -480,8 +446,7 @@ function writeFileDone(label: string, result: EvalRunResult): void {
     result.kind === "tutor"
       ? `${totals.cases} conversation(s), ${totals.cases - totals.errored - totals.skipped} ok, ` +
         `${totals.errored} errored`
-      : `${totals.cases} ${result.kind === "cloze" ? "submission" : "case"}(s), ` +
-        `${totals.passed} passed, ${totals.failed} failed, ` +
+      : `${totals.cases} case(s), ${totals.passed} passed, ${totals.failed} failed, ` +
         `${totals.errored} errored`;
   process.stderr.write(
     `${label}: ${counts}` +
@@ -594,18 +559,15 @@ export async function runEvalCommand(
       const calls = cases * repeats;
       process.stderr.write(
         `${cases} ${unit}(s) × ${repeats} repeat(s) = ${calls} ${generation}` +
-          (judging ? ` + ${calls} judge call(s)\n` : "\n"),
+          (judging ? ` + ${calls} judge call(s)\n` : " call(s)\n"),
       );
     };
-    const casesOf = (kind: "quiz" | "tutor" | "cloze") =>
+    const casesOf = (kind: "quiz" | "tutor") =>
       [...checked.values()]
         .filter((file) => file.kind === kind)
         .reduce((sum, file) => sum + file.caseCount, 0);
-    scope("case", judging ? "grading" : "grading call(s)", casesOf("quiz"));
-    scope("conversation", judging ? "generation" : "generation call(s)", casesOf("tutor"));
-    // A cloze run is up to TWO calls (the pre-pass may decide every gap, and an
-    // all-correct submission asks for no feedback), so it counts runs, not calls.
-    scope("submission", "grading/feedback run(s)", casesOf("cloze"));
+    scope("case", "grading", casesOf("quiz"));
+    scope("conversation", "generation", casesOf("tutor"));
   }
 
   // One advisory probe before the first grading call: is this CLI's frozen copy of the
@@ -671,7 +633,6 @@ export async function runEvalCommand(
     const result = await runEval(check.kind, check, {
       grade: makeGradeFn(options.server, effective),
       respond: makeRespondFn(options.server, effective),
-      cloze: makeClozeFn(options.server, effective),
       ...(judging ? { judge: makeJudgeFn(options.server, judgeLlm) } : {}),
       judgeBreaker,
       onJudgeDegraded,

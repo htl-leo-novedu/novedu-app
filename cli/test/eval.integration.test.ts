@@ -31,12 +31,6 @@ const brokenTutorEval = join(evalsDir, "broken-tutor-eval.yaml");
 const tutorToolsEval = join(evalsDir, "tutor-tools-eval.yaml");
 /** A `required_tools` case answered in the shape of a server too old to report tool calls. */
 const tutorOldServerEval = join(evalsDir, "tutor-old-server-eval.yaml");
-/** A CLOZE eval: two submissions whose per-gap expectations all match the fake grader. */
-const clozeEval = join(evalsDir, "cloze-eval.yaml");
-/** A cloze eval expecting a verdict the fake grader does not give. */
-const clozeMismatchEval = join(evalsDir, "cloze-mismatch-eval.yaml");
-/** A cloze eval naming a gap the target does not have — invalid offline. */
-const brokenClozeEval = join(evalsDir, "broken-cloze-eval.yaml");
 
 let fixtures:
   | {
@@ -45,7 +39,6 @@ let fixtures:
       evalRequests: Array<Record<string, unknown>>;
       respondRequests: Array<Record<string, unknown>>;
       judgeRequests: Array<Record<string, unknown>>;
-      clozeRequests: Array<Record<string, unknown>>;
     }
   | undefined;
 let retryFixtures: { server: Server; baseUrl: string } | undefined;
@@ -519,101 +512,5 @@ describe("novedu-cli validate --kind eval — the tutor kind", () => {
 
     expect(code).toBe(1);
     expect(stdout).toContain("Invalid eval");
-  });
-});
-
-describe("novedu-cli eval — the cloze kind", () => {
-  it("grades, explains and judges every submission, exiting 0", async () => {
-    const report = join(dir, "cloze-report.md");
-    const out = join(dir, "cloze-report.json");
-    const before = fixtures?.clozeRequests.length ?? 0;
-
-    const { code, stdout, stderr } = await runCli([
-      "eval",
-      clozeEval,
-      "--server",
-      baseUrl(),
-      "--out",
-      out,
-      "--report",
-      report,
-    ]);
-
-    expect(code).toBe(0);
-    expect(stderr).toContain(
-      "2 submission(s) × 1 repeat(s) = 2 grading/feedback run(s) + 2 judge call(s)",
-    );
-    expect(stdout).toContain("Eval passed");
-    expect(stdout).toContain("passed: 2");
-
-    // The all-exact submission never reached the server (the pre-pass decided every gap
-    // and nothing was wrong): ONE grading and ONE feedback call in total.
-    const calls = (fixtures?.clozeRequests.slice(before) ?? []) as {
-      step?: string;
-      system?: string;
-      user?: string;
-    }[];
-    expect(calls.map((call) => call.step)).toEqual(["grade", "explain"]);
-    // The app's own grading prompt, with the references, assembled offline…
-    expect(calls[0]?.system).toContain('⟦1 · reference "is going to"⟧');
-    // …and only the undecided gaps sent to grading (gap 3 has an empty reference).
-    expect(calls[0]?.user).toContain('"gap": 1');
-    expect(calls[0]?.user).not.toContain('"gap": 3');
-    expect(calls[1]?.user).toContain('"verdict": "partial"');
-
-    // The judge saw the cloze taxonomy and only the feedback that SURVIVED grounding.
-    const judged = fixtures?.judgeRequests.at(-1) as
-      | { system?: string; subject?: string; criteria?: string[] }
-      | undefined;
-    expect(judged?.criteria).toContain("unsupported_pattern");
-    expect(judged?.subject).toContain("Fixtures pattern");
-    expect(judged?.subject).not.toContain("Fixtures single-gap pattern");
-
-    const json = JSON.parse(readFileSync(out, "utf8"));
-    const first = json.files[0].result.cases[0];
-    expect(json.files[0].kind).toBe("cloze");
-    expect(first.gaps.map((gap: { decidedBy?: string }) => gap.decidedBy)).toEqual([
-      "model",
-      "model",
-      "pre-pass",
-    ]);
-    expect(first.patternChecks).toEqual([{ gaps: [1, 2], grouped: 1, of: 1 }]);
-    expect(first.feedbackFlagged).toBe(true);
-    expect(first.repeats[0].cloze.feedback.dropped.patterns[0].reason).toBe("too-few-gaps");
-
-    const markdown = readFileSync(report, "utf8");
-    expect(markdown).toContain("### `two-wrong-forms` — ✅ passed");
-    expect(markdown).toContain(
-      "| 1 | [grade:partial] going to | is going to | partial | `partial` ✓ | model |",
-    );
-    expect(markdown).toContain("**Fixtures pattern** (gaps 1, 2)");
-    expect(markdown).toContain("`too-few-gaps`");
-    expect(markdown).toContain("- gaps 1, 2 — grouped in 1/1 repeat(s)");
-    expect(markdown).toContain("`unsupported_pattern`");
-    expect(markdown).toContain("### `all-exact` — ✅ passed");
-  });
-
-  it("exits 1 when a gap's verdict misses its expectation, naming the gap", async () => {
-    const { code, stdout } = await runCli([
-      "eval",
-      clozeMismatchEval,
-      "--server",
-      baseUrl(),
-      "--no-judge-feedback",
-    ]);
-
-    expect(code).toBe(1);
-    expect(stdout).toContain("wrong-expectation: gap 2 expected correct got incorrect");
-  });
-
-  it("validates a cloze eval offline and rejects a gap the target does not have", async () => {
-    const ok = await runCli(["validate", clozeEval, "--kind", "eval"]);
-    expect(ok.code).toBe(0);
-    expect(ok.stdout).toContain("kind: cloze");
-    expect(ok.stdout).toContain("submissions: 2   gaps: 3");
-
-    const broken = await runCli(["validate", brokenClozeEval, "--kind", "eval"]);
-    expect(broken.code).toBe(1);
-    expect(broken.stdout).toContain("EVAL_UNKNOWN_GAP");
   });
 });

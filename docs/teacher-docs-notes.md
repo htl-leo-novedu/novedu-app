@@ -173,7 +173,7 @@ prose carries everything an editor needs.
 
 - Reader: a teacher (language teachers above all) building a gap text, then reading
   its results. One chapter covers the whole module: authoring, what students see,
-  the teacher's results, saved results and evals.
+  the teacher's results and saved results.
 - A cloze exercise is ALWAYS anonymous: there is no `anonymous` field, and adding
   one is an error. The one user link is a result the student CHOSE to save, which
   only they see. Never suggest the teacher can see who submitted or what anyone

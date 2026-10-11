@@ -34,7 +34,7 @@ npx @novedu/cli validate ./activities/examples/shared/general-fragments.yaml --k
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-quiz.yaml --kind quiz
 npx @novedu/cli validate ./activities/examples/future-forms/sue-fresh-start.yaml --kind cloze
 
-# An eval file, quiz, tutor or cloze (also strict-checks the activity it targets)
+# An eval file, quiz or tutor (also strict-checks the activity it targets)
 npx @novedu/cli validate ./sorting-quiz.eval.yaml --kind eval
 
 # Machine-readable output (the raw validation result)
@@ -112,7 +112,7 @@ production path**, then reports what the model actually did. This is the one com
 that both **runs the model** and needs you signed in (`novedu-cli login`); everything
 else about it is local.
 
-Three kinds, chosen by the file's own `kind:` field — there is no flag, and one
+Two kinds, chosen by the file's own `kind:` field — there is no flag, and one
 invocation may mix them:
 
 - **quiz** (`kind` omitted): student answers with the verdict each one must get,
@@ -121,11 +121,8 @@ invocation may mix them:
 - **tutor** (`kind: tutor`): conversations you script, each ending on a student turn.
   The real tutor generates the next turn and the judge checks it against the tutor's
   own system prompt plus your per-case expectations.
-- **cloze** (`kind: cloze`): whole submissions to a cloze exercise, answers by gap
-  number. The real grading and feedback calls run; your per-gap `expect` gates the
-  **verdicts**, and the judge audits the **feedback** a student would have read.
 
-In every kind the judge measures the output against the very prompt that produced it, so
+Either way the judge measures the output against the very prompt that produced it, so
 there is nothing extra to author — and what it flags is **reported, never a failure**.
 For a tutor eval that makes the `--report` Markdown the actual deliverable: the exit
 code only reflects whether the run itself completed.
@@ -197,21 +194,6 @@ conversations:
 
 ```bash
 npx @novedu/cli eval ./loops-tutor.eval.yaml --report loops.md
-```
-
-A cloze eval lists whole submissions — answers by gap number — and checks each gap's
-verdict; the report shows the feedback a student would have seen:
-
-```yaml
-# sue-fresh-start.eval.yaml
-id: sue-fresh-start-eval
-kind: cloze
-target: ./sue-fresh-start.yaml
-submissions:
-  - id: will-for-every-plan
-    answers: { 1: will, 2: will, 3: starts, 4: am meet, 10: will }   # unlisted = empty
-    expect: { 1: incorrect, 4: [partial, incorrect] }                # optional, gates
-    expect_patterns: [[1, 2, 10]]   # optional: gaps the feedback should group (reported)
 ```
 
 - Check the file first, for free: `npx @novedu/cli validate ./x.eval.yaml --kind eval`

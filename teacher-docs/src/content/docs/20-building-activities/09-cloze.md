@@ -1,16 +1,16 @@
 ---
 title: Building a cloze exercise
-description: Write a gap text with reference answers and grading criteria, see what students get back, read the results per gap, and test the grading with an eval.
+description: Write a gap text with reference answers and grading criteria, see what students get back, and read the results per gap.
 sidebar:
   order: 9
 audience: teacher
-keywords: [cloze, fill the gaps, gap text, gap-fill, gaps, reference answer, evaluation, hint, try again, practice round, possible answer, feedback patterns, results per gap, first submissions, saved results, eval, expect_patterns]
+keywords: [cloze, fill the gaps, gap text, gap-fill, gaps, reference answer, evaluation, hint, try again, practice round, possible answer, feedback patterns, results per gap, first submissions, saved results]
 related:
   - 20-building-activities/01-handling-yaml
   - 20-building-activities/02-available-llms
   - 20-building-activities/07-fragments
   - 10-yaml-for-teachers/04-cli-validation
-  - 10-yaml-for-teachers/06-testing-the-grader
+  - 10-yaml-for-teachers/05-see-the-prompt
   - 30-sharing-activities/04-anonymous-vs-per-user
 ---
 
@@ -157,7 +157,7 @@ Every other answer goes to the AI, which decides by your `evaluation` criteria. 
 
 The feedback is the reason to use AI here, so Novedu makes sure it fits what the student actually wrote. A pattern is shown only if at least two of the student's gaps that were not correct back it up. A pattern that names a correct gap, or only one gap, is dropped before the student sees it. If no pattern is left although two or more gaps were not correct, the student reads that the mistakes don't share a common cause, plus the note on each gap.
 
-What Novedu cannot check this way is whether an explanation is true of the answers it names. That is what the eval's feedback check is for; see "Testing grading and feedback" below.
+What Novedu cannot check this way is whether an explanation is true of the answers it names. Try the exercise yourself with a few typical mistakes before you share it, and read the feedback you get.
 
 ## Try again is a practice round
 
@@ -218,40 +218,3 @@ Read the inventory once: it is the quickest way to spot a gap you marked by mist
 A valid file becomes a code like any other activity: on the **New code** form, pick **Cloze** under **Activity**.
 
 To read what the AI is told, run `npx @novedu/cli prompts ./sue-fresh-start.yaml --kind cloze`. A cloze exercise has two prompts: one for grading the gaps and one for writing the feedback.
-
-## Testing grading and feedback
-
-The CLI's `eval` command can run sample submissions through the real grading and feedback before students meet the exercise. Write an eval file next to the exercise; the sample one is `activities/examples/future-forms/sue-fresh-start.eval.yaml`:
-
-```yaml
-kind: cloze
-id: sue-fresh-start-eval
-target: ./sue-fresh-start.yaml
-submissions:
-  - id: will-for-every-plan
-    answers:            # by gap number; a gap you leave out was left empty
-      1: will
-      2: will
-      4: am meet
-      10: will
-    expect:             # optional: the verdict a gap must get
-      1: incorrect
-      4: [partial, incorrect]
-    expect_patterns:    # optional: gaps the feedback should connect
-      - [1, 2, 10]
-```
-
-- `kind: cloze` is what makes it a cloze eval.
-- Each submission is what one student might type. `answers` lists gaps by number; the validation output above tells you the numbers.
-- `expect` sets the verdict a gap must get, one verdict or a list of acceptable ones. A gap graded otherwise fails the run.
-- `expect_patterns` lists gaps that one pattern of the feedback should connect. The report says whether it did; this never fails the run.
-
-Run it while signed in as a teacher, and ask for a readable report:
-
-```bash
-npx @novedu/cli eval ./sue-fresh-start.eval.yaml --report report.md
-```
-
-The report has a section for every submission: each gap's answer, the possible answer, what you expected and what it got, then the patterns and notes a student would see, and the ones Novedu dropped because the answers didn't back them up. A second AI, the judge, also reads the feedback and flags problems, above all a pattern that doesn't fit the answers it names. Its findings are notes, never a failure.
-
-Nothing from an eval run is stored in Novedu. If the exercise is hosted in the app, upload the improved file after the run, or your code keeps serving the old version. The chapter on testing how a quiz grades explains the shared options, such as `--repeats` and the judge settings.

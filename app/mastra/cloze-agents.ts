@@ -20,10 +20,9 @@ import { modelEntry } from "./model-entry";
 // SECURITY: like `quizEvaluator`, `clozeEvaluator` is registered in `app/mastra/index.ts`
 // but NEVER web-reachable by students — the cloze module has no `runtime` at all, and no
 // module's `runtime.agentId` names it, so the CopilotKit runtime route 404s it and `/info`
-// never lists it. Its callers are the `gradeCloze` / `explainCloze` server actions
+// never lists it. Its only callers are the `gradeCloze` / `explainCloze` server actions
 // (lib/cloze-actions.ts), which build the prompts from the server-held references and
-// `evaluation`, and the teacher-only bearer route `POST /api/eval/cloze`, whose prompts
-// the CLI assembled offline from the teacher's own YAML (AGENTS.md, docs/cli-eval.md).
+// `evaluation` (AGENTS.md, docs/codes.md).
 
 // RequestContext keys, distinct from every other agent's so a request for one can never
 // satisfy another (defense in depth on top of the runtime route's agent gating).

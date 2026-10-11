@@ -9,8 +9,8 @@ import type { Cloze } from "./cloze-yaml";
 // Exactly ONE definition serves both callers:
 //
 //   - the runtime grader (`gradeCloze`, lib/cloze-actions.ts),
-//   - the prompt dump (`lib/prompt-dump.ts`, `@novedu/cli prompts --kind cloze`) and the
-//     eval runner, which must see BYTE-IDENTICAL prompts — a copy would silently drift.
+//   - the prompt dump (`lib/prompt-dump.ts`, `@novedu/cli prompts --kind cloze`), which
+//     must show BYTE-IDENTICAL prompts — a copy would silently drift.
 //
 // PURE / CLI-safe: no I/O, no `"use server"`, no `app/`, no DB, no `lib/llm/**`. Keep it
 // that way (`lib/prompt-dump.unit.test.ts` guards it).

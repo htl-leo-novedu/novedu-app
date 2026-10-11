@@ -7,8 +7,8 @@ import type { QuizVerdict } from "./quiz-types";
 // in. The verdicts are facts the writer must not re-grade; the server's grounding filter
 // (lib/cloze-grounding.ts) then drops anything that is not backed by them.
 //
-// Exactly ONE definition serves the runtime (`explainCloze`), the prompt dump
-// (`@novedu/cli prompts --kind cloze`) and the eval runner.
+// Exactly ONE definition serves the runtime (`explainCloze`) and the prompt dump
+// (`@novedu/cli prompts --kind cloze`).
 //
 // PURE / CLI-safe: no I/O, no `"use server"`, no `app/`, no DB, no `lib/llm/**`.
 

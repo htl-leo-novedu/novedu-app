@@ -19,9 +19,6 @@ import {
   CLOZE_GRADING_SCHEMA,
   type ClozeFeedbackOutput,
   type ClozeGradingOutput,
-  clozeFeedbackTexts,
-  clozeGradingCovers,
-  clozeGradingTexts,
 } from "@/lib/cloze-output-schemas";
 import { runClozePrepass, undecidedGaps } from "@/lib/cloze-prepass";
 import {
@@ -113,6 +110,20 @@ function evaluatorContext(ctx: LoadedCloze, instructions: string): RequestContex
   requestContext.set(USAGE_USER_ID, ctx.userId);
   requestContext.set(USAGE_MODULE, "cloze");
   return requestContext;
+}
+
+/**
+ * True when the grading output names every undecided gap exactly once and no other —
+ * the contract of the grading call. Anything else is retried once, then fails.
+ */
+function coversExactly(output: ClozeGradingOutput | undefined, undecided: number[]): boolean {
+  if (!output) return false;
+  const named = output.gaps.map((entry) => entry.gap);
+  return (
+    named.length === undecided.length &&
+    new Set(named).size === named.length &&
+    undecided.every((gap) => named.includes(gap))
+  );
 }
 
 /**
@@ -221,7 +232,7 @@ async function runGradingCall(
             requestContext,
           }),
         (res) => res.object as ClozeGradingOutput | undefined,
-        clozeGradingTexts,
+        (object) => object.gaps.map((entry) => entry.reason),
         "cloze.grading.truncated",
         { code: ctx.code },
       )
@@ -229,11 +240,11 @@ async function runGradingCall(
 
   try {
     let output = await grade();
-    if (!clozeGradingCovers(output, undecided)) {
+    if (!coversExactly(output, undecided)) {
       emitEvent("cloze.grading.mismatch", { code: ctx.code });
       output = await grade();
     }
-    if (!clozeGradingCovers(output, undecided)) {
+    if (!coversExactly(output, undecided)) {
       recordError(new Error("Cloze grading did not cover the undecided gaps"), {
         "novedu.area": "cloze",
         stage: "grade",
@@ -329,7 +340,10 @@ export async function explainCloze(
           requestContext,
         }),
       (res) => res.object as ClozeFeedbackOutput | undefined,
-      clozeFeedbackTexts,
+      (object) => [
+        ...object.patterns.flatMap((p) => [p.title, p.explanation, p.next_time]),
+        ...object.gap_notes.map((n) => n.note),
+      ],
       "cloze.feedback.truncated",
       { code: ctx.code },
     );
@@ -338,7 +352,7 @@ export async function explainCloze(
     emitEvent("cloze.explained", {
       code: ctx.code,
       patterns: grounded.patterns.length,
-      droppedPatterns: grounded.dropped.patterns.length,
+      droppedPatterns: object.patterns.length - grounded.patterns.length,
       notes: grounded.gapNotes.length,
       latencyMs: Math.round(performance.now() - startedAt),
     });

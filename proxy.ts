@@ -41,7 +41,7 @@ export const config = {
   // The /api/me identity probe, the /api/codes list/create endpoints and the
   // per-code conversation export under them (creator-only), the
   // /api/reports list/detail/resolve endpoints, the /api/eval eval endpoints —
-  // grade, judge, respond and cloze, all bounded by the one `api/eval(?:/|$)` entry
+  // grade, judge and respond, all bounded by the one `api/eval(?:/|$)` entry
   // (teacher-only; docs/cli-eval.md) — and the /api/images list/upload
   // endpoints (all teacher-only; unlike /api/files there is NO public GET
   // under that prefix) are

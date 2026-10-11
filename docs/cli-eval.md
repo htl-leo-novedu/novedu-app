@@ -3,16 +3,15 @@
 An activity's prompt is a **specification**, and a specification is only as good as the
 behavior it produces. `eval` makes that measurable: a teacher writes an **eval file**,
 and the CLI replays it through the **real production path**, then reports what the model
-actually did. Three kinds, one command:
+actually did. Two kinds, one command:
 
 | Kind | The eval file holds | Each case is | What is checked |
 | --- | --- | --- | --- |
 | **quiz** (the default) | golden answers with the verdict each *must* get | one golden answer | the **verdict** (gating) + an LLM judge on the **feedback** (reporting) |
 | **tutor** | scripted conversations ending on a student turn | one conversation | an LLM judge on the **generated response** (reporting) |
-| **cloze** | submissions (answers by gap number) with optional per-gap verdicts | one submission | each gap's **verdict** (gating) + which gaps the feedback groups and an LLM judge on the **feedback** (reporting) |
 
 The `kind` is **inferred from the file** — there is no flag — so a single invocation may
-mix them. Everything else is shared: the offline prompt assembly, the fan-out, the
+mix both. Everything else is shared: the offline prompt assembly, the fan-out, the
 retries, the breakers, the reports.
 
 ```
@@ -30,9 +29,9 @@ resolving the target activity, assembling every prompt — happens **locally**, 
 why an eval works on an unpushed working copy.
 
 Read this before touching `lib/eval-schema.ts`, `lib/eval-validate.ts`,
-`lib/quiz-feedback-judge.ts`, `lib/tutor-judge.ts`, `lib/cloze-judge.ts`,
-`cli/src/eval-run.ts`, `cli/src/report-md.ts`, `cli/src/retry.ts`, `app/api/eval/**`,
-`app/mastra/eval-agents.ts`, or the fake grader/judge/tutor/cloze routes in
+`lib/quiz-feedback-judge.ts`, `lib/tutor-judge.ts`, `cli/src/eval-run.ts`,
+`cli/src/report-md.ts`, `cli/src/retry.ts`, `app/api/eval/**`,
+`app/mastra/eval-agents.ts`, or the fake grader/judge/tutor in
 `test-fixtures/serve.mjs`.
 
 ## The eval file
@@ -41,7 +40,7 @@ Strict schema (`lib/eval-schema.ts`), a **discriminated union on `kind`** whose 
 schema is generated to `activities/evals/eval-yaml.schema.json` by
 `npm run generate:schemas`. `kind` is **optional**: omitted (or `quiz`) selects the
 golden-answer shape, so every eval file written before the tutor kind existed stays valid
-byte-for-byte. All shapes share the one `$schema` modeline.
+byte-for-byte. Both shapes share the one `$schema` modeline.
 
 ### The quiz kind
 
@@ -133,48 +132,6 @@ must have called **at least once**:
   message naming the fix (update the server) — "could not check" must never render as
   "nothing missing". A case declaring no `required_tools` is unaffected by such a server.
 
-### The cloze kind
-
-```yaml
-kind: cloze
-id: sue-fresh-start-eval
-target: ./sue-fresh-start.yaml       # same resolution rules as the other kinds
-submissions:                          # non-empty list — ONE entry = ONE case
-  - id: will-for-every-plan           # unique within the file, the case's report label
-    answers:                          # by gap number; a gap not listed was left empty
-      1: will
-      2: will
-      3: starts
-      4: am meet
-      10: will
-    expect:                           # optional, per gap: one verdict or a list
-      1: incorrect
-      4: [partial, incorrect]
-    expect_patterns:                  # optional, REPORT-ONLY: gap sets to group
-      - [1, 2, 10]
-```
-
-- A submission is what one student typed into the whole exercise. Gap numbers are the
-  exercise's own (`novedu-cli validate --kind cloze` prints the inventory); every number
-  named in `answers`, `expect` or `expect_patterns` must exist in the RESOLVED target,
-  or the file is invalid (`EVAL_UNKNOWN_GAP`). An answer may be written as a number
-  (`3: 42`) and is at most 200 characters, like a student's.
-- **`expect`** gates the exit code exactly like the quiz kind's, but **per gap**: a
-  submission passes when every gap that states an expectation gets an acceptable
-  verdict. A gap without `expect` is graded and reported, never checked.
-- **`expect_patterns`** names gap sets the feedback should connect: the report says, per
-  set, in how many repeats ONE surviving pattern cited every gap of it ("grouped in 1/3
-  repeat(s)"). It never gates — whether mistakes share a cause is the model's call.
-- Each repeat replays the app's pipeline (`docs/cloze.md`, "The grading pipeline"): the
-  **pre-pass runs locally** (an exact or empty answer never reaches the model, so an
-  all-exact submission makes no call at all), ONE grading call for the undecided gaps
-  (retried once when it does not name each of them exactly once, then errored — the
-  app's coverage rule), ONE feedback call over the final verdicts (skipped when every
-  gap is correct, as in the app), and the **grounding filter locally** — so the report
-  shows exactly what a student would have seen, plus what was dropped and why. A failed
-  feedback call leaves the verdicts standing (as for a student, who still sees them);
-  the repeat records `feedbackError` and is not judged.
-
 ### Checking a file offline
 
 Check either kind without spending a single token:
@@ -185,8 +142,8 @@ novedu-cli validate ./loops-tutor.eval.yaml --kind eval
 ```
 
 `--kind eval` also runs the **strict check of the TARGET's own kind** — `loadAndCheckQuiz`
-for a quiz eval, the `validateLibraries` tutor build for a tutor eval, `loadAndCheckCloze`
-for a cloze eval, i.e. exactly what `--kind quiz` / `--kind tutor` / `--kind cloze` run. So validating an eval never asserts less about the
+for a quiz eval, the `validateLibraries` tutor build for a tutor eval, i.e. exactly what
+`--kind quiz` / `--kind tutor` run. So validating an eval never asserts less about the
 target than validating the target would. A tutor eval whose `target` resolves to a quiz
 (or vice versa) is an `EVAL_TARGET_ERROR`. The `eval` command itself deliberately
 uses the LENIENT runtime load: what the model really receives is the whole point
@@ -235,20 +192,6 @@ for each conversation × repeats    ──►   200 { text, usage? }
    the grading_instructions)
 report: flagged conversations,
   errored/skipped, totals
-```
-
-The **cloze** kind runs up to two calls per repeat, both through one route:
-
-```
-loadAndCheckEval()                     POST /api/eval/cloze  { step, system, user }
-  parse + schema + gap-number check      requireBearerTeacher
-  dumpPrompts("cloze", target)           zod body + provider availability gate
-    + the resolved gaps (references)     clozeEvaluator.generate({ structuredOutput
-for each submission × repeats              = the step's schema }) + truncation retry
-  pre-pass (local)                 ──►   200 { output, usage? }   (grade)
-  coverage check (local)           ──►   200 { output, usage? }   (explain)
-  grounding filter (local)
-  then the judge over the surviving feedback (POST /api/eval/judge, unchanged)
 ```
 
 **One HTTP request grades exactly one golden answer** (or generates exactly one tutor turn) — it lasts as long as a real
@@ -310,21 +253,6 @@ Safety follows the judge route's argument verbatim: **`evalTutor` is never web-r
 by students** (the CopilotKit runtime route only accepts the one agent id a code's module
 declares, so every other id 404s), the gate has no student mode, and the `system` prompt
 comes from the client — the CLI assembled it offline from the teacher's own YAML.
-
-### The cloze endpoint
-
-`POST /api/eval/cloze` (`app/api/eval/cloze/route.ts`, wire contract in `docs/api.md`)
-is the cloze kind's sibling of the grade route in every respect: `requireBearerTeacher`,
-the same `api/eval` proxy exclusion, the same 256 KB cap, the same 400-terminal /
-502-retryable split, the same optional `usage`, and it **persists nothing**. It takes
-`{ llm, step: "grade" | "explain", system, user }` and answers `{ output, usage? }` — the
-step's structured object from `lib/cloze-output-schemas.ts`, **unfiltered**. It runs the
-memory-less `clozeEvaluator` with that step's schema and the student path's truncation
-retry (`withTruncationRetry` over the same text extractors `gradeCloze` / `explainCloze`
-use). Everything a stored exercise would add — the references and `evaluation` — is
-already inside the client's `system` prompt, which the CLI assembled offline from the
-teacher's own YAML; the pre-pass, the coverage check and the grounding filter are the
-CLI's, because they are pure `lib/` code it bundles anyway.
 
 ### The CLI/server version check
 
@@ -427,28 +355,6 @@ tool calls at all. When a case has **no** `grading_instructions`, the CLI omits
 this free) and the subject carries no instructions block — so the judge can never invent
 expectations nobody stated.
 
-### The cloze judge
-
-`lib/cloze-judge.ts` is the third sibling — CLI-bundled, grep-guard-pure, reusing
-`judgmentSchema` and the kind-agnostic `POST /api/eval/judge` unchanged. The standard is
-again the activity's own prompt: the judge receives the **feedback call's system
-prompt**, the answers with their final verdicts (the feedback call's own user message),
-and the feedback **after the grounding filter** — what the student saw.
-
-| Criterion | Flagged when the feedback… |
-| --- | --- |
-| `unsupported_pattern` | names a pattern whose explanation is not true of the answers in the gaps it cites — the one thing the structural grounding filter cannot check |
-| `contradicts_verdict` | treats an answer as wrong although its verdict is correct, or the reverse |
-| `misstates_facts` | asserts something the criteria or the references contradict |
-| `ignores_instructions` | breaks an explicit feedback rule of the prompt (not addressed to the student, wrong language, a formatting rule) |
-| `leaks_rubric` | quotes the criteria, cites "my instructions", or reveals verdict boundaries |
-
-The quiz judge's guardrails carry over (`lib/cloze-judge.unit.test.ts` asserts the prompt
-names all five criteria): "do NOT judge the verdicts themselves", "do not invent issues…
-when in doubt, the feedback is ok", and no `ok` boolean. Stating the correct answer is
-explicitly fine — the student sees the references anyway — and a missing pattern is not
-an issue. A repeat whose verdicts were all correct asks for no feedback and is not judged.
-
 ### Flags and which model judges
 
 | Flag | Effect |
@@ -483,15 +389,15 @@ novedu-cli eval ./my-quiz.eval.yaml \
 
 A flagged feedback changes **nothing** about `status`, `passed`, `batchPassed` or the
 exit code — exactly the standing `unstable` has. Gating is **per-kind policy**, not a
-property of judge results — and **every shipped kind's judge is report-only**. For the quiz and cloze kinds
-the verdicts do the gating underneath; for the **tutor** kind the policy is the whole
+property of judge results — and **both shipped kinds are report-only**. For the quiz kind
+the verdict does the gating underneath; for the **tutor** kind the policy is the whole
 story: its exit code reflects **run health only** (invalid files, `errored`, `skipped`),
 a flagged conversation changes nothing, and the Markdown report is the deliverable. (An
 opt-in `--gate-flags` is deliberately deferred until report-only proves too weak for CI.)
 
 - A case is `feedbackFlagged` when **any** repeat collected an issue. No majority
   vote: one bad output out of three observations is precisely the `--repeats` signal
-  wanted. (The JSON keeps the name `feedbackFlagged` for every kind — one shape, one
+  wanted. (The JSON keeps the name `feedbackFlagged` for both kinds — one shape, one
   `summarizeBatch`; for a tutor file it counts flagged **responses**.)
 - Quiz feedback is judged against **that repeat's own verdict**, never the case majority —
   an outvoted repeat's feedback is consistent with the verdict it actually got. A tutor
@@ -631,19 +537,9 @@ Short, because it has no verdict:
 - **Exit code**: `0` iff every file is valid AND `errored = 0` AND `skipped = 0`. Neither
   kind of flag ever gates.
 
-### The cloze kind's semantics
-
-A case is one **submission**; the verdict unit is the **gap**. Each gap's verdict is the
-majority over the repeats that graded (the quiz's tie rule), and a submission is
-`passed` when every gap with an `expect` passes, `failed` when one does not, `errored`
-when no repeat produced verdicts, `skipped` after an abort. `unstable` marks a
-submission where any gap's repeats disagreed. The confusion matrix and the false-correct
-rate are over the gaps that state an `expect`. The exit code follows the quiz rule;
-`expect_patterns`, the judge's flags and `feedbackError` never gate.
-
 Everything else on this page — retries, the auth abort, the generation circuit breaker,
 the judge degrade breaker, `--repeats`, progress, the version check, globbing, batch
-isolation, `--out` / `--report` durability — applies to every kind unchanged.
+isolation, `--out` / `--report` durability — applies to both kinds unchanged.
 
 - The case **verdict** is the **majority** over its successfully graded repeats. A
   tie passes only if **every** tied verdict is expected.
@@ -707,7 +603,7 @@ It is written for a **teacher**, not for a script, and follows two rules:
 - **Tutor rows and sections.** A tutor file's overview row reports conversations /
   errored / skipped / flagged / tokens and renders `—` in the verdict columns (Passed,
   Failed, Unstable, False-correct) — "no such measurement" must never read as "measured
-  zero". The Flagged column keeps its one rule for every kind: a count means "checked", an
+  zero". The Flagged column keeps its one rule for both kinds: a count means "checked", an
   em dash means "not checked". Its details are the **"Missing tool calls"** section — per
   flagged case the required list, and per offending repeat what it actually called — and the
   **"Flagged responses"** section: per
@@ -730,13 +626,6 @@ It is written for a **teacher**, not for a script, and follows two rules:
   never a section each; invalid files list their validation errors; an aborted run gets a
   prominent `> [!WARNING]` block, and a **degraded** run gets its own naming the file
   where judging stopped (everything from there on renders `—` in the Flagged column).
-- **Cloze files get a section per submission**, clean ones included — the
-  consolidated feedback is what a cloze eval exists to show: the gap table (answer,
-  possible answer, expected, got with ✓/✗, decided by `pre-pass` or `model`, the
-  grader's one-sentence reason), the `expect_patterns` check, then per repeat the
-  surviving patterns and gap notes, the **dropped** patterns and notes with the
-  grounding filter's reason (`too-few-gaps`, `cites-correct-gap`, …), a failed feedback
-  call, and the judge's flags.
 - **"Flagged feedback"** is its own section per file, last, and only when the file has
   any: per case the question text and golden answer, then each flagged repeat's own
   verdict and feedback as verbatim blockquotes followed by the judge's issues as
@@ -802,7 +691,7 @@ novedu-cli eval "./**/*.eval.yaml"                 # quoted: the CLI expands it
   with their own `--report`/`--out` names.
 - **`--json` / `--out`** always carry the batch shape, single file or not:
   `{ files: [{ source, status: "ok" | "invalid", kind?, passed, result?, errors? }],
-  passed, totals }` — the file entry's `kind` is `"quiz" | "tutor" | "cloze"`, absent only for an
+  passed, totals }` — the file entry's `kind` is `"quiz" | "tutor"`, absent only for an
   `invalid` file whose kind could not be determined, and each `result` carries the same
   `kind`. A tutor `result` fills the kind-agnostic fields and leaves the quiz-only ones
   empty/zero (`questions: []`, `confusion: []`, `falseCorrect` all zeros); its repeats
@@ -812,10 +701,7 @@ novedu-cli eval "./**/*.eval.yaml"                 # quoted: the CLI expands it
   `judging: "on" | "off" | "degraded"`, `totals` (the same counts plus `usage`), the
   per-case `feedbackFlagged` / `toolsFlagged` — plus, on a tutor case, its `requiredTools`
   and its repeats' `toolCalls` / `missingTools`, each present only where it was actually
-  measured; on a cloze case its `submissionId`, per-gap `gaps` (`answer`, `reference`,
-  `expected?`, `verdict?`, `decidedBy?`, `passed?`) and `patternChecks?`, and its repeats'
-  `cloze: { gaps, feedback?: { patterns, gapNotes, dropped }, feedbackError? }` — the
-  per-repeat `usage` (a cloze repeat sums its two calls) /
+  measured — the per-repeat `usage` /
   `judge: { issues: [{ criterion, note }], usage? } | null` / `judgeError`, and the
   evaluated `questions: [{ id, text }]`. One shape, so scripts never branch and a glob's
   match count can never change the contract.
@@ -873,9 +759,9 @@ or the code keeps serving the old rubric (or the old tutor prompt). Likewise, an
 
 ## Usage metering
 
-Eval gradings, tutor generations, cloze calls **and** judge calls are metered under the pseudo-code
+Eval gradings, tutor generations **and** judge calls are metered under the pseudo-code
 **`cli-eval`** and the module **`eval`**, with the teacher's user id as the user
-(`docs/usage-metering.md`) — the same three sentinel RequestContext keys set by all four
+(`docs/usage-metering.md`) — the same three sentinel RequestContext keys set by all three
 routes, landing in the same buckets on purpose, through the regular usage pipeline.
 `cli-eval` is not a `novedu_codes` row (minted codes are 10 random characters,
 so a collision is impossible); it simply appears as its own row/group in the usage
@@ -885,24 +771,21 @@ dashboard, with NULL code metadata.
 
 | Layer | File |
 | --- | --- |
-| Format (every kind, incl. the no-`kind` default) + target resolution + cross-check (question ids, granted tools, gap numbers) | `lib/eval-validate.unit.test.ts` |
+| Format (both kinds, incl. the no-`kind` default) + target resolution + cross-check | `lib/eval-validate.unit.test.ts` |
 | Editor-schema drift + doc coverage | `lib/schema-gen/generated-schemas.unit.test.ts` |
 | CLI purity of the format + judge layers | `lib/prompt-dump.unit.test.ts` (`PURE_MODULES`) |
 | The quiz judge prompt, subject layout + dynamic schema | `lib/quiz-feedback-judge.unit.test.ts` |
 | The tutor judge prompt, criteria selection + subject layout | `lib/tutor-judge.unit.test.ts` |
-| The cloze judge prompt (all five criteria) + subject layout | `lib/cloze-judge.unit.test.ts` |
 | The grade route (real bearer gate, mocked Mastra) | `app/api/eval/grade/route.unit.test.ts` |
 | The judge route (gate, criteria bounds, kind-agnostic enum) | `app/api/eval/judge/route.unit.test.ts` |
 | The respond route (gate, message shapes, unknown tool → 400, usage) | `app/api/eval/respond/route.unit.test.ts` |
-| The cloze route (gate, `step` enum, the step's schema, usage) | `app/api/eval/cloze/route.unit.test.ts` |
 | `evalJudge` and `evalTutor` being unreachable from the web route | `app/api/copilotkit/[[...slug]]/route.unit.test.ts` |
 | The `cliVersion` the version check reads | `app/api/version/route.unit.test.ts` |
 | Retry + bounded concurrency | `cli/src/retry.unit.test.ts` |
-| The pure runners, quiz + tutor (majority, breakers, metrics, usage, judging) | `cli/src/eval-run.unit.test.ts` |
-| The cloze runner (local pre-pass, coverage retry, per-gap gating, grounding before the judge, feedback failure, auth abort) | `cli/src/eval-run-cloze.unit.test.ts` |
+| The pure runners, both kinds (majority, breakers, metrics, usage, judging) | `cli/src/eval-run.unit.test.ts` |
 | The Markdown report renderer, flagged + tutor sections included | `cli/src/report-md.unit.test.ts` |
 | The command (requests, kind inference, mixed batches, override pairs, globs) | `cli/src/commands/eval.unit.test.ts` |
-| The built binary against the fixtures grader + judge + tutor + cloze route | `cli/test/eval.integration.test.ts` |
+| The built binary against the fixtures grader + judge + tutor | `cli/test/eval.integration.test.ts` |
 | The proxy exclusion + teacher gate over real HTTP, in CI | `e2e/api-gate.spec.ts` |
 | **`@live-llm`** — does a REAL judge catch planted violations, per kind? | `e2e/eval-judge.live.spec.ts` |
 
@@ -915,11 +798,7 @@ payload of the last student message when it carries one — which is how a fixtu
 `[judge:<criterion>]` marker INSIDE the generated response and proves it reaches the
 judge's subject — with `respondFailures` for the retry path. It fakes `/api/eval/judge`
 one level up — an empty `issues` list unless the request's `subject` carries
-`[judge:<criterion>]` markers. `/api/eval/cloze` mirrors the fake LLM's cloze rules: a
-gap's verdict is its answer's `[grade:<verdict>]` marker (`incorrect` without one,
-`[grade:omit]` leaves it out), and the feedback is one pattern over every non-correct
-gap, one single-gap pattern the CLI's grounding filter must drop, and a note per
-non-correct gap. It also fakes `/api/version`,
+`[judge:<criterion>]` markers. It also fakes `/api/version`,
 reporting the real `cli/package.json` version by default (so a run is warning-free) with
 a `cliVersion` option serving a different one, which is how the mismatch warning is
 exercised end to end.
@@ -929,7 +808,7 @@ retry seams are in-process: tripping it through the built binary would mean exha
 real retry budgets (minutes of backoff) or shipping a test-only timing override in the
 CLI, and neither is worth an integration re-proof of unit-tested logic.
 
-The four eval routes' ACCESS CONTROL is the one part of this that needs neither a
+The three eval routes' ACCESS CONTROL is the one part of this that needs neither a
 model nor a database: `e2e/api-gate.spec.ts` drives each of them over real HTTP with an
 empty cookie state, proving the `api/eval(?:/|$)` exclusion in `proxy.ts` still lets the
 route answer 401 itself instead of redirecting to sign-in, and that a valid non-teacher

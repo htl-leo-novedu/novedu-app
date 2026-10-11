@@ -1,23 +1,21 @@
-# Writing Eval Files (test files for a quiz, a tutor or a cloze exercise)
+# Writing Eval Files (test files for a quiz or a tutor)
 
 An eval file is **not an activity** — you never mint a code for it and students never
-see it. It is a **test file for one of your activities**, and there are three kinds:
+see it. It is a **test file for one of your activities**, and there are two kinds:
 
 | `kind:` | The file holds | `novedu-cli eval` does |
 | --- | --- | --- |
 | *(omitted)* or `quiz` | student answers you write yourself, each with the verdict the grader must produce | replays them through the real grader and reports where it disagreed with you |
 | `tutor` | conversations you script, each ending with a student message | lets the real tutor answer that last message, then has a second AI check the answer against your tutor's own rules |
-| `cloze` | whole submissions to a cloze exercise, the answers listed by gap number | grades and explains each submission exactly like the app, and shows you the verdicts and the feedback a student would see |
 
 You never say which kind you are running — the `kind:` line in the file decides, and one
-command can run several kinds at once.
+command can run both at once.
 
 Use a **quiz** eval whenever you change an `evaluation` prompt, suspect the AI is too
 lenient or too strict, or want a check you can re-run before publishing. Use a **tutor**
 eval whenever you write or change tutor rules ("never hand over the solution", "stay
 inside this chapter", "answer in German") and want to see whether the tutor actually
-follows them. Use a **cloze** eval whenever you change a cloze exercise's
-`evaluation` or its gaps, and want to see the verdicts and the feedback it produces.
+follows them.
 
 ---
 
@@ -193,62 +191,13 @@ novedu-cli eval ./loops-tutor.eval.yaml --report loops.md
 ```
 
 Everything else works exactly as it does for quiz evals: `--repeats`, `--no-judge-feedback`,
-the model overrides, folders and globs, `--json`. A run may mix kinds — the totals
+the model overrides, folders and globs, `--json`. A run may mix both kinds — the totals
 line then names each kind's units separately, because "4 conversations" and "27 answers"
 are not the same thing.
 
 ---
 
-## 4. Cloze evals
-
-A cloze eval writes down what a student might type into the whole exercise, and asks:
-**which verdicts and which feedback does that get?**
-
-```yaml
-# sue-fresh-start.eval.yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/evals/eval-yaml.schema.json
-kind: cloze
-id: sue-fresh-start-eval
-target: ./sue-fresh-start.yaml           # relative to THIS file, or an http(s) URL
-submissions:
-  - id: will-for-every-plan
-    answers:                             # by gap number; a gap you leave out was left empty
-      1: will
-      2: will
-      4: am meet
-      10: will
-    expect:                              # optional: the verdict a gap must get
-      1: incorrect
-      4: [partial, incorrect]            # more than one verdict is fine
-    expect_patterns:                     # optional: gaps the feedback should connect
-      - [1, 2, 10]
-```
-
-| Field | Required | What it is |
-| --- | --- | --- |
-| `kind` | yes | Must be `cloze`. |
-| `id` | yes | A name for the eval, shown in the report. |
-| `target` | yes | The cloze YAML this eval runs against. |
-| `submissions[].id` | yes | A name for this submission, unique in the file. |
-| `submissions[].answers` | yes | The answers by gap number (`novedu-cli validate <cloze> --kind cloze` lists the numbers). |
-| `submissions[].expect` | no | Per gap: `correct`, `partial`, `incorrect`, or a list. A gap graded otherwise fails the run. |
-| `submissions[].expect_patterns` | no | Lists of gaps one piece of feedback should connect. Only reported — never a failure. |
-
-- Exact answers and empty gaps are decided without the AI, exactly as for students.
-- The report (`--report report.md`) has a section for **every** submission: a table with
-  each gap's answer, the possible answer, what you expected and what it got, then the
-  patterns and notes a student would see — and the ones Novedu dropped because the
-  student's answers did not back them up.
-- A second AI checks the feedback, above all whether a pattern really fits the answers
-  it names (`unsupported_pattern`). Like for quizzes, its findings never fail the run.
-
-```bash
-novedu-cli eval ./sue-fresh-start.eval.yaml --report sue.md
-```
-
----
-
-## 5. Reading the quiz report
+## 4. Reading the quiz report
 
 ```
 ✔ Eval passed — ./0010-welcome-quiz.eval.yaml
@@ -407,15 +356,15 @@ treat it as a floor, not an invoice.
 
 ---
 
-## 6. Good to know
+## 5. Good to know
 
 - **What you evaluated is what you must publish.** A green run certifies the file on
-  your disk. If the quiz, tutor or cloze exercise is hosted in the app, upload the same file afterwards
+  your disk. If the quiz or tutor is hosted in the app, upload the same file afterwards
   (`novedu-cli files upload`) — otherwise the live code keeps serving the old version.
 - The prompts are built **on your machine** from your local files, so an eval
-  works on an activity you have not pushed yet.
+  works on a quiz or tutor you have not pushed yet.
 - Nothing is stored: no eval, no answer, no conversation, no verdict and no judgment is
-  saved anywhere. The token usage of a run — grading, tutor answers, cloze feedback and judging alike — is
+  saved anywhere. The token usage of a run — grading, tutor answers and judging alike — is
   metered like any other AI usage, under the name `cli-eval`.
 
 The engineering reference for all of this is

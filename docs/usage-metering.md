@@ -84,7 +84,7 @@ keeps its first-seen value — negligible for a cost aggregate).
 |---|---|---|
 | tokens + tool calls — tutor, quiz discussion, writing, quiz grader, cloze grading + feedback | Mastra observability exporter | `MODEL_GENERATION` + tool-call spans, attributed via `requestContext` |
 | tokens + coding requests — coding proxy | the coding route | taps the passthrough response for the `usage` chunk; both tables, `coding_requests` `+1` per metered response |
-| tokens — CLI evals | `POST /api/eval/grade`, `POST /api/eval/respond`, `POST /api/eval/cloze` and `POST /api/eval/judge` | the same exporter path (they run `quizEvaluator` / `evalTutor` / `clozeEvaluator` / `evalJudge`), all tagged with the `cli-eval` sentinel keys below — grading, tutor-generation and judging tokens land in the SAME buckets on purpose (`docs/cli-eval.md`) |
+| tokens — CLI evals | `POST /api/eval/grade`, `POST /api/eval/respond` and `POST /api/eval/judge` | the same exporter path (they run `quizEvaluator` / `evalTutor` / `evalJudge`), all tagged with the `cli-eval` sentinel keys below — grading, tutor-generation and judging tokens land in the SAME buckets on purpose (`docs/cli-eval.md`) |
 | user messages | CopilotKit route (`run`) | `after()` → `recordUserMessage` |
 | quiz answers | `submitAnswer` (`lib/quiz-actions.ts`) | `after()` → `recordQuizAnswer` on a successful grade |
 | writing saves | `saveWriting` (`lib/writing-actions.ts`) | `after()` → `recordWritingSave` after a successful save |

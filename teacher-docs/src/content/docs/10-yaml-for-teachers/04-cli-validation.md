@@ -47,7 +47,7 @@ npx @novedu/cli validate ./activities/examples/future-forms/sue-fresh-start.yaml
 
 `--kind` accepts `tutor` (the default), `fragment`, `quiz`, `writing`, `coding`, `cloze`, or `eval`. Getting it right matters: if you validate a quiz without `--kind quiz`, the CLI checks it against the rules for a tutor and reports errors that have nothing to do with your quiz. When a perfectly good file seems to fail, check the `--kind` first.
 
-The `eval` kind checks an eval file, a small test file for a quiz's grading, a tutor's behaviour, or a cloze exercise's grading, together with the activity it points at. The chapter on testing how a quiz grades explains what those files are and how to run them.
+The `eval` kind checks a golden-answer file, a small test file for a quiz's grading, together with the quiz it points at. The chapter on testing how a quiz grades explains what those files are and how to run them.
 
 Two more things worth knowing:
 

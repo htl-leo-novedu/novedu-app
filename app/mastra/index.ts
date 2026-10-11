@@ -105,9 +105,8 @@ export const mastra = new Mastra({
   // so neither is ever web-reachable by students.
   //
   // `clozeEvaluator` grades a cloze exercise and writes its feedback, invoked
-  // server-side by the `gradeCloze` / `explainCloze` actions and the teacher-only
-  // `POST /api/eval/cloze`; the cloze module has no runtime, so the route never allows
-  // its id either.
+  // server-side by the `gradeCloze` / `explainCloze` actions only; the cloze module
+  // has no runtime, so the route never allows its id either.
   agents: {
     tutor: tutorAgent,
     quizDiscussion: quizDiscussionAgent,

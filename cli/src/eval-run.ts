@@ -1,18 +1,3 @@
-import { buildClozeFeedbackMessage } from "@/lib/cloze-feedback-prompt";
-import { buildClozeGradingMessage } from "@/lib/cloze-grading-prompt";
-import { type ClozeGroundedFeedback, groundClozeFeedback } from "@/lib/cloze-grounding";
-import {
-  buildClozeJudgeSubject,
-  CLOZE_JUDGE_CRITERIA,
-  CLOZE_JUDGE_SYSTEM,
-} from "@/lib/cloze-judge";
-import {
-  CLOZE_FEEDBACK_SCHEMA,
-  CLOZE_GRADING_SCHEMA,
-  type ClozeGradingOutput,
-  clozeGradingCovers,
-} from "@/lib/cloze-output-schemas";
-import { runClozePrepass, undecidedGaps } from "@/lib/cloze-prepass";
 import {
   EVAL_KINDS,
   EVAL_VERDICTS,
@@ -23,12 +8,7 @@ import {
   normalizeExpect,
   turnToMessage,
 } from "@/lib/eval-schema";
-import type {
-  ClozeEvalCheckOk,
-  EvalCheckOk,
-  QuizEvalCheckOk,
-  TutorEvalCheckOk,
-} from "@/lib/eval-validate";
+import type { EvalCheckOk, QuizEvalCheckOk, TutorEvalCheckOk } from "@/lib/eval-validate";
 import type { ReasoningLevel } from "@/lib/llm/provider";
 import type { PromptKind } from "@/lib/prompt-dump";
 import {
@@ -77,13 +57,7 @@ import { mapWithConcurrency, withRetry } from "./retry";
 // `unstable` — its case statuses are `ok` / `errored` / `skipped`, and it has two findings:
 // the judge's, and the DETERMINISTIC `required_tools` check (did every tool the case
 // demands get called at least once?). Both (per-kind policy) REPORT and never gate. One
-// report shape serves every kind; renderers branch on `EvalRunResult.kind`.
-//
-// THE CLOZE KIND replays the app's cloze pipeline per repeat: the pre-pass and the
-// grounding filter run HERE (pure lib code), the grading and feedback calls through the
-// `ClozeFn` seam, then the judge over the feedback that survived. A case is one
-// SUBMISSION; its per-gap `expect` gates through the quiz's majority rule, per gap, and
-// `expect_patterns` and the judge only report.
+// report shape serves both kinds; renderers branch on `EvalRunResult.kind`.
 
 /**
  * The eval kinds. Re-exported from the format module (`lib/eval-schema.ts`) so the
@@ -232,8 +206,6 @@ export interface EvalRunOptions {
   grade?: GradeFn;
   /** The TUTOR kind's generation seam. Required by `evalRunners.tutor`. */
   respond?: RespondFn;
-  /** The CLOZE kind's seam (both calls). Required by `evalRunners.cloze`. */
-  cloze?: ClozeFn;
   /**
    * The judge seam. ABSENT means judging is off for this run (`--no-judge-feedback`) —
    * no judge fields appear anywhere in the result.
@@ -333,9 +305,7 @@ export interface EvalRepeatRow {
    * here" and a missing key means "nothing was required" — never "nothing was checked".
    */
   missingTools?: string[];
-  /** CLOZE: the verdicts, the grounded feedback and what was dropped, for this repeat. */
-  cloze?: EvalClozeRepeatDetail;
-  /** This ONE generation call's tokens (a cloze repeat: both calls), when reported. */
+  /** This ONE generation call's tokens, when the server reported them. */
   usage?: EvalUsage;
   /** Present when this observation never produced a verdict. */
   error?: unknown;
@@ -415,16 +385,11 @@ export interface EvalTutorCaseResult extends EvalCaseBase {
   unstable: false;
 }
 
-export type EvalCaseResult = EvalQuizCaseResult | EvalTutorCaseResult | EvalClozeCaseResult;
+export type EvalCaseResult = EvalQuizCaseResult | EvalTutorCaseResult;
 
 /** Narrow a case to the quiz arm (the union has no `kind` field — the JSON stays lean). */
 export function isQuizCase(evalCase: EvalCaseResult): evalCase is EvalQuizCaseResult {
   return "questionId" in evalCase;
-}
-
-/** Narrow a case to the cloze arm. */
-export function isClozeCase(evalCase: EvalCaseResult): evalCase is EvalClozeCaseResult {
-  return "submissionId" in evalCase;
 }
 
 /** Narrow a case to the tutor arm. */
@@ -557,46 +522,6 @@ function majority(
     passed: tied.every((verdict) => expected.includes(verdict)),
   };
 }
-
-/**
- * The confusion matrix and the false-correct rate over verdict UNITS — quiz cases, or
- * the cloze gaps that state an expectation. Rows are keyed by the canonical SORTED
- * expected set (never "first-listed", which would make the matrix depend on the
- * author's list order); a unit without a verdict (errored) is not in the matrix. The
- * false-correct denominator is EVERY unit whose expected set excludes `correct`, errored
- * ones included, so it cannot be gamed by failures.
- */
-function confusionStats(
-  units: readonly { expected: readonly EvalVerdict[]; verdict?: EvalVerdict }[],
-): Pick<EvalRunResult, "confusion" | "falseCorrect"> {
-  const counts = new Map<string, number>();
-  for (const unit of units) {
-    if (!unit.verdict) continue;
-    const key = `${expectedKey(unit.expected)}\u0000${unit.verdict}`;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  const confusion: EvalConfusionRow[] = [...counts.entries()]
-    .map(([key, count]) => {
-      const [expected = "", got = ""] = key.split("\u0000");
-      return { expected, got: got as EvalVerdict, count };
-    })
-    .sort((a, b) => a.expected.localeCompare(b.expected) || a.got.localeCompare(b.got));
-  const strict = units.filter((unit) => !unit.expected.includes("correct"));
-  const count = strict.filter((unit) => unit.verdict === "correct").length;
-  return {
-    confusion,
-    falseCorrect: {
-      count,
-      denominator: strict.length,
-      rate: strict.length === 0 ? 0 : count / strict.length,
-    },
-  };
-}
-
-/** A 2xx whose body is not the step's structured output. */
-const NOT_A_CLOZE_ANSWER =
-  "The server's response is not a cloze grading or feedback object — it may not offer " +
-  "/api/eval/cloze at all. Check the target server, e.g. --server http://localhost:3000.";
 
 /** The one-line message a failed judge call leaves on its repeat row. */
 function judgeErrorMessage(error: unknown): string {
@@ -836,7 +761,28 @@ const quizEvalRunner: EvalRunner = {
       usage,
     };
 
-    const verdictStats = confusionStats(results);
+    // Confusion matrix over CASE verdicts: rows keyed by the canonical sorted expected
+    // set (never "first-listed", which would make the matrix depend on the author's
+    // list order with zero semantic difference). Errored cases have no verdict and are
+    // therefore not in the matrix — `totals.errored` accounts for them.
+    const confusionCounts = new Map<string, number>();
+    for (const result of results) {
+      if (!result.verdict) continue;
+      const key = `${expectedKey(result.expected)}\u0000${result.verdict}`;
+      confusionCounts.set(key, (confusionCounts.get(key) ?? 0) + 1);
+    }
+    const confusion: EvalConfusionRow[] = [...confusionCounts.entries()]
+      .map(([key, count]) => {
+        const [expected = "", got = ""] = key.split("\u0000");
+        return { expected, got: got as EvalVerdict, count };
+      })
+      .sort((a, b) => a.expected.localeCompare(b.expected) || a.got.localeCompare(b.got));
+
+    // False-correct rate: the grader accepted an answer the teacher marked as NOT
+    // acceptable — the dangerous direction. Denominator = every case whose expected
+    // set excludes `correct` (errored ones included, so it cannot be gamed by failures).
+    const strictCases = results.filter((result) => !result.expected.includes("correct"));
+    const falseCorrectCount = strictCases.filter((result) => result.verdict === "correct").length;
 
     return {
       id: checked.evalFile.id,
@@ -860,7 +806,12 @@ const quizEvalRunner: EvalRunner = {
         (result) => result.status === "failed" || result.status === "errored",
       ),
       cases: results,
-      ...verdictStats,
+      confusion,
+      falseCorrect: {
+        count: falseCorrectCount,
+        denominator: strictCases.length,
+        rate: strictCases.length === 0 ? 0 : falseCorrectCount / strictCases.length,
+      },
       ...(aborted ? { aborted } : {}),
     };
   },
@@ -1112,412 +1063,10 @@ const tutorEvalRunner: EvalRunner = {
   },
 };
 
-/** How a cloze gap's verdict was decided: by the deterministic pre-pass, or by the model. */
-export type ClozeDecidedBy = "pre-pass" | "model";
-
-/** ONE gap's outcome in one cloze repeat. */
-export interface EvalClozeRepeatGap {
-  gap: number;
-  verdict: EvalVerdict;
-  decidedBy: ClozeDecidedBy;
-  /** The grading call's one-sentence reason (model-decided gaps only). Never shown to students. */
-  reason?: string;
-}
-
-/** What ONE cloze repeat produced, beyond the shared row fields. */
-export interface EvalClozeRepeatDetail {
-  /** Every gap's final verdict, in reading order. */
-  gaps: EvalClozeRepeatGap[];
-  /**
-   * The feedback AFTER the grounding filter — exactly what a student would see — plus
-   * what the filter dropped and why. Absent when every gap was correct (the app asks for
-   * no feedback then) or when the feedback call failed.
-   */
-  feedback?: ClozeGroundedFeedback;
-  /** The feedback call failed; the verdicts still count (a student would see them). */
-  feedbackError?: string;
-}
-
-/** One gap of a cloze case: the submission's answer, the expectation and the outcome. */
-export interface EvalClozeGapResult {
-  gap: number;
-  /** The teacher's reference — the "possible answer" (`""` = nothing belongs here). */
-  reference: string;
-  /** The submitted answer, `""` for a gap left empty. */
-  answer: string;
-  /** The acceptable verdicts, canonical order — absent when the gap states no `expect`. */
-  expected?: EvalVerdict[];
-  /** The majority verdict over the graded repeats; absent when errored/skipped. */
-  verdict?: EvalVerdict;
-  decidedBy?: ClozeDecidedBy;
-  /** Whether the majority meets `expected` — present only when the gap has one. */
-  passed?: boolean;
-}
-
-/** One `expect_patterns` entry and how many feedback repeats grouped it. REPORTED only. */
-export interface EvalClozePatternCheck {
-  gaps: number[];
-  /** Repeats in which ONE surviving pattern cited every gap of the set. */
-  grouped: number;
-  /** Repeats that produced feedback at all — the denominator. */
-  of: number;
-}
-
-/** One submission of a CLOZE eval. */
-export interface EvalClozeCaseResult extends EvalCaseBase {
-  submissionId: string;
-  status: "passed" | "failed" | "errored" | "skipped";
-  gaps: EvalClozeGapResult[];
-  /** Present only when the submission states `expect_patterns`. */
-  patternChecks?: EvalClozePatternCheck[];
-}
-
-/** One call of the cloze pipeline, as the HTTP seam reports it. */
-export type ClozeCallResult =
-  | {
-      ok: true;
-      /** The step's structured output, unparsed — the runner checks it against the schema. */
-      output: unknown;
-      usage?: EvalUsage;
-    }
-  | {
-      ok: false;
-      /** Worth another attempt: a 5xx or a true network failure. Any 4xx is terminal. */
-      retryable: boolean;
-      /** 401/403/not-signed-in — aborts the WHOLE run, never retried. */
-      auth?: boolean;
-      /** The failure payload, verbatim, for the report. */
-      error: unknown;
-    };
-
-/**
- * The injected HTTP seam for ONE cloze call (`POST /api/eval/cloze`): the step, its
- * assembled system prompt and its user message — the cloze kind's sibling of
- * {@link GradeFn}.
- */
-export type ClozeFn = (request: {
-  step: "grade" | "explain";
-  system: string;
-  user: string;
-}) => Promise<ClozeCallResult>;
-
-interface PlannedClozeCase {
-  index: number;
-  submissionId: string;
-  /** Index-aligned with the exercise's gaps (gap N is `[N - 1]`); `""` = left empty. */
-  answers: string[];
-  /** Index-aligned too; `undefined` where the gap states no expectation. */
-  expected: (EvalVerdict[] | undefined)[];
-  expectPatterns?: number[][];
-}
-
-function planClozeCases(checked: ClozeEvalCheckOk): PlannedClozeCase[] {
-  return checked.evalFile.submissions.map((submission, index) => ({
-    index,
-    submissionId: submission.id,
-    answers: checked.clozeGaps.map((gap) => submission.answers[String(gap.number)] ?? ""),
-    expected: checked.clozeGaps.map((gap) => {
-      const expect = submission.expect?.[String(gap.number)];
-      return expect === undefined ? undefined : normalizeExpect(expect);
-    }),
-    ...(submission.expect_patterns ? { expectPatterns: submission.expect_patterns } : {}),
-  }));
-}
-
-/** Does ONE surviving pattern cite every gap of `set`? */
-function groupedBy(patterns: readonly { gaps: number[] }[], set: readonly number[]): boolean {
-  return patterns.some((pattern) => set.every((gap) => pattern.gaps.includes(gap)));
-}
-
-/**
- * The CLOZE runner: per repeat, the app's own pipeline replayed locally around two server
- * calls — the pre-pass, ONE grading call for the gaps it left undecided (retried once on
- * a coverage mismatch, like `gradeCloze`), ONE feedback call over the final verdicts
- * (skipped when all are correct, like the app), the grounding filter, then the judge over
- * what survived. `expect` gates per gap through the same majority rule as the quiz kind;
- * `expect_patterns` and the judge only report.
- */
-const clozeEvalRunner: EvalRunner = {
-  async run(rawChecked, options) {
-    if (rawChecked.kind !== "cloze")
-      throw new Error("The cloze eval runner needs a cloze eval file.");
-    const checked: ClozeEvalCheckOk = rawChecked;
-    const call = options.cloze;
-    if (!call) throw new Error("The cloze eval runner needs a `cloze` seam.");
-    const repeats = Math.max(1, Math.floor(options.repeats ?? 1));
-    const concurrency = Math.max(1, Math.floor(options.concurrency ?? 4));
-    const planned = planClozeCases(checked);
-    const total = planned.length * repeats;
-    const gaps = checked.clozeGaps;
-    const gradingSystem = checked.clozeDump.grading.system;
-    const feedbackSystem = checked.clozeDump.feedback.system;
-    const breaker = options.judgeBreaker ?? createJudgeBreaker();
-    const judgeStep = createJudgeStep(options, breaker);
-    const unjudged = unjudgedFields(options);
-
-    let done = 0;
-    let consecutiveErrored = 0;
-    let aborted: EvalRunResult["aborted"];
-    const abortForAuth = () => {
-      aborted ??= {
-        reason: "auth",
-        message: "Authentication failed — the run was aborted. Run `novedu-cli login`.",
-      };
-    };
-
-    // ONE call with the shared retry policy: 5xx and network failures only.
-    const callWithRetry = (request: Parameters<ClozeFn>[0]) =>
-      withRetry(() => call(request), {
-        attempts: options.retry?.attempts,
-        baseDelayMs: options.retry?.baseDelayMs,
-        sleep: options.retry?.sleep,
-        shouldRetry: (value) => !value.ok && value.retryable && value.auth !== true,
-      });
-
-    /** One repeat; `auth` set when the run must abort. */
-    const runRepeat = async (
-      plan: PlannedClozeCase,
-      repeatIndex: number,
-    ): Promise<{ row: EvalRepeatRow; auth?: boolean }> => {
-      const usage: EvalUsage = { ...ZERO_USAGE };
-      const usageField = () =>
-        usage.input || usage.cachedInput || usage.output ? { usage: { ...usage } } : {};
-      const failed = (error: unknown, auth?: boolean) => ({
-        row: { repeatIndex, error, ...usageField(), ...unjudged },
-        ...(auth ? { auth } : {}),
-      });
-
-      // 1. The pre-pass, locally — exactly what `gradeCloze` decides without a model.
-      const prepass = runClozePrepass(gaps, plan.answers);
-      const undecided = undecidedGaps(prepass);
-      const modelGaps = new Map<number, { result: EvalVerdict; reason: string }>();
-
-      // 2. ONE grading call for the rest, retried once when it does not name every
-      //    undecided gap exactly once (the app's coverage rule).
-      if (undecided.length > 0) {
-        const user = buildClozeGradingMessage(
-          undecided.map((gap) => ({ gap, answer: plan.answers[gap - 1] ?? "" })),
-        );
-        let graded: ClozeGradingOutput | undefined;
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const outcome = await callWithRetry({ step: "grade", system: gradingSystem, user });
-          if (!outcome.ok) return failed(outcome.error, outcome.auth);
-          addUsage(usage, outcome.usage);
-          const parsed = CLOZE_GRADING_SCHEMA.safeParse(outcome.output);
-          if (!parsed.success) return failed({ message: NOT_A_CLOZE_ANSWER });
-          graded = parsed.data;
-          if (clozeGradingCovers(graded, undecided)) break;
-          graded = undefined;
-        }
-        if (!graded) {
-          return failed({
-            message:
-              "The grader did not return exactly one verdict per undecided gap, even after a retry.",
-          });
-        }
-        for (const entry of graded.gaps) {
-          modelGaps.set(entry.gap, { result: entry.result, reason: entry.reason });
-        }
-      }
-
-      const repeatGaps: EvalClozeRepeatGap[] = prepass.map((entry) => {
-        if (entry.verdict) {
-          return { gap: entry.gap, verdict: entry.verdict, decidedBy: "pre-pass" };
-        }
-        const model = modelGaps.get(entry.gap);
-        return {
-          gap: entry.gap,
-          verdict: model?.result ?? "incorrect",
-          decidedBy: "model",
-          ...(model?.reason ? { reason: model.reason } : {}),
-        };
-      });
-      const verdicts = repeatGaps.map((gap) => gap.verdict);
-      const detail: EvalClozeRepeatDetail = { gaps: repeatGaps };
-
-      // 3. Feedback only when something is not correct — the app asks for none otherwise.
-      let judged: Pick<EvalRepeatRow, "judge" | "judgeError"> = unjudged;
-      let auth: boolean | undefined;
-      if (verdicts.some((verdict) => verdict !== "correct")) {
-        const user = buildClozeFeedbackMessage(
-          gaps.map((gap, i) => ({
-            gap: gap.number,
-            answer: plan.answers[i] ?? "",
-            verdict: verdicts[i] ?? "incorrect",
-          })),
-        );
-        const outcome = await callWithRetry({ step: "explain", system: feedbackSystem, user });
-        const parsed = outcome.ok ? CLOZE_FEEDBACK_SCHEMA.safeParse(outcome.output) : undefined;
-        if (outcome.ok) addUsage(usage, outcome.usage);
-        if (!outcome.ok) {
-          // Like the app: a failed feedback call leaves the verdicts standing.
-          detail.feedbackError = judgeErrorMessage(outcome.error);
-          auth = outcome.auth;
-        } else if (!parsed?.success) {
-          detail.feedbackError = NOT_A_CLOZE_ANSWER;
-        } else {
-          // 4. The grounding filter, locally — the report shows what a student would see.
-          const grounded = groundClozeFeedback(parsed.data, verdicts);
-          detail.feedback = grounded;
-          // 5. The judge over the SURVIVING feedback, against the feedback prompt.
-          if (options.judge) {
-            judged = await judgeStep({
-              system: CLOZE_JUDGE_SYSTEM,
-              subject: buildClozeJudgeSubject(feedbackSystem, user, grounded),
-              criteria: CLOZE_JUDGE_CRITERIA,
-            });
-          }
-        }
-      }
-
-      return {
-        row: {
-          repeatIndex,
-          cloze: detail,
-          ...usageField(),
-          ...judged,
-        },
-        ...(auth ? { auth } : {}),
-      };
-    };
-
-    const results = await mapWithConcurrency(
-      planned,
-      concurrency,
-      async (plan): Promise<EvalClozeCaseResult> => {
-        const rows: EvalRepeatRow[] = [];
-        for (let repeatIndex = 0; repeatIndex < repeats; repeatIndex++) {
-          if (aborted) break;
-          const { row, auth } = await runRepeat(plan, repeatIndex);
-          done += 1;
-          options.onProgress?.({ done, total });
-          rows.push(row);
-          if (auth) {
-            abortForAuth();
-            break;
-          }
-        }
-
-        const graded = rows.flatMap((row) => (row.cloze ? [row.cloze] : []));
-        const caseGaps: EvalClozeGapResult[] = gaps.map((gap, i) => {
-          const expected = plan.expected[i];
-          const observed = graded.flatMap((detail) => {
-            const verdict = detail.gaps[i]?.verdict;
-            return verdict ? [verdict] : [];
-          });
-          const winner = majority(observed, expected ?? []);
-          return {
-            gap: gap.number,
-            reference: gap.reference,
-            answer: plan.answers[i] ?? "",
-            ...(expected ? { expected } : {}),
-            ...(winner ? { verdict: winner.verdict } : {}),
-            ...(graded[0]?.gaps[i] ? { decidedBy: graded[0].gaps[i].decidedBy } : {}),
-            ...(expected && winner ? { passed: winner.passed } : {}),
-          };
-        });
-        const status: EvalClozeCaseResult["status"] =
-          rows.length === 0
-            ? "skipped"
-            : graded.length === 0
-              ? "errored"
-              : caseGaps.some((gap) => gap.passed === false)
-                ? "failed"
-                : "passed";
-
-        if (status === "errored") {
-          consecutiveErrored += 1;
-          if (consecutiveErrored >= CIRCUIT_BREAKER_LIMIT) {
-            aborted ??= {
-              reason: "circuit-breaker",
-              message: `${CIRCUIT_BREAKER_LIMIT} cases failed in a row — the run was aborted.`,
-            };
-          }
-        } else if (status !== "skipped") {
-          consecutiveErrored = 0;
-        }
-
-        const explained = graded.flatMap((detail) => (detail.feedback ? [detail.feedback] : []));
-        return {
-          submissionId: plan.submissionId,
-          status,
-          gaps: caseGaps,
-          ...(plan.expectPatterns
-            ? {
-                patternChecks: plan.expectPatterns.map((set) => ({
-                  gaps: set,
-                  grouped: explained.filter((feedback) => groupedBy(feedback.patterns, set)).length,
-                  of: explained.length,
-                })),
-              }
-            : {}),
-          unstable: gaps.some(
-            (_, i) => new Set(graded.map((detail) => detail.gaps[i]?.verdict)).size > 1,
-          ),
-          feedbackFlagged: rows.some((row) => (row.judge?.issues.length ?? 0) > 0),
-          toolsFlagged: false,
-          repeats: rows,
-        };
-      },
-    );
-
-    const usage: EvalUsage = { ...ZERO_USAGE };
-    for (const result of results) {
-      for (const row of result.repeats) {
-        addUsage(usage, row.usage);
-        addUsage(usage, row.judge?.usage);
-      }
-    }
-
-    // Confusion and false-correct over the GAPS that state an expectation — the cloze
-    // kind's verdict unit (errored cases' gaps stay in the denominator, as for the quiz).
-    const verdictStats = confusionStats(
-      results.flatMap((result) =>
-        result.gaps.flatMap((gap) =>
-          gap.expected ? [{ expected: gap.expected, verdict: gap.verdict }] : [],
-        ),
-      ),
-    );
-
-    return {
-      id: checked.evalFile.id,
-      kind: "cloze",
-      target: checked.targetUrl,
-      llm: options.llm,
-      judging: !options.judge ? "off" : breaker.stopped ? "degraded" : "on",
-      totals: {
-        cases: results.length,
-        passed: results.filter((c) => c.status === "passed").length,
-        failed: results.filter((c) => c.status === "failed").length,
-        errored: results.filter((c) => c.status === "errored").length,
-        skipped: results.filter((c) => c.status === "skipped").length,
-        unstable: results.filter((c) => c.unstable).length,
-        feedbackFlagged: results.filter((c) => c.feedbackFlagged).length,
-        toolsFlagged: 0,
-        judgeErrored: results.reduce(
-          (sum, c) => sum + c.repeats.filter((row) => row.judgeError !== undefined).length,
-          0,
-        ),
-        repeats,
-        calls: total,
-        usage,
-      },
-      questions: [],
-      ...verdictStats,
-      mismatches: results.filter(
-        (result) => result.status === "failed" || result.status === "errored",
-      ),
-      cases: results,
-      ...(aborted ? { aborted } : {}),
-    };
-  },
-};
-
 /** The seam: one runner per eval kind (mirrors `promptDumpers`). */
 export const evalRunners: Record<EvalKind, EvalRunner> = {
   quiz: quizEvalRunner,
   tutor: tutorEvalRunner,
-  cloze: clozeEvalRunner,
 };
 
 /** Run ONE checked eval file — the single entry point the command uses. */

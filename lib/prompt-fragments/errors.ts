@@ -118,9 +118,6 @@ export type ErrorCode =
   // contain: the catalog knows the name (the schema enum passed), but this tutor can
   // never call it, so the expectation could never be met. Carries the resolved target URL.
   | "EVAL_UNGRANTED_TOOL"
-  // A cloze eval submission names a gap number (in `answers`, `expect` or
-  // `expect_patterns`) the resolved target cloze does not have. Carries the target URL.
-  | "EVAL_UNKNOWN_GAP"
   // App-only: the YAML names an LLM provider this server does not have configured
   // (e.g. `Azure Foundry` without AZURE_FOUNDRY_ENDPOINT). Emitted by the app's
   // authoring gate (lib/file-validators.ts), never by the CLI-bundled loadAndCheck*

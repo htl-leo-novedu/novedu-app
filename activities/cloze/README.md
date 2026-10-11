@@ -104,16 +104,7 @@ npx @novedu/cli prompts ./my-cloze.yaml --kind cloze --json   # full text + outp
 
 ---
 
-## 5. Testing the grading and the feedback (`eval`)
-
-Write sample submissions — answers by gap number, the verdicts you expect, and the gaps
-the feedback should connect — and `novedu-cli eval` runs them through the real grading
-and feedback. The sample [`../examples/future-forms/sue-fresh-start.eval.yaml`](../examples/future-forms/sue-fresh-start.eval.yaml)
-shows the format; [`../evals/README.md`](../evals/README.md) ("Cloze evals") explains it.
-
----
-
-## 6. After you share it
+## 5. After you share it
 
 - Every page load and every submission re-reads the file, so a fix to `description`,
   `evaluation` or `instructions` applies at once.

@@ -17,7 +17,6 @@ import {
   type EvalBatchResult,
   type EvalRunResult,
   type EvalUsage,
-  isClozeCase,
   isTutorCase,
 } from "./eval-run";
 
@@ -254,8 +253,6 @@ export function formatEvalResult(result: EvalCheckResult, source: string): strin
   lines.push(`  target: ${result.targetUrl}`);
   if (result.kind === "tutor") {
     lines.push(`  conversations: ${result.caseCount}`);
-  } else if (result.kind === "cloze") {
-    lines.push(`  submissions: ${result.caseCount}   gaps: ${result.clozeGaps.length}`);
   } else {
     lines.push(`  questions: ${result.evalFile.questions.length}   cases: ${result.caseCount}`);
   }
@@ -309,19 +306,6 @@ function mismatchLines(result: EvalRunResult): string[] {
     if (isTutorCase(c)) {
       const head = `#${c.index + 1}${c.title ? ` ${c.title}` : ""}`;
       return `  ${red("✗")} ${head} ${red("error")} ${dim(firstErrorMessage(c.repeats, "no response"))}`;
-    }
-    if (isClozeCase(c)) {
-      if (c.status === "errored") {
-        return `  ${red("✗")} ${c.submissionId} ${red("error")} ${dim(firstErrorMessage(c.repeats, "no verdicts"))}`;
-      }
-      // One `gap N expected … got …` per gap that missed its expectation.
-      const missed = c.gaps
-        .filter((gap) => gap.passed === false)
-        .map(
-          (gap) =>
-            `gap ${gap.gap} expected ${gap.expected?.join("|")} got ${red(gap.verdict ?? "?")}`,
-        );
-      return `  ${red("✗")} ${c.submissionId}: ${missed.join(", ")}`;
     }
     const head = `${c.questionId}#${c.answerIndex}`;
     const expected = c.expected.join("|");
@@ -377,15 +361,10 @@ export function formatEvalReport(result: EvalRunResult, source: string): string 
       `  judge llm: ${llmSpecText(judge)}${judge.overridden ? ` ${yellow("(override)")}` : ""}`,
     );
   }
-  const unit = { quiz: "case", tutor: "conversation", cloze: "submission" }[result.kind];
-  // A cloze run is up to two calls (grading, then feedback) — the pre-pass may need none.
-  const generation = {
-    quiz: "grading call(s)",
-    tutor: "generation call(s)",
-    cloze: "grading/feedback run(s)",
-  }[result.kind];
+  const unit = result.kind === "tutor" ? "conversation" : "case";
+  const generation = result.kind === "tutor" ? "generation" : "grading";
   lines.push(
-    `  ${unit}s: ${totals.cases} × ${totals.repeats} repeat(s) = ${totals.calls} ${generation}` +
+    `  ${unit}s: ${totals.cases} × ${totals.repeats} repeat(s) = ${totals.calls} ${generation} call(s)` +
       (result.judging === "off" ? "" : ` + ${totals.calls} judge call(s)`),
   );
 
@@ -479,7 +458,7 @@ export function formatEvalBatchReport(batch: EvalBatchResult): string {
     const counts =
       file.result.kind === "tutor"
         ? `${t.cases} conversation(s), ${t.cases - t.errored - t.skipped} ok, ${t.errored} errored`
-        : `${t.cases} ${file.result.kind === "cloze" ? "submission" : "case"}(s), ${t.passed} passed, ${t.failed} failed, ${t.errored} errored`;
+        : `${t.cases} case(s), ${t.passed} passed, ${t.failed} failed, ${t.errored} errored`;
     lines.push(
       `  ${mark} ${name}: ${counts}` +
         (t.skipped ? red(`, ${t.skipped} skipped`) : "") +
