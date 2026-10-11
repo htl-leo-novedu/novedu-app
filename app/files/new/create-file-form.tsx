@@ -6,7 +6,7 @@ import { PageBody } from "@/components/page-main";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldHint, FieldLabel, FieldSuccess } from "@/components/ui/field";
 import { Input, Select } from "@/components/ui/input";
-import { ErrorList, WarningList } from "@/components/validation-result";
+import { ContentSummary, ErrorList, WarningList } from "@/components/validation-result";
 import {
   createFileAction,
   type ValidationError,
@@ -35,6 +35,7 @@ export function CreateFileForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<ValidationError[] | null>(null);
   const [warnings, setWarnings] = useState<ValidationWarning[] | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
   const [passed, setPassed] = useState(false);
   const pending = validating || saving;
 
@@ -44,6 +45,7 @@ export function CreateFileForm() {
     setMessage(null);
     setErrors(null);
     setWarnings(null);
+    setSummary(null);
     setPassed(false);
   }
 
@@ -54,6 +56,7 @@ export function CreateFileForm() {
       if (result.ok) {
         setPassed(true);
         setWarnings(result.warnings);
+        setSummary(result.summary);
       } else if ("errors" in result) {
         setErrors(result.errors);
       } else {
@@ -120,6 +123,7 @@ export function CreateFileForm() {
               <option value="quiz">Quiz</option>
               <option value="writing">Writing</option>
               <option value="coding">Coding</option>
+              <option value="cloze">Cloze</option>
             </Select>
           </Field>
         </div>
@@ -145,6 +149,7 @@ export function CreateFileForm() {
           {passed && !message && !errors ? <FieldSuccess>Validation passed</FieldSuccess> : null}
         </div>
 
+        {passed && summary ? <ContentSummary summary={summary} /> : null}
         {errors ? <ErrorList errors={errors} /> : null}
         {passed && warnings && warnings.length > 0 ? <WarningList warnings={warnings} /> : null}
       </form>

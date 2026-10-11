@@ -8,7 +8,7 @@ import { PageBody } from "@/components/page-main";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, FieldSuccess } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ErrorList, WarningList } from "@/components/validation-result";
+import { ContentSummary, ErrorList, WarningList } from "@/components/validation-result";
 import {
   updateFileAction,
   type ValidationError,
@@ -41,6 +41,7 @@ export function EditFileForm({
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<ValidationError[] | null>(null);
   const [warnings, setWarnings] = useState<ValidationWarning[] | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
   const [passed, setPassed] = useState(false);
   const [saved, setSaved] = useState(false);
   const pending = validating || saving;
@@ -51,6 +52,7 @@ export function EditFileForm({
     setMessage(null);
     setErrors(null);
     setWarnings(null);
+    setSummary(null);
     setPassed(false);
     setSaved(false);
   }
@@ -62,6 +64,7 @@ export function EditFileForm({
       if (result.ok) {
         setPassed(true);
         setWarnings(result.warnings);
+        setSummary(result.summary);
       } else if ("errors" in result) {
         setErrors(result.errors);
       } else {
@@ -76,6 +79,7 @@ export function EditFileForm({
       const result = await updateFileAction(name, content);
       if (result.ok) {
         setSaved(true);
+        setSummary(result.summary);
         router.refresh();
       } else if ("errors" in result) {
         setErrors(result.errors);
@@ -136,6 +140,7 @@ export function EditFileForm({
         ) : null}
       </div>
 
+      {(passed || saved) && summary ? <ContentSummary summary={summary} /> : null}
       {errors ? <ErrorList errors={errors} /> : null}
       {passed && warnings && warnings.length > 0 ? <WarningList warnings={warnings} /> : null}
     </PageBody>

@@ -42,7 +42,7 @@ export function registerFiles(program: Command): void {
     )
     .option(
       "--kind <kind>",
-      "file kind (tutor, fragment, quiz, writing, coding) — required when creating",
+      "file kind (tutor, fragment, quiz, writing, coding, cloze) — required when creating",
     )
     .option("--file <path>", "read the YAML from this path instead of stdin")
     .option(...SERVER_OPTION)

@@ -20,6 +20,7 @@ export const badgeVariants = cva(
         orange: "bg-orange-500/20 text-orange-800",
         purple: "bg-purple-500/20 text-purple-800",
         teal: "bg-teal-600/15 text-teal-800",
+        rose: "bg-rose-600/15 text-rose-800",
       },
       solid: {
         true: "text-white",
@@ -40,6 +41,7 @@ export const badgeVariants = cva(
       { solid: true, tone: "orange", class: "bg-amber-700" },
       { solid: true, tone: "purple", class: "bg-purple-700" },
       { solid: true, tone: "teal", class: "bg-teal-700" },
+      { solid: true, tone: "rose", class: "bg-rose-700" },
     ],
     defaultVariants: { tone: "neutral", caps: false, solid: false },
   },

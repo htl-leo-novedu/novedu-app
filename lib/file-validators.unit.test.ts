@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 // Layer-2 validator seam + the runtime-light readAnonymousFlag, both keyed by
 // FileKind. The underlying loaders (lib/tutors, lib/quiz-validate, lib/quiz-fetch,
-// lib/writing-validate, lib/writing-fetch) are mocked so this is hermetic — it
-// asserts the MAPPING each kind performs (which loader, which options, how the
+// lib/writing-validate, lib/writing-fetch, lib/coding-validate, lib/cloze-validate)
+// are mocked so this is hermetic — it asserts the MAPPING each kind performs (which loader, which options, how the
 // result is shaped), not the validation itself.
 
 const mocks = vi.hoisted(() => ({
@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   loadWriting: vi.fn(),
   loadAndCheckWriting: vi.fn(),
   loadAndCheckCoding: vi.fn(),
+  loadAndCheckCloze: vi.fn(),
 }));
 
 vi.mock("@/lib/tutors", () => ({
@@ -29,6 +30,7 @@ vi.mock("@/lib/quiz-validate", () => ({ loadAndCheckQuiz: mocks.loadAndCheckQuiz
 vi.mock("@/lib/writing-fetch", () => ({ loadWriting: mocks.loadWriting }));
 vi.mock("@/lib/writing-validate", () => ({ loadAndCheckWriting: mocks.loadAndCheckWriting }));
 vi.mock("@/lib/coding-validate", () => ({ loadAndCheckCoding: mocks.loadAndCheckCoding }));
+vi.mock("@/lib/cloze-validate", () => ({ loadAndCheckCloze: mocks.loadAndCheckCloze }));
 
 import { fileValidators, readAnonymousFlag } from "@/lib/file-validators";
 
@@ -54,6 +56,7 @@ describe("fileValidators.tutor", () => {
       title: "T",
       description: "D",
       anonymous: false,
+      summary: null,
     });
   });
 
@@ -84,6 +87,7 @@ describe("fileValidators.fragment", () => {
       title: null,
       description: null,
       anonymous: true,
+      summary: null,
     });
   });
 
@@ -118,6 +122,7 @@ describe("fileValidators.quiz (strict gate — blocks an invalid quiz)", () => {
       title: "Q",
       description: null,
       anonymous: false,
+      summary: null,
     });
   });
 
@@ -152,6 +157,7 @@ describe("fileValidators.writing (strict gate — blocks an invalid activity)", 
       title: "W",
       description: null,
       anonymous: false,
+      summary: null,
     });
   });
 
@@ -180,6 +186,7 @@ describe("fileValidators.coding", () => {
       description: null,
       // Frozen regardless of the file — no in-app conversations to attribute.
       anonymous: true,
+      summary: null,
     });
   });
 
@@ -190,6 +197,7 @@ describe("fileValidators.coding", () => {
       title: null,
       description: null,
       anonymous: true,
+      summary: null,
     });
   });
 
@@ -206,10 +214,46 @@ describe("fileValidators.coding", () => {
   });
 });
 
+describe("fileValidators.cloze", () => {
+  it("validates via loadAndCheckCloze, FREEZES anonymous:true and carries the gap inventory", async () => {
+    mocks.loadAndCheckCloze.mockResolvedValue({
+      ok: true,
+      warnings: ["w"],
+      title: "T",
+      provider: "SCCH",
+      gapCount: 2,
+      inventory: '2 gaps · 1 "a" · 2 "b"',
+    });
+    const result = await fileValidators.cloze.validate(URL_, fetcher);
+    expect(mocks.loadAndCheckCloze).toHaveBeenCalledWith(URL_, fetcher);
+    expect(result).toEqual({
+      ok: true,
+      warnings: ["w"],
+      title: "T",
+      description: null,
+      // Frozen regardless of the file — nothing links a submission to a student.
+      anonymous: true,
+      summary: '2 gaps · 1 "a" · 2 "b"',
+    });
+  });
+
+  it("surfaces the structured errors on a failed check (BLOCKS the save)", async () => {
+    mocks.loadAndCheckCloze.mockResolvedValue({
+      ok: false,
+      errors: [{ code: "CLOZE_GAP_POSITION", message: "m", line: 1, column: 3 }],
+      warnings: [],
+    });
+    expect(await fileValidators.cloze.validate(URL_, fetcher)).toEqual({
+      ok: false,
+      errors: [{ code: "CLOZE_GAP_POSITION", message: "m", line: 1, column: 3 }],
+    });
+  });
+});
+
 describe("provider availability gate (app-only, on top of the CLI-shared core)", () => {
   // The loaders are mocked, but providerUnavailableReason stays REAL — the gate's
   // env sensitivity is exactly what these tests pin down.
-  const okResults: Record<"tutor" | "quiz" | "writing" | "coding", () => void> = {
+  const okResults: Record<"tutor" | "quiz" | "writing" | "coding" | "cloze", () => void> = {
     tutor: () =>
       mocks.loadAndBuildTutorPrompt.mockResolvedValue({
         ok: true,
@@ -239,9 +283,17 @@ describe("provider availability gate (app-only, on top of the CLI-shared core)",
         title: "C",
         provider: "Azure Foundry",
       }),
+    cloze: () =>
+      mocks.loadAndCheckCloze.mockResolvedValue({
+        ok: true,
+        warnings: [],
+        title: "Z",
+        provider: "Azure Foundry",
+        inventory: "1 gap",
+      }),
   };
 
-  for (const kind of ["tutor", "quiz", "writing", "coding"] as const) {
+  for (const kind of ["tutor", "quiz", "writing", "coding", "cloze"] as const) {
     it(`${kind}: BLOCKS a valid Foundry file when the server has no AZURE_FOUNDRY_ENDPOINT`, async () => {
       vi.stubEnv("AZURE_FOUNDRY_ENDPOINT", "");
       okResults[kind]();
@@ -322,6 +374,11 @@ describe("readAnonymousFlag (runtime-light, by FileKind)", () => {
     // Coding is anonymous by construction — no loader is consulted.
     expect(mocks.loadQuiz).not.toHaveBeenCalled();
     expect(mocks.loadWriting).not.toHaveBeenCalled();
+  });
+
+  it("cloze → always anonymous:true definitively, WITHOUT reading the YAML", async () => {
+    expect(await readAnonymousFlag("cloze", URL_)).toEqual({ anonymous: true, definitive: true });
+    expect(mocks.loadAndCheckCloze).not.toHaveBeenCalled();
   });
 
   it("returns the non-definitive default for a kind with no anonymity flag (fragment)", async () => {

@@ -8,7 +8,7 @@
 /** Allowed file-name shape: letters, digits, underscore, hyphen — no spaces, max 100. */
 export const FILE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
 
-export type FileKind = "tutor" | "fragment" | "quiz" | "writing" | "coding";
+export type FileKind = "tutor" | "fragment" | "quiz" | "writing" | "coding" | "cloze";
 
 export function isFileKind(value: unknown): value is FileKind {
   return (
@@ -16,7 +16,8 @@ export function isFileKind(value: unknown): value is FileKind {
     value === "fragment" ||
     value === "quiz" ||
     value === "writing" ||
-    value === "coding"
+    value === "coding" ||
+    value === "cloze"
   );
 }
 

@@ -5,7 +5,7 @@ requires Node >= 22 — `eval`'s glob expansion uses the built-in `fs.globSync`,
 and Node 20 is end-of-life). It covers two jobs:
 
 - **Validate activity YAML** — tutors, fragment libraries, quizzes, writing
-  activities, coding activities, and eval files — with the app's exact
+  activities, coding activities, cloze exercises, and eval files — with the app's exact
   validation pipeline, offline and without signing in. `prompts` dumps the exact
   system prompts an activity produces, the same way.
 - **Manage the app as a teacher** — sign in (`login` prints a link to approve in
@@ -29,9 +29,10 @@ npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-tutor.
 # Validate a published activity by URL
 npx @novedu/cli validate https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/examples/sorting-algorithms/sorting-tutor.yaml
 
-# Other kinds: fragment library, quiz, writing activity, coding activity
+# Other kinds: fragment library, quiz, writing activity, coding activity, cloze exercise
 npx @novedu/cli validate ./activities/examples/shared/general-fragments.yaml --kind fragment
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-quiz.yaml --kind quiz
+npx @novedu/cli validate ./activities/examples/future-forms/sue-fresh-start.yaml --kind cloze
 
 # An eval file, quiz or tutor (also strict-checks the activity it targets)
 npx @novedu/cli validate ./sorting-quiz.eval.yaml --kind eval
@@ -40,11 +41,13 @@ npx @novedu/cli validate ./sorting-quiz.eval.yaml --kind eval
 npx @novedu/cli validate ./my-quiz.yaml --kind quiz --json
 ```
 
-- `--kind` accepts `tutor` (default), `fragment`, `quiz`, `writing`, `coding`, or
-  `eval`; it is caller-declared, not auto-detected.
+- `--kind` accepts `tutor` (default), `fragment`, `quiz`, `writing`, `coding`,
+  `cloze`, or `eval`; it is caller-declared, not auto-detected.
+- A valid cloze exercise prints its **gap inventory** (every gap's number, reference
+  answer and hint); a gap error names its line and column within `text`.
 - The CLI reuses the app's exact validation pipeline (`lib/prompt-fragments`,
   `lib/tutors`, `lib/quiz-validate`, `lib/writing-validate`,
-  `lib/coding-validate`), so an activity that passes here is the same one the
+  `lib/coding-validate`, `lib/cloze-validate`), so an activity that passes here is the same one the
   app accepts — no separate, drifting rules. Validating a tutor also fully
   validates every fragment library it references.
 - Exit code `0` = valid, `1` = errors found — usable as a pre-commit / CI gate.
@@ -318,7 +321,7 @@ codes create  --module <tutor|quiz|writing|coding> --file <url>
 codes list    [--search <q>] [--module <m>] [--all]
 codes sync    <registry-file> [--lock <path>] [--dry-run] [--json]
 codes export  <code> [--out <file>]
-files upload  <name> [--kind <tutor|fragment|quiz|writing|coding>]
+files upload  <name> [--kind <tutor|fragment|quiz|writing|coding|cloze>]
               (--file <path> | reads stdin)
 files list    [--search <q>] [--all]
 images upload <name> --file <path> [--credit <text>]

@@ -186,7 +186,7 @@ real activities. Two homes, by what the layer needs:
   `assemble` / `fragment` / `load`) share an in-code synthetic tutor + two fragment
   libraries defined as YAML string constants in **`lib/tutors/test-fixtures.ts`**.
   No files, no `node:fs` — the data sits next to the tests.
-- **On disk (CLI + e2e)** — **`test-fixtures/activities/{tutors,quizzes,writings,coding}/`**
+- **On disk (CLI + e2e)** — **`test-fixtures/activities/{tutors,quizzes,writings,coding,cloze}/`**
   holds the minimal synthetic YAML the two layers that genuinely need a file/URL
   use: the CLI (`validate <path>`) and e2e (the app fetches a YAML by URL). See
   `test-fixtures/README.md`.

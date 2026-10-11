@@ -6,7 +6,7 @@ description: >-
   truth for what the app accepts, so run it instead of reading YAML by eye or
   re-deriving validation rules. Trigger it whenever the user wants to validate,
   lint, or debug any activity file (tutor, fragment library, quiz, writing,
-  coding, or eval); dump the exact prompts the LLM receives; run evals or
+  coding, cloze, or eval); dump the exact prompts the LLM receives; run evals or
   regression-test a grading rubric or a tutor's behaviour; sign in to Novedu or
   check who is signed in; mint or share activity codes; upload app-hosted YAML
   or images; sync a course repo's activity registry and lock file; triage

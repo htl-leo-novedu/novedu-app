@@ -80,7 +80,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ name
     const { kind, content } = body as Record<string, unknown>;
     if (kind !== undefined && typeof kind !== "string") {
       return json(
-        { message: "kind must be a string (tutor, fragment, quiz, writing or coding)." },
+        { message: "kind must be a string (tutor, fragment, quiz, writing, coding or cloze)." },
         400,
       );
     }

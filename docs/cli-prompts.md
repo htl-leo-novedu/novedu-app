@@ -61,7 +61,8 @@ FileKind ──┬─► fileValidators[kind].validate(url, fetcher)   "is it va
            └─► promptDumpers[kind].dump(url, fetcher, opts)  "which prompts does it produce"
 ```
 
-`PromptKind = Exclude<FileKind, "fragment">`. The CLI command
+`PromptKind = Exclude<FileKind, "fragment" | "cloze">` — a fragment library produces no
+prompt of its own, and cloze has no prompt builder to dump. The CLI command
 (`cli/src/commands/prompts.ts`) stays generic over kinds: it picks a kind,
 calls `dumpPrompts`, and renders — the human summary walks the kind-agnostic
 `promptSections(dump)` list, so a new kind needs no renderer change.

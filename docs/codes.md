@@ -54,12 +54,12 @@ since `app/[code]` catches all non-static top-level paths.
 The subsystem is cleanly split so a new activity (or a pure library kind) slots
 in without touching the core.
 
-**Layer 1 — `FileKind`** (`lib/file-name.ts`): `tutor | fragment | quiz | writing | coding`.
+**Layer 1 — `FileKind`** (`lib/file-name.ts`): `tutor | fragment | quiz | writing | coding | cloze`.
 Drives the `/files` editor kind selector and `novedu_files.kind`.
 
 **Layer 2 — the validator registry** (`lib/file-validators.ts`):
 `fileValidators[kind].validate(url, fetcher) → { ok, errors?, warnings, title?,
-description?, anonymous? }` is the **single source of truth** for "is this YAML
+description?, anonymous?, summary? }` is the **single source of truth** for "is this YAML
 valid, and what metadata does it carry." It is consumed by `/files` save + the
 standalone **Validate** button (fetcher resolves the editor buffer + app-hosted
 siblings) AND by code-create (fetcher = `appHostedFetcher`; url = the row's
@@ -86,11 +86,15 @@ siblings) AND by code-create (fetcher = `appHostedFetcher`; url = the row's
   is always anonymous, so the seam freezes `anonymous: true` (the schema has no
   `anonymous` field to read). The lenient runtime read is `parseCoding`
   (`lib/coding-yaml.ts`) — see `docs/coding.md`.
+- `cloze` → `loadAndCheckCloze` (`lib/cloze-validate.ts`): the strict `ClozeYamlSchema`
+  gate plus the gap parser (`lib/cloze-gaps.ts`); always anonymous like coding, and the
+  only validator with a `summary` — the gap inventory the `/files` editor shows. It is
+  a file kind **without a module** today, like `fragment`. See `docs/cloze.md`.
 
 **Layer 2, read-only sibling — the prompt-dump registry** (`lib/prompt-dump.ts`):
 `promptDumpers[kind].dump(url, fetcher, opts)` answers the other file-level
 question — "which exact LLM prompts does this YAML produce?" — for the four
-prompt-producing kinds (`PromptKind = Exclude<FileKind, "fragment">`). Like the
+prompt-producing kinds (`PromptKind = Exclude<FileKind, "fragment" | "cloze">`). Like the
 validators it derives from the FILE alone, and it never re-implements assembly:
 every dumper calls the production builders/loaders. It backs the
 `novedu-cli prompts` command — see `docs/cli-prompts.md`.

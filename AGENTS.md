@@ -126,6 +126,13 @@ Read before touching: `app/module-chat.tsx`, the per-module chat components, the
 - EVERY student photo (tutor + quiz) goes through `normalizeStudentImage` in the browser before it is inlined. Two DIFFERENT limits: `MAX_RAW_IMAGE_BYTES` (30 MB) bounds what may be PICKED, `MAX_IMAGE_BYTES` (5 MB) what may be SENT — CopilotKit checks `maxSize` against the ORIGINAL file, so it carries the RAW one. Canvas code never enters `lib/answer-images.ts` (a `"use server"` module imports it).
 - A failed turn is in-band on an already-200 stream, so it is reported by the `RunErrorReportingRunner` decorator, which wraps BOTH runner variants; the `RUN_ERROR` message itself never reaches telemetry.
 
+### Cloze ("Fill the gaps") → `docs/cloze.md`
+
+Read before touching: `lib/cloze-*.ts`, `activities/cloze/**`, the cloze sample under `activities/examples/`.
+
+- The reference answers inside `text` are **server-only**, exactly like `evaluation`: the browser only ever receives `toPublicCloze` (a whitelist — title, description, the text with numbered placeholders, gap numbers + hints; guard-tested).
+- `lib/cloze-gaps.ts` is the ONE gap parser — validator, runtime parser and every later consumer go through it; it decides positions with the renderer's own Markdown pipeline (`remark-parse` + `remark-gfm` + `remark-math`). A cloze file is always anonymous (`readAnonymousFlag` → `true`), and the validator, schema and gap parser are CLI-bundled (grep-guard closure).
+
 ### App-hosted YAML files → `docs/files.md`
 
 Read before touching: `app/files/**`, `app/api/files/**`, `lib/file-store.ts`, `lib/file-service.ts`, `lib/yaml-files.ts`, `novedu_files`.

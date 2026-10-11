@@ -116,3 +116,11 @@ export function WarningList({ warnings }: { warnings: ValidationWarning[] }) {
     </section>
   );
 }
+
+/**
+ * The validator's one-line content summary shown after a successful validate or
+ * save (a cloze exercise's gap inventory, e.g. `10 gaps · 1 "is going to" · …`).
+ */
+export function ContentSummary({ summary }: { summary: string }) {
+  return <p className="text-foreground/70 text-sm">{summary}</p>;
+}

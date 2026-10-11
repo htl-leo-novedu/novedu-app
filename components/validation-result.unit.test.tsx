@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { ErrorList, FragmentSummary, locationOf, WarningList } from "./validation-result";
+import {
+  ContentSummary,
+  ErrorList,
+  FragmentSummary,
+  locationOf,
+  WarningList,
+} from "./validation-result";
 
 describe("locationOf", () => {
   it("joins file alias and fragment id", () => {
@@ -113,5 +119,14 @@ describe("WarningList", () => {
     expect(screen.getByText("Warnings (1)")).toBeInTheDocument();
     expect(screen.getByText("UNDECLARED_VARIABLE")).toBeInTheDocument();
     expect(screen.getByText("Variable surprise is not declared")).toBeInTheDocument();
+  });
+});
+
+describe("ContentSummary", () => {
+  it("renders the validator's one-line summary verbatim", () => {
+    const summary = '2 gaps · 1 "is going to" · 2 "starts" (start)';
+    render(<ContentSummary summary={summary} />);
+
+    expect(screen.getByText(summary)).toBeInTheDocument();
   });
 });

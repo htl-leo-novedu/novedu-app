@@ -17,6 +17,9 @@ const writingsDir = fileURLToPath(
 const codingDir = fileURLToPath(
   new URL("../../../test-fixtures/activities/coding/", import.meta.url),
 );
+const clozeDir = fileURLToPath(
+  new URL("../../../test-fixtures/activities/cloze/", import.meta.url),
+);
 const evalsDir = fileURLToPath(
   new URL("../../../test-fixtures/activities/evals/", import.meta.url),
 );
@@ -185,6 +188,34 @@ describe("runValidate — coding activities (local files)", () => {
     expect(outcome.result.ok).toBe(false);
     if (!outcome.result.ok) {
       expect(outcome.result.errors[0]?.code).toBe("FETCH_FAILED");
+    }
+  });
+});
+
+describe("runValidate — cloze exercises (local files)", () => {
+  it("accepts a valid cloze exercise and reports its gap inventory", async () => {
+    const outcome = await runValidate(`${clozeDir}test-cloze.yaml`, "cloze");
+
+    expect(outcome.kind).toBe("cloze");
+    expect(outcome.result.ok).toBe(true);
+    if (outcome.kind === "cloze" && outcome.result.ok) {
+      expect(outcome.result.clozeId).toBe("test-cloze");
+      expect(outcome.result.gapCount).toBe(3);
+      expect(outcome.result.inventory).toBe(
+        '3 gaps · 1 "is going to" · 2 "starts" (start) · 3 (empty)',
+      );
+    }
+  });
+
+  it("rejects the committed broken cloze exercise with located gap errors", async () => {
+    const outcome = await runValidate(`${clozeDir}broken-cloze.yaml`, "cloze");
+
+    expect(outcome.result.ok).toBe(false);
+    if (!outcome.result.ok) {
+      expect(outcome.result.errors.map((e) => [e.code, e.line])).toEqual([
+        ["CLOZE_GAP_POSITION", 1],
+        ["CLOZE_GAP_SYNTAX", 3],
+      ]);
     }
   });
 });

@@ -14,6 +14,7 @@ and referenced by a `# yaml-language-server:` modeline for editor IntelliSense:
 | [`quizzes/`](quizzes/README.md) | LLM-graded open-ended quiz | [quizzes/README.md](quizzes/README.md) |
 | [`writings/`](writings/README.md) | Markdown writing activity | [writings/README.md](writings/README.md) |
 | [`coding/`](coding/README.md) | OpenAI-compatible coding endpoint | [coding/README.md](coding/README.md) |
+| [`cloze/`](cloze/README.md) | Cloze exercise ("Fill the gaps") — one text with gaps | [cloze/README.md](cloze/README.md) |
 | [`fragments/`](fragments/README.md) | Reusable prompt-fragment libraries (cross-cutting) | [fragments/README.md](fragments/README.md) |
 
 Two more folders hold editor schemas without being modules:
@@ -56,6 +57,7 @@ unit — across modules — so the files that are used together sit together:
 | --- | --- |
 | [`examples/sorting-algorithms/`](examples/sorting-algorithms/) | Bubble & Selection Sort in TypeScript + p5.js — tutor, quiz, and coding activity |
 | [`examples/review-writing/`](examples/review-writing/) | Writing an English review/critique — tutor, quiz, and writing activity |
+| [`examples/future-forms/`](examples/future-forms/) | English future forms — a cloze exercise |
 | [`examples/authoring/`](examples/authoring/) | Authoring coaches for teachers ("Tutor Tutor", "Quiz Tutor", …) + their fragment library |
 | [`examples/shared/`](examples/shared/) | Fragment libraries reused across topics (referenced as `../shared/<name>.yaml`) |
 
@@ -66,6 +68,7 @@ npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-tutor.
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-quiz.yaml --kind quiz
 npx @novedu/cli validate ./activities/examples/review-writing/restaurant-review-letter.yaml --kind writing
 npx @novedu/cli validate ./activities/examples/sorting-algorithms/sorting-visualizer.yaml --kind coding
+npx @novedu/cli validate ./activities/examples/future-forms/sue-fresh-start.yaml --kind cloze
 ```
 
 Every module's `llm:` block takes the same three fields: a required `model`, an

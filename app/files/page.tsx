@@ -19,6 +19,7 @@ import { codeModuleLabels, isCodeModule } from "@/lib/code-modules/types";
 import { type OwnerParams, parseOwner } from "@/lib/db/owner-filter";
 import { type PagingParams, parsePaging } from "@/lib/db/paging";
 import { parseSort, type SortParams } from "@/lib/db/sorting";
+import { type FileKind, isFileKind } from "@/lib/file-name";
 import { FILE_SORT_COLUMNS, listFileOwners, listFiles } from "@/lib/file-store";
 import { filePublicUrl } from "@/lib/file-url";
 import { deleteSelectedFilesAction } from "@/lib/files-actions";
@@ -43,12 +44,14 @@ interface FileRow {
 
 // Kind → badge tone, shared visual language with the codes list: module kinds
 // use the module's pill color (codeModuleLabels); `fragment` is the one kind
-// without a module and gets its own hue.
-const KIND_TONES: Record<string, VariantProps<typeof badgeVariants>["tone"]> = {
+// without a module and gets its own hue, and so does `cloze` until a code can
+// dispatch to it.
+const KIND_TONES: Record<FileKind, VariantProps<typeof badgeVariants>["tone"]> = {
   tutor: codeModuleLabels.tutor.tone,
   quiz: codeModuleLabels.quiz.tone,
   writing: codeModuleLabels.writing.tone,
   coding: codeModuleLabels.coding.tone,
+  cloze: "rose",
   fragment: "purple",
 };
 
@@ -127,7 +130,7 @@ export default async function FilesPage({
       header: "Kind",
       sortKey: "kind",
       render: (row) => (
-        <Badge caps solid tone={KIND_TONES[row.kind] ?? "green"}>
+        <Badge caps solid tone={isFileKind(row.kind) ? KIND_TONES[row.kind] : "green"}>
           {row.kind}
         </Badge>
       ),

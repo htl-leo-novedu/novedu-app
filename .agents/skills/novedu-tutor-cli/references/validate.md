@@ -1,7 +1,7 @@
 # `validate`: kinds, thoroughness, and error codes
 
 ```
-validate <pathOrUrl> [--kind tutor|fragment|quiz|writing|coding|eval] [--json]
+validate <pathOrUrl> [--kind tutor|fragment|quiz|writing|coding|cloze|eval] [--json]
 ```
 
 Offline (no server, no sign-in). Exit `0` = valid, `1` = errors, so it works
@@ -23,10 +23,11 @@ for f in ./part-1/*.eval.yaml; do npm run cli --silent -- validate "$f" --kind e
 | `tutor` | a top-level `prompt` |
 | `quiz` | `questions` |
 | `writing` / `coding` | `instructions` |
+| `cloze` | `text` with `[[…]]` gaps, plus `evaluation` |
 | `fragment` (library) | `fragments`, and none of the above |
 | `eval` | `target` plus `questions[].answers` |
 
-Careful: quiz, writing and coding documents may ALSO carry a top-level
+Careful: quiz, writing, coding and cloze documents may ALSO carry a top-level
 `fragments:` — that is their *document-level fragment block*, not a library. So
 `fragments` alone never means "fragment library"; check that none of the other
 tell-tales are present.
@@ -61,6 +62,10 @@ validation certifies both files. See [eval.md](eval.md) for the eval format.
 | `DUPLICATE_QUIZ_QUESTION_ID` | Two questions share an `id` (the stats key must be unique). |
 | `WRITING_SCHEMA_ERROR` | Writing document wrong — usually missing `instructions` or `llm.model`. |
 | `CODING_SCHEMA_ERROR` | Coding document wrong — missing field, or an unsupported one like `anonymous`. |
+| `CLOZE_SCHEMA_ERROR` | Cloze document wrong — missing `evaluation`/`text`/`llm.model`, or an unsupported key like `anonymous`. |
+| `CLOZE_GAP_SYNTAX` | Broken gap markup in `text`: an unclosed `[[`, a stray `]]`, a gap over two lines, a second `\|` or an empty hint. Write `\[[` / `\]]` for literal brackets. |
+| `CLOZE_GAP_POSITION` | A gap in a heading, code, math, a link, an image, raw HTML or a footnote — move it into a paragraph, list item, quote or table cell. |
+| `CLOZE_GAP_TOO_LONG` / `CLOZE_NO_GAPS` / `CLOZE_TOO_MANY_GAPS` | A reference over 200 characters / no gap / more than 40 gaps. |
 | `FRAGMENT_NOT_FOUND` | The activity references a fragment id the file doesn't define. |
 | `MISSING_REQUIRED_VARIABLE` | A fragment needs a variable the activity didn't supply. |
 | `VARIABLE_TYPE_MISMATCH` | A supplied variable has the wrong type. |

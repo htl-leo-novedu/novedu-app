@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/cloze/cloze-yaml.schema.json",
+  "$comment": "Generated from lib/cloze-schema.ts by `npm run generate:schemas` — do not edit by hand.",
+  "title": "Cloze Exercise YAML",
+  "description": "Schema for a cloze exercise (\"Fill the gaps\"): one text whose gaps students complete, graded per gap with consolidated feedback.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short machine-readable exercise id, e.g. future-forms-sue."
+    },
+    "name": {
+      "description": "Optional human-readable label for the teacher's lists (not shown to students).",
+      "type": "string"
+    },
+    "title": {
+      "description": "Optional heading shown to students above the task (default: \"Fill the gaps\").",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional task shown to students in a box above the text (Markdown), e.g. which forms to use.",
+      "type": "string"
+    },
+    "llm": {
+      "$ref": "#/$defs/llm"
+    },
+    "fragment_files": {
+      "default": [],
+      "description": "Optional fragment libraries this exercise pulls shared prompt fragments from.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fragmentFileRef"
+      }
+    },
+    "text_files": {
+      "default": [],
+      "description": "Optional plain-text files (markdown / source) embedded verbatim into instructions via {{file \"alias\"}} markers.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/textFileRef"
+      }
+    },
+    "instructions": {
+      "description": "Optional preamble prepended to BOTH the grading prompt and the feedback prompt (e.g. a language policy). SERVER-ONLY. When any fragment_files or text_files are declared, place fragments inline with {{fragment \"alias.id\" …}} and embed text files with {{file \"alias\"}} (optionally {{file \"alias\" from=10 to=40}} for a line range; escape a literal {{ as \\{{).",
+      "type": "string"
+    },
+    "evaluation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The grading criteria for the WHOLE exercise: its goal, and how far an answer may deviate from the reference and still be correct or partly correct. SERVER-ONLY: never sent to the browser."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The complete exercise text (Markdown) with each gap marked around its reference answer: [[answer]], [[answer|hint]] for a hint shown after the gap, [[]] where nothing belongs (an empty answer is correct). Write \\[[ for a literal [[. Gaps go in paragraphs, list items, quotes or table cells — not in headings, code, math or links. 1 to 40 gaps, each answer at most 200 characters. The reference answers are SERVER-ONLY: students see only numbered gaps and hints."
+    }
+  },
+  "required": [
+    "id",
+    "llm",
+    "evaluation",
+    "text"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "llm": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The model that grades the answers and writes the consolidated feedback."
+        },
+        "provider": {
+          "default": "SCCH",
+          "description": "The LLM provider serving the model. For Azure Foundry, model is the deployment name.",
+          "type": "string",
+          "enum": [
+            "SCCH",
+            "Azure Foundry",
+            "OpenRouter"
+          ]
+        },
+        "reasoning": {
+          "description": "Optional reasoning effort for reasoning models. Not every model accepts every level. Omit to let the model decide (the parameter is then not sent); \"none\" instead turns a reasoning model off.",
+          "type": "string",
+          "enum": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ]
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "additionalProperties": false,
+      "description": "The single model + provider that grades the gaps and writes the feedback."
+    },
+    "fragmentFileRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[^.]+$",
+          "description": "Local alias for this library, used before the dot in `{{fragment \"alias.id\"}}`. Must not contain a dot."
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(https?://|(?![A-Za-z][A-Za-z0-9+.-]*:).+)$",
+          "description": "HTTP(S) URL or relative path to the fragment library."
+        }
+      },
+      "required": [
+        "id",
+        "url"
+      ],
+      "additionalProperties": false,
+      "description": "A reference to a fragment library by alias + URL."
+    },
+    "textFileRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[^.]+$",
+          "description": "Local alias for this text file, used in `{{file \"alias\"}}`. Must not contain a dot."
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(https?://|(?![A-Za-z][A-Za-z0-9+.-]*:).+)$",
+          "description": "HTTP(S) URL or relative path to the plain-text file."
+        }
+      },
+      "required": [
+        "id",
+        "url"
+      ],
+      "additionalProperties": false,
+      "description": "A reference to a plain-text file (markdown / source) by alias + URL."
+    }
+  }
+}

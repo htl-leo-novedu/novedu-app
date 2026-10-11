@@ -32,6 +32,12 @@ const PURE_MODULES = [
   // straight into the dump seam, so it lives under the identical purity rule.
   "lib/eval-schema.ts",
   "lib/eval-validate.ts",
+  // The cloze authoring core `novedu-cli validate --kind cloze` bundles: the strict
+  // validator, its schema and the gap parser (Markdown parse included).
+  "lib/cloze-validate.ts",
+  "lib/cloze-schema.ts",
+  "lib/cloze-gaps.ts",
+  "lib/cloze-types.ts",
 ];
 
 describe("prompt-dump purity invariant", () => {

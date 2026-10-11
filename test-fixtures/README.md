@@ -55,6 +55,7 @@ activities/
   writings/  test-writing.yaml [real model id], broken-writing.yaml, fragments-writing.yaml
   coding/    test-coding.yaml, broken-coding.yaml, fragments-coding.yaml,
              live-coding.yaml [real model id]
+  cloze/     test-cloze.yaml, broken-cloze.yaml (schema-valid, broken gaps)
   evals/     quiz evals (→ quizzes/test-quiz.yaml): test-eval.yaml, mismatch-eval.yaml,
              judge-eval.yaml, broken-eval.yaml;
              tutor evals: tutor-eval.yaml, tutor-judge-eval.yaml, broken-tutor-eval.yaml

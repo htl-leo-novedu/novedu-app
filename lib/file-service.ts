@@ -24,7 +24,9 @@ import type { Fetcher, ValidationError, ValidationWarning } from "@/lib/prompt-f
 // client components.
 
 export type FileServiceResult =
-  | { ok: true }
+  // `summary` is the validator's one-line content summary (cloze: the gap
+  // inventory), null for kinds without one.
+  | { ok: true; summary: string | null }
   // The request itself is unacceptable (bad name, unknown kind, empty content,
   // vanished file).
   | { ok: false; reason: "invalid"; message: string }
@@ -42,7 +44,13 @@ export type UpsertFileServiceResult =
   | Exclude<FileServiceResult, { ok: true }>;
 
 type ContentValidation =
-  | { ok: true; title: string | null; description: string | null; warnings: ValidationWarning[] }
+  | {
+      ok: true;
+      title: string | null;
+      description: string | null;
+      summary: string | null;
+      warnings: ValidationWarning[];
+    }
   | { ok: false; errors: ValidationError[] };
 
 /**
@@ -57,7 +65,8 @@ type ContentValidation =
  *     an exact self-URL string match.
  * Everything else (e.g. a fragment hosted on GitHub) is fetched for real.
  * On success it returns the tutor's title/description (null for fragments) for the
- * denormalized search columns; on failure, the full structured error list.
+ * denormalized search columns and the validator's one-line content summary (cloze:
+ * the gap inventory); on failure, the full structured error list.
  */
 export async function validateFileContent(
   name: string,
@@ -104,6 +113,7 @@ export async function validateFileContent(
     ok: true,
     title: result.title,
     description: result.description,
+    summary: result.summary,
     warnings: result.warnings,
   };
 }
@@ -124,7 +134,7 @@ export async function createFileForUser(
     return {
       ok: false,
       reason: "invalid",
-      message: "Choose whether this is a tutor, fragment, quiz, writing or coding file.",
+      message: "Choose whether this is a tutor, fragment, quiz, writing, coding or cloze file.",
     };
   }
   if (typeof input.content !== "string" || input.content.trim() === "") {
@@ -162,7 +172,7 @@ export async function createFileForUser(
         };
   }
 
-  return { ok: true };
+  return { ok: true, summary: validation.summary };
 }
 
 /**
@@ -216,14 +226,14 @@ export async function updateFileForUser(
       : { ok: false, reason: "unavailable", message: "The file could not be saved. Try again." };
   }
 
-  return { ok: true };
+  return { ok: true, summary: validation.summary };
 }
 
 /**
  * Create-or-update by name — the CLI/API composition (`PUT /api/files/<name>`).
  * Dispatches on whether an active file with the name exists:
  *   - ABSENT → create; `kind` is then required (a missing one fails, naming the
- *     five kinds).
+ *     six kinds).
  *   - EXISTS → update, validating against the STORED kind; a supplied `kind`
  *     that mismatches the stored one fails LOUDLY (an agent that thinks a file
  *     is a quiz while it is stored as a tutor must find out) — it is never
@@ -252,7 +262,7 @@ export async function upsertFileForUser(
       return {
         ok: false,
         reason: "invalid",
-        message: `No file named "${name}" exists yet — pass its kind (tutor, fragment, quiz, writing or coding) to create it.`,
+        message: `No file named "${name}" exists yet — pass its kind (tutor, fragment, quiz, writing, coding or cloze) to create it.`,
       };
     }
     const created = await createFileForUser(userId, {

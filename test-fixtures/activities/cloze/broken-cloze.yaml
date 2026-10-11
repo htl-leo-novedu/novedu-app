@@ -1,0 +1,11 @@
+id: broken-cloze
+name: "Broken Test Cloze"
+# The first gap sits in a heading (CLOZE_GAP_POSITION) and the second never
+# closes (CLOZE_GAP_SYNTAX), so the file is schema-valid but its gaps are not.
+llm:
+  model: test-model
+evaluation: Correct the reference word.
+text: |
+  ## A [[short]] story
+
+  Sue [[is going to start next week.

@@ -49,11 +49,12 @@ import { loadWritingFrom } from "@/lib/writing-resolve";
 // `lib/llm/model.ts`), no DB, no `lib/llm/model.ts`.
 
 /**
- * The kinds that produce prompts — every `FileKind` except `fragment`, which is a
+ * The kinds with a prompt dump — every `FileKind` except `fragment`, which is a
  * library, not an activity (it has no `llm`, and its fragments only ever appear inline
- * in some activity's host text, where the four dumps below already show them rendered).
+ * in some activity's host text, where the four dumps below already show them rendered),
+ * and `cloze`, whose grading and feedback prompts have no builder to dump.
  */
-export type PromptKind = Exclude<FileKind, "fragment">;
+export type PromptKind = Exclude<FileKind, "fragment" | "cloze">;
 
 export const PROMPT_KINDS: readonly PromptKind[] = ["tutor", "quiz", "writing", "coding"];
 
