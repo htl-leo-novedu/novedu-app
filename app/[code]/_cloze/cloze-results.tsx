@@ -10,6 +10,7 @@ import type { ClozeGapNote, ClozePattern } from "@/lib/cloze-grounding";
 import type { ClozeGapPublic } from "@/lib/cloze-types";
 import type { QuizVerdict } from "@/lib/quiz-types";
 import { cn } from "@/lib/utils";
+import { MarkdownRenderer } from "../../markdown-renderer";
 import { ClozeText } from "./cloze-text";
 
 // The cloze results screen (docs/cloze.md, "Results screen"): the "Your feedback"
@@ -36,6 +37,9 @@ export type Feedback =
   | { status: "done"; patterns: ClozePattern[]; gapNotes: ClozeGapNote[] };
 
 const MUTED = "text-foreground/60 text-sm";
+// The model's pattern and note texts may use inline Markdown (bold, italics), so
+// they go through the sanitized renderer, as the quiz's AI feedback does.
+const FEEDBACK_PROSE = "text-foreground prose-p:my-0 prose-p:leading-relaxed";
 
 const VERDICT_ICONS: Record<QuizVerdict, (props: { className?: string }) => ReactNode> = {
   correct: CheckIcon,
@@ -207,7 +211,7 @@ export function ClozeResults({
             <dd className="mt-1 font-semibold">{references[selected - 1] || "(leave empty)"}</dd>
           </div>
         </dl>
-        {note ? <p className="mt-3 leading-relaxed">{note}</p> : null}
+        {note ? <MarkdownRenderer content={note} className={cn("mt-3", FEEDBACK_PROSE)} /> : null}
         {!note && feedback.status === "loading" && selectedVerdict !== "correct" ? (
           <p className={cn("mt-3", MUTED)}>The explanation is on its way…</p>
         ) : null}
@@ -280,7 +284,7 @@ function FeedbackBody({
               className="flex flex-col gap-3 md:not-first:border-foreground/15 md:not-first:border-l md:not-first:pl-6"
             >
               <h3 className="font-semibold">{pattern.title}</h3>
-              <p className="leading-relaxed">{pattern.explanation}</p>
+              <MarkdownRenderer content={pattern.explanation} className={FEEDBACK_PROSE} />
               <div className="flex flex-wrap items-center gap-2">
                 <span className={MUTED}>See your answers</span>
                 {pattern.gaps.map((gap) => (
@@ -299,9 +303,10 @@ function FeedbackBody({
                   </Button>
                 ))}
               </div>
-              <p className="leading-relaxed">
-                <strong>Next time:</strong> {pattern.nextTime}
-              </p>
+              <MarkdownRenderer
+                content={`**Next time:** ${pattern.nextTime}`}
+                className={FEEDBACK_PROSE}
+              />
             </article>
           ))}
         </div>

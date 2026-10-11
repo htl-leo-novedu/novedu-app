@@ -195,6 +195,32 @@ test("no surviving pattern over several misses says so", async () => {
     .toBeVisible();
 });
 
+test("the model's inline Markdown in patterns and notes renders, never as raw asterisks", async () => {
+  explainCloze.mockResolvedValue({
+    ok: true,
+    patterns: [
+      {
+        title: "Plans already made",
+        explanation: "Use **be going to** for plans.",
+        gaps: [1, 2],
+        nextTime: "Ask: *was it decided before?*",
+      },
+    ],
+    gapNotes: [{ gap: 2, note: "A timetable takes the **present simple**." }],
+  });
+  const screen = await render(<ClozeRunner code={CODE} cloze={CLOZE} autoSave={false} />);
+  await fillAll(screen);
+  await screen.getByRole("button", { name: "Submit exercise" }).click();
+  const pattern = screen.getByTestId("cloze-pattern");
+  await expect.element(pattern.getByText("be going to", { exact: true })).toBeVisible();
+  await expect.element(pattern).not.toHaveTextContent("*");
+  await expect.element(pattern.getByText("Next time:", { exact: true })).toBeVisible();
+  await screen.getByRole("button", { name: "Gap 2", exact: true }).click();
+  const panel = screen.getByTestId("cloze-gap-panel");
+  await expect.element(panel.getByText("present simple", { exact: true })).toBeVisible();
+  await expect.element(panel).not.toHaveTextContent("*");
+});
+
 test("a failed grading keeps the answers and lets the student submit again", async () => {
   gradeCloze.mockResolvedValueOnce({
     ok: false,
