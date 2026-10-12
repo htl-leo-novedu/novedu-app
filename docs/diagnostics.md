@@ -191,8 +191,8 @@ fresh assignment answers 403 for a few minutes. The environment's
 shows "Not configured".
 
 Locally the `az login` identity reads the resource named by `.env`. For a resource in
-the new tenant, sign in under `AZURE_CONFIG_DIR=~/.htl-azure-novedu`
-(`docs/azure-access.md`) and start the app with the same variable.
+the Novedu tenant, sign in under `AZURE_CONFIG_DIR=~/.htl-azure-novedu`
+(`docs/azure-runtime-env.md`, "Access") and start the app with the same variable.
 
 Verification after an assignment: open `/diagnostics` once on that environment — the
 live e2e runs with the developer's identity and cannot prove it.

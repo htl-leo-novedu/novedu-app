@@ -51,8 +51,8 @@ export function buildCognitiveServicesCredential(): TokenCredential {
 // `DefaultAzureCredential` (see above), without a tenant pin: the App Insights
 // resource lives in the ambient tenant of the `az login` identity locally and of
 // the Managed Identity on Azure. That identity needs the `Reader` role on the
-// App Insights resource. Locally that is the new environment's `az` profile
-// (`AZURE_CONFIG_DIR`, docs/azure-access.md).
+// App Insights resource. Locally that is the Novedu `az` profile
+// (`AZURE_CONFIG_DIR`, docs/azure-runtime-env.md, "Access").
 //
 // SERVER-ONLY: handles Azure credentials. Never import from client components.
 export function buildMonitorCredential(): TokenCredential {

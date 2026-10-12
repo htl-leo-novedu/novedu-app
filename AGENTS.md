@@ -204,19 +204,13 @@ Read before touching: `app/diagnostics/**`, `lib/diagnostics-*.ts`, `buildMonito
 - Teacher-only, server-first read surface over the app's own App Insights telemetry — gated by `requireTeacherPage()`, no API route, no `proxy.ts` change; the five queries run once per render (`app/diagnostics/load.ts`) and never throw.
 - The connection string stays server-only (only its `ApplicationId` is extracted); hosts are mapped to provider NAMES server-side — no endpoint URL reaches the browser or the copied report. KQL is built from validated dates and the bin enum only.
 
-### Azure access & the old environment on standby → `docs/azure-access.md`
-
-Temporary — delete this entry together with the doc once the old environment is decommissioned. Read before running any `az` command against either Azure environment, changing how the app runs locally, or when a login has expired.
-
-- Production is the prod stage (`app.novedu.at`). The old App Service environment is a standby fallback: its app is replaced by a redirect of `novedu.at` to `app.novedu.at`, and its database and file share are NEVER written to — no app, no local boot, no script. Rollback is the documented two-setting switch, only in an emergency.
-- The new environment is reached ONLY through the second `az` profile: `AZURE_CONFIG_DIR=~/.htl-azure-novedu az …`, subscription `Novedu`; a local `.env` sets the same variable (absolute path) so the app's `az` credential reaches `novedu_dev`. A command without the variable hits the default profile — the old tenant.
-- Device-code login is blocked in that tenant, and `az login` over SSH falls back to it silently: use the tunnelled browser flow from the doc. Tokens and secret values never pass through a Claude session.
-
 ### Azure runtime environment → `docs/azure-runtime-env.md`
 
-Read before touching: `scripts/db/provision-stage.*`, any `az` work on `rg-novedu-*`, `.github/actions/deploy-stage/**`, `.github/workflows/promote.yml`, or `docker-publish.yml`'s `deploy-dev` job.
+Read before touching: `scripts/db/provision-stage.*`, any `az` work on `rg-novedu-*`, `.github/actions/deploy-stage/**`, `.github/workflows/promote.yml`, or `docker-publish.yml`'s `deploy-dev` job — and its "Access" section before running any `az` command, changing how the app runs locally, or when a login has expired.
 
-- Both stages run the same image, deployed by the pipeline: every publish goes to dev (`dev.novedu.at`), production (`app.novedu.at`) only via the manual `promote.yml`, which also publishes the teacher guide (built from the promoted image's commit) to the shared Static Web App `swa-novedu-docs` (`docs.novedu.at`). Dev holds a copy of the old environment's data (no chat messages, no credentials) — real student and teacher data, treated like production. `AUTH_URL` must name the stage's custom domain or sign-in breaks.
+- The environment is reached ONLY through its own `az` profile: `AZURE_CONFIG_DIR=~/.htl-azure-novedu az …`, subscription `Novedu`; a local `.env` sets the same variable (absolute path) so the app's `az` credential reaches `novedu_dev`. A command without the variable hits your default profile. Coordinate every change with the developer leading the environment (no infrastructure-as-code).
+- Device-code login is blocked in that tenant, and `az login` over SSH falls back to it silently: use the tunnelled browser flow from the doc. Tokens and secret values never pass through a Claude session.
+- Both stages run the same image, deployed by the pipeline: every publish goes to dev (`dev.novedu.at`), production (`app.novedu.at`) only via the manual `promote.yml`, which also publishes the teacher guide (built from the promoted image's commit) to the shared Static Web App `swa-novedu-docs` (`docs.novedu.at`). Dev holds a copy of the prototype's data (no chat messages, no credentials) — real student and teacher data, treated like production. `AUTH_URL` must name the stage's custom domain or sign-in breaks.
 - Those stages run on SCCH ONLY: never set `AZURE_FOUNDRY_ENDPOINT` / `OPENROUTER_API_KEY` there. The SCCH key is the only secret shared between the stages; every other secret is per stage, in that stage's Key Vault.
 - One replica per stage is a HARD limit (dev 0–1, prod exactly 1): the Drizzle migrator takes no lock and `lib/db/pool.ts`'s 20 connections are sized against B1ms's 50.
 - No identity of one stage ever holds a right on the other stage's resources or database; Postgres there is Entra-only (password auth disabled) and stage isolation is a privilege (`revoke connect`), not a network rule.

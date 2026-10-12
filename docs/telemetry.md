@@ -328,8 +328,8 @@ production hosting of a non-Azure backend are out of scope.
 
 - **Querying:** each stage has its own **workspace-based** App Insights component
   (`appi-novedu-dev` / `appi-novedu-prod`, backed by the shared `log-novedu` Log
-  Analytics workspace; `docs/azure-runtime-env.md`), reached with the new
-  environment's `az` profile (`docs/azure-access.md`). Query it with the **`App*`
+  Analytics workspace; `docs/azure-runtime-env.md`), reached with the Novedu
+  `az` profile (`docs/azure-runtime-env.md`, "Access"). Query it with the **`App*`
   table names** (`AppRequests`, `AppDependencies`, `AppExceptions`, `AppEvents`, …);
   in the shared workspace, filter by the stage's `_ResourceId`. The classic
   component query API (`az monitor app-insights query -g rg-novedu-<stage> --app

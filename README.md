@@ -196,8 +196,8 @@ DATABASE_URL=postgresql://postgres:Test-Passw0rd!@localhost:5432/novedu
 # the same tenant. Optional — if unset, the az credential uses its ambient default
 # tenant.
 STORAGE_TENANT_ID=your-data-store-tenant-id
-# The az profile the local `az login` credential uses — the new environment's profile,
-# as an ABSOLUTE path (.env does not expand `~`; docs/azure-access.md). Entra path only.
+# The az profile the local `az login` credential uses — the Novedu Azure profile, as an
+# ABSOLUTE path (.env does not expand `~`; docs/azure-runtime-env.md, "Access"). Entra path only.
 # AZURE_CONFIG_DIR=/home/<you>/.htl-azure-novedu
 
 # --- Public origin ---
@@ -436,8 +436,7 @@ Settings ([`home.md`](docs/home.md)), the registry and `codes sync`
 ([`registry.md`](docs/registry.md)), tutor tools ([`tutor-tools.md`](docs/tutor-tools.md)),
 CLI prompt dumps and evals ([`cli-prompts.md`](docs/cli-prompts.md),
 [`cli-eval.md`](docs/cli-eval.md)), LLM diagnostics ([`diagnostics.md`](docs/diagnostics.md)),
-the Azure stages ([`azure-runtime-env.md`](docs/azure-runtime-env.md),
-[`azure-access.md`](docs/azure-access.md)), the shared [`prompt-fragments.md`](docs/prompt-fragments.md),
+the Azure stages and access to them ([`azure-runtime-env.md`](docs/azure-runtime-env.md)), the shared [`prompt-fragments.md`](docs/prompt-fragments.md),
 [`writing.md`](docs/writing.md), [`coding.md`](docs/coding.md), student reports
 ([`reports.md`](docs/reports.md)),
 the chat surface ([`chat.md`](docs/chat.md)), app-hosted [`files.md`](docs/files.md) and
