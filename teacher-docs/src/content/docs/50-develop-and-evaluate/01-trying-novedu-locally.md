@@ -131,7 +131,7 @@ If a chat or a grading test on an OpenRouter model fails, the error message says
 All commands run in the folder that holds `compose.yaml`.
 
 - **Stop** your local Novedu: `docker compose stop`. Your data stays, and `docker compose up -d --wait` starts it again.
-- **Update** to the newest Novedu: `docker compose pull`, then `docker compose up -d --wait`. Your data stays.
+- **Update** to the newest Novedu: download `compose.yaml` again with the `curl` command from step 2 of "Start your local Novedu", which replaces your copy, then run `docker compose pull` and `docker compose up -d --wait`. Your data stays.
 - **Reset** everything, including all codes, files, images, and conversations: `docker compose down -v`. A reset also ends every sign-in, including the Novedu CLI's: run the CLI's `login` command again afterwards, or its commands answer only `Unauthorized`.
 
 ## Change the ports

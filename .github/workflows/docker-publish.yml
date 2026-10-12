@@ -27,7 +27,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: rstropek/novedu-chat-mvp
+  IMAGE_NAME: ghcr.io/htl-leo-novedu/novedu-app
+
+# Least privilege: every job gets a read-only token unless it asks for more.
+# Only the two publishing jobs, `build-and-push` and `build-and-push-demo`, may
+# write packages (the GHCR push); only `deploy-dev` may request an OIDC token
+# and read packages. The called qa.yml stays read-only.
+permissions:
+  contents: read
 
 jobs:
   # Quality gate: nothing is built or published unless the full QA suite
@@ -36,13 +43,17 @@ jobs:
   qa:
     uses: ./.github/workflows/qa.yml
 
-  # Builds the image ONCE and pushes it to Docker Hub, the build artifact the
-  # `deploy-dev` job below copies into the Azure registry. Production is the
-  # prod stage, reached only through the manual promote.yml
-  # (docs/azure-runtime-env.md).
+  # Builds the image ONCE and pushes it to GHCR (the public package
+  # `novedu-app`), the build artifact the `deploy-dev` job below copies into
+  # the Azure registry. Production is the prod stage, reached only through the
+  # manual promote.yml (docs/azure-runtime-env.md).
   build-and-push:
     needs: qa
     runs-on: ubuntu-latest
+    # The built-in GITHUB_TOKEN pushes to GHCR — no stored registry credential.
+    permissions:
+      contents: read
+      packages: write
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -61,11 +72,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -85,22 +97,14 @@ jobs:
             APP_VERSION=${{ steps.version.outputs.version }}
             APP_GIT_SHA=${{ github.sha }}
             APP_BUILD_TIME=${{ steps.version.outputs.built_at }}
+          # A push with GITHUB_TOKEN links the package to this repo by itself;
+          # the label keeps that link for a push made outside Actions.
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           # One cache scope per image, so the demo image's build never evicts
           # this one's layers (and vice versa).
           cache-from: type=gha,scope=entra
           cache-to: type=gha,mode=max,scope=entra
-
-      # Keep the Docker Hub repository description in sync with the README.
-      # Non-blocking: editing the description needs a Docker Hub PAT with
-      # Read/Write/Delete scope; the current DOCKER_PASSWORD can push images
-      # but gets "Forbidden" here.
-      - name: Update Docker Hub description
-        continue-on-error: true
-        uses: peter-evans/dockerhub-description@v5
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: ${{ env.IMAGE_NAME }}
 
   # The `:demo` image (docs/auth.md, "Demo mode"): the same app built with the
   # one-click demo login instead of Entra ID, for evaluators, training setups and
@@ -114,6 +118,9 @@ jobs:
   build-and-push-demo:
     needs: qa
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -131,11 +138,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -189,6 +197,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      packages: read
     env:
       VERSION: ${{ needs.build-and-push.outputs.version }}
     steps:
@@ -205,15 +214,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      # Reads the image with the built-in token, so the copy works whatever the
+      # package's visibility (a new GHCR package starts out private).
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       # Registry-to-registry copy of the image built above: same digest, so both
       # stages run exactly what was built and tested. Only the immutable version tag
-      # goes to the registry, never :latest.
+      # goes to the registry, never :latest. The stages pull from the Azure
+      # registry, not from GHCR, so a container start never depends on GHCR; the
+      # copy can go once the app moves to on-prem hosting.
       - name: Copy the image to the Azure registry
         run: |
           az acr login --name crnovedu
           docker buildx imagetools create \
             --tag "crnovedu.azurecr.io/novedu:$VERSION" \
-            "docker.io/$IMAGE_NAME:$VERSION"
+            "$IMAGE_NAME:$VERSION"
 
       - name: Deploy to dev
         uses: ./.github/actions/deploy-stage

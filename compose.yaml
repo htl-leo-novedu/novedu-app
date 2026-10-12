@@ -35,7 +35,7 @@ services:
 
   # The OpenAI-compatible fake model (fake-llm/). Every reply says it is fake.
   fake-llm:
-    image: ${NOVEDU_FAKE_LLM_IMAGE:-rstropek/novedu-chat-mvp:fake-llm}
+    image: ${NOVEDU_FAKE_LLM_IMAGE:-ghcr.io/htl-leo-novedu/novedu-app:fake-llm}
     ports:
       - "127.0.0.1:${NOVEDU_FAKE_LLM_PORT:-4010}:4010" # SCCH_BASE_URL=http://127.0.0.1:4010/v1
     healthcheck:
@@ -60,7 +60,7 @@ services:
     restart: "no"
 
   app:
-    image: ${NOVEDU_IMAGE:-rstropek/novedu-chat-mvp:demo}
+    image: ${NOVEDU_IMAGE:-ghcr.io/htl-leo-novedu/novedu-app:demo}
     # The published app image is amd64-only; Apple silicon runs it emulated.
     platform: linux/amd64
     depends_on:

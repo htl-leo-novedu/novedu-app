@@ -267,8 +267,9 @@ message**, never by a spec's wording. The first matching rule wins
 image and the e2e suite run the same fake. The server listens on `127.0.0.1`
 unless `FAKE_LLM_HOST` names another address; the image sets `0.0.0.0` and port
 `4010`. `docker-publish.yml`'s `build-and-push-demo` job publishes it as
-`rstropek/novedu-chat-mvp:fake-llm` (amd64 + arm64) for `compose.yaml`, which runs
-it beside the `:demo` image (README, "Try Novedu locally").
+`ghcr.io/htl-leo-novedu/novedu-app:fake-llm` (amd64 + arm64) for
+`compose.yaml`, which runs it beside the `:demo` image (README, "Try Novedu
+locally").
 
 **Compose smoke test.** The `demo` leg of `qa.yml`'s `prod-build` boots
 `compose.yaml` on the demo image it just built and a fake image built from the PR

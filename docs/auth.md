@@ -422,8 +422,9 @@ demo builds**, and each database belongs to exactly one mode.
   with **empty** `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID` and
   `TEACHER_GROUP_ID` lines (an empty `.env.local` value wins over `.env`) and a
   `DATABASE_URL` naming a database of its own (below).
-- The published images: the production image is an Entra build; the `:demo` tag is the
-  demo build of the same commit (`README.md`, `docs/ci-security.md`).
+- The published images (`ghcr.io/htl-leo-novedu/novedu-app`, a public package): the
+  production image is an Entra build; the `:demo` tag is the demo build of the same
+  commit (`README.md`, `docs/ci-security.md`).
 - **`compose.yaml`** (repo root) is the ready-made way to run the `:demo` image: a
   Postgres database of its own, the fake LLM as SCCH, a provisioned image root, ports on
   loopback only and no Entra setting (README, "Try Novedu locally"). Contributors start
