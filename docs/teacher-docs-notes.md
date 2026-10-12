@@ -86,8 +86,9 @@ prose carries everything an editor needs.
   prototype-era activities may continue there.
 - What moved from the prototype to DEV: everything except chat messages and
   sign-in credentials (sessions, CLI sessions, coding API keys). Quiz answers are
-  not stored anywhere, so never list them as moved or kept. `novedu.at` forwards
-  to PROD, where prototype codes do not exist.
+  not stored anywhere, so never list them as moved or kept. Make no claim about
+  what `novedu.at` itself shows: nothing serves it as Novedu any more, and a
+  landing page is still open.
 - Codes, uploaded files, and images are per environment; only the school account
   is shared. The CLI's default is PROD.
 - The environment strip under the top bar: green = PROD, yellow = DEV (a violet

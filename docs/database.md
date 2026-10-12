@@ -65,17 +65,17 @@ new ChainedTokenCredential(
 **user sign-in** (`auth.ts`) — the sign-in app registration, not an identity with
 a Postgres role — so it would authenticate as the wrong service principal. The
 explicit chain ignores those vars: locally it uses the `az login` identity of the
-new environment's `az` profile; on Azure the `az` CLI is absent, so
+Novedu `az` profile; on Azure the `az` CLI is absent, so
 the CLI credential fails fast and the chain falls through to the app's Managed
 Identity.
 
 - **`STORAGE_TENANT_ID`** is the tenant of the Postgres database
-  (`91fc072c-…`, `docs/azure-access.md`). It is a **separate** variable from the
+  (`91fc072c-…`, `docs/azure-runtime-env.md`, "Access"). It is a **separate** variable from the
   user-sign-in `AZURE_TENANT_ID`, even though both name the same tenant today.
   Optional locally — if unset, the az credential uses its ambient default
   tenant. Irrelevant under password auth.
 - **`AZURE_CONFIG_DIR`** selects the `az` profile the CLI credential shells out
-  to. A local `.env` sets it to the absolute path of the new environment's
+  to. A local `.env` sets it to the absolute path of the Novedu `az`
   profile (`/home/<you>/.htl-azure-novedu`); without it the credential asks your
   default profile, whose token the server rejects.
 

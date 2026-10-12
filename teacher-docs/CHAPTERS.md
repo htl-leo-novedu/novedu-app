@@ -19,7 +19,7 @@ _What Novedu is. Concepts and pedagogy, no deep configuration detail._
 | 04 | Quizzes overview | `activities/quizzes/README.md` |
 | 05 | Writing overview | `activities/writings/README.md` |
 | 06 | Coding overview | `activities/coding/README.md` |
-| 07 | DEV and PROD: the two environments | `docs/azure-runtime-env.md` (stages, data in the dev stage), `docs/azure-access.md` (the standby redirect), `cli/src/server-url.ts` + `cli/README.md` (server selection) |
+| 07 | DEV and PROD: the two environments | `docs/azure-runtime-env.md` (stages, data in the dev stage), `cli/src/server-url.ts` + `cli/README.md` (server selection) |
 
 ## 10: YAML for teachers
 _Enough YAML, tooling, and validation to author activities confidently._

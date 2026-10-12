@@ -6,12 +6,11 @@ them. Read it before running any `az` command against `rg-novedu-shared` /
 `rg-novedu-dev` / `rg-novedu-prod`, before touching
 `scripts/db/provision-stage.*`, and before touching the deployment workflows.
 
-> **`docs/azure-access.md` is the entry point**: it carries the rules, the
-> tenant / subscription / admin-group ids, the separate `az` profile, how to get
-> access, and the old environment kept on standby. Do not run anything here
-> before reading it.
+> **Read *Access* first**: the rules, the tenant / subscription / admin-group
+> ids, the separate `az` profile and how to get access. Do not run anything
+> here before reading it.
 >
-> Still open: Azure Foundry in the new tenant — both stages run on SCCH only
+> Still open: Azure Foundry in this tenant — both stages run on SCCH only
 > (*Deliberately not set* below).
 
 ## The staging concept
@@ -47,7 +46,227 @@ plan does not offer there), and every resource carries the tags
 `project=novedu` and `stage=shared|dev|prod`. There is **no
 infrastructure-as-code**: the environment is built from an ordered runbook of
 `az` commands, dev first, prod as an exact replay with different values. That
-is why every change is coordinated (`docs/azure-access.md`).
+is why every change is coordinated (*Access* below). The design spec and the
+runbook are working documents outside the repository (`docs/superpowers/specs`
+is gitignored) — ask the developer leading the environment for them.
+
+## Access
+
+For every Novedu developer, and for Claude sessions working on a developer's
+behalf. Read it before running any `az` command against the environment,
+before changing how you run the app locally, and whenever a login has expired.
+
+### Rules
+
+- **Production is the prod stage.** Releases go through the pipeline: every
+  publish deploys to dev, production follows through the manual `promote.yml`
+  (*Deploying and running* below).
+- **Local development runs against the dev stage's database** `novedu_dev`
+  (`docs/database.md`), with the environment's own `az` profile (below). It
+  holds real student and teacher data: never export it, and never load
+  other data into it "to try something".
+- **Coordinate before you change anything.** Without infrastructure-as-code,
+  two people applying runbook steps at the same time collide silently.
+  Read-only commands are always fine; anything that creates, changes or deletes
+  a resource is agreed with the developer leading the environment first.
+- **Group rights include prod.** Every member of the admin group is Owner of the
+  prod resource group and Postgres admin on `novedu_prod` — which holds the real
+  production data.
+- **Never mix the environment into another `az` profile** (below). A command
+  that lands in the wrong tenant or subscription is the main operational risk.
+
+### Tenant and subscription
+
+| | |
+|---|---|
+| Tenant | `91fc072c-edef-4f97-bdc5-cfb67718ae3a` (accounts `@htl-leonding.ac.at`) |
+| Subscription | **`Novedu`** — `165b0053-6959-416b-9edf-aa3f82f3f270` |
+| Region | Austria East (`austriaeast`) |
+| Admin group | Entra security group `novedu-dev` — `46ba6be3-7489-4233-af5a-5649680b3fda` |
+| Resource groups | `rg-novedu-shared`, `rg-novedu-dev`, `rg-novedu-prod` — nothing else |
+
+A login to this tenant may show further subscriptions (for example
+`Leonie Chatbot`), and a fresh login can select one of them as the default. They
+are unrelated: **always pin `Novedu` right after a login** and never create
+anything elsewhere. The `Novedu` subscription itself also holds resource groups
+that are not part of this environment (`Novedu`, `ai-tutor-questionaire`); leave
+them alone.
+
+### Getting access
+
+You need an `@htl-leonding.ac.at` account and membership in the **`novedu-dev`**
+group; ask a current member to have you added. All work runs on the group's
+rights (Owner on the three resource groups, Key Vault Secrets Officer, Entra
+admin of `psql-novedu`) — nobody needs a personal role assignment.
+
+The few steps that need **Owner on the subscription** — creating the resource
+groups, assigning the group as their Owner, registering resource providers — are
+one-time steps done by a subscription Owner. All resource providers the
+environment needs are registered.
+
+### The `az` profile, never mixed
+
+The `az` CLI keeps its login state in one directory, chosen by
+`AZURE_CONFIG_DIR`. The environment gets its own directory, and **every
+developer uses the same one**, because the docs, scripts and agent instructions
+in this repo rely on the name:
+
+| Profile | `AZURE_CONFIG_DIR` | Logged in to |
+|---|---|---|
+| default | unset (`~/.azure`) | whatever you use otherwise |
+| Novedu | `~/.htl-azure-novedu` | tenant `91fc072c-…`, subscription `Novedu` |
+
+The profile is selected **per command** by the environment variable; nothing is
+ever switched globally, so a command without the variable can never reach the
+environment, and one with it can never reach anything else:
+
+```bash
+AZURE_CONFIG_DIR=~/.htl-azure-novedu az <command>
+```
+
+In a script or a multi-command shell block, `export AZURE_CONFIG_DIR=~/.htl-azure-novedu`
+once at the top. Never run `az login --tenant 91fc072c-…` or `az account set`
+for the `Novedu` subscription in the default profile.
+
+`AzureCliCredential` shells out to `az` and inherits the variable, so it also
+decides which identity a locally running app uses. Local development reaches
+`novedu_dev`, so the app's `.env` sets `AZURE_CONFIG_DIR` to the **absolute**
+path of the profile (`.env` does not expand `~`) — see `docs/database.md`.
+Every Entra token the local app requests then comes from this tenant, including
+Azure Foundry's, which is why a local `.env` leaves `AZURE_FOUNDRY_ENDPOINT`
+unset.
+
+### Logging in
+
+Only a human can log in — it is an interactive Entra sign-in with MFA. The
+refresh token lives in the profile directory, so a login lasts across sessions
+until it expires or is revoked.
+
+#### On a machine with a browser
+
+```bash
+AZURE_CONFIG_DIR=~/.htl-azure-novedu az login --tenant 91fc072c-edef-4f97-bdc5-cfb67718ae3a
+AZURE_CONFIG_DIR=~/.htl-azure-novedu az account set --subscription 165b0053-6959-416b-9edf-aa3f82f3f270
+```
+
+#### Over SSH (no browser on the machine running `az`)
+
+**The device-code flow does not work in this tenant**: the sign-in page answers
+"You don't have access to this" even for an account that works fine in the
+portal — the signature of a Conditional Access policy blocking the device-code
+grant, while the browser flow is allowed. Without a display, `az login`
+silently falls back to exactly that flow, so a plain `az login` over SSH always
+fails this way. `--use-device-code` is never the fix.
+
+Use the normal browser (authorization-code) flow instead, with the browser on
+the local computer and the callback tunnelled to the remote `az`:
+
+1. On the remote machine, start the login with a stand-in "browser" that only
+   prints the sign-in URL. `DISPLAY` merely has to be non-empty so `az` picks
+   the browser flow:
+
+   ```bash
+   DISPLAY=:0 BROWSER='echo %s' AZURE_CONFIG_DIR=~/.htl-azure-novedu \
+     az login --tenant 91fc072c-edef-4f97-bdc5-cfb67718ae3a
+   ```
+
+   It prints a `https://login.microsoftonline.com/...` URL and keeps waiting.
+   The URL contains `redirect_uri=http%3A%2F%2Flocalhost%3A<PORT>`; the port is
+   random per login.
+
+2. On the local computer, forward that port to the remote machine:
+
+   ```bash
+   ssh -N -L <PORT>:localhost:<PORT> <remote-host>
+   ```
+
+3. Open the printed URL in the local browser and sign in. Entra posts the result
+   to `localhost:<PORT>`, the tunnel delivers it to the waiting `az`, and the
+   login completes. If the final page cannot connect, the tunnel was not up yet:
+   start it and reload that page.
+
+4. Pin the subscription (`az account set`, as above) and close the tunnel.
+
+**Never leave a second `az login` pending against the same profile.** A login
+that fails or times out — a device-code attempt expires after about 15 minutes —
+clears the profile's subscription list on its way out, and takes a working login
+with it: every command then answers "Please run 'az login'". The only way back is
+a new login; the profile files are not repaired by hand. Cancel an abandoned
+attempt (Ctrl+C) before starting another.
+
+A Claude session can run step 1 itself as a background command, read the URL and
+port from its output, and hand steps 2–3 to the developer; it is notified when
+the login completes.
+
+### Verifying access
+
+Read-only; run after every login and at the start of a work session.
+
+```bash
+export AZURE_CONFIG_DIR=~/.htl-azure-novedu
+SUB=165b0053-6959-416b-9edf-aa3f82f3f270
+GRP=46ba6be3-7489-4233-af5a-5649680b3fda
+
+# 1. Right tenant, right subscription (Novedu), enabled
+az account show --query "{name:name,id:id,tenant:tenantId,state:state,user:user.name}" -o json
+
+# 2. Admin group: security-enabled, and the caller is a member (expected: true)
+ME=$(az ad signed-in-user show --query id -o tsv)
+az ad group show --group $GRP --query "{name:displayName,securityEnabled:securityEnabled}" -o json
+az ad group member check --group $GRP --member-id "$ME" --query value -o tsv
+
+# 3. Effective rights, own and through groups. Expected: Owner on the three
+#    rg-novedu-* groups via novedu-dev; a subscription Owner also sees that scope.
+az role assignment list --assignee "$ME" --all --include-groups \
+  --query "[].{role:roleDefinitionName,scope:scope}" -o table
+
+# 4. Resource providers the environment needs (expected: Registered)
+for p in Microsoft.App Microsoft.OperationalInsights Microsoft.DBforPostgreSQL \
+         Microsoft.ContainerRegistry Microsoft.KeyVault Microsoft.Storage \
+         Microsoft.Insights Microsoft.ManagedIdentity; do
+  printf "%-32s %s\n" $p "$(az provider show -n $p --query registrationState -o tsv)"
+done
+
+# 5. Tokens can be issued: ARM, and Postgres (Entra auth to psql-novedu).
+#    Query the expiry only — never print a token.
+az account get-access-token --query expiresOn -o tsv
+az account get-access-token --resource-type oss-rdbms --query expiresOn -o tsv
+```
+
+Austria East offers every resource type the environment uses — Container Apps
+environments, apps and managed certificates, Log Analytics, Postgres Flexible
+Server (versions up to 18; Burstable `Standard_B1ms` and `Standard_B2s`),
+Container Registry, Key Vault, Storage, Application Insights, user-assigned
+identities. Re-check Postgres with
+`az postgres flexible-server list-skus -l austriaeast` if a SKU change is planned.
+
+### CLI extensions
+
+Extensions are installed **per profile**: the `~/.htl-azure-novedu` profile
+does not see the ones in `~/.azure`. `az containerapp` works from the core CLI
+and needs none. The extension this profile does need is `application-insights`,
+for any `az monitor app-insights` command:
+
+```bash
+AZURE_CONFIG_DIR=~/.htl-azure-novedu az extension add -n application-insights
+```
+
+`az monitor log-analytics query` (for example the workspace's `Usage` table)
+needs the preview extension `log-analytics`, which `az` installs on first use.
+
+### What stays with a human
+
+- The login itself (above).
+- Typing or pasting a secret value: a person enters it directly into Key Vault
+  (`az keyvault secret set ... --file /dev/stdin -o none`, or the portal). A
+  Claude session may only move a value it never sees — piped from its source
+  into Key Vault inside one command, with no output — and checks names, lengths
+  and hashes, never values. No secret value appears in a session or its
+  transcript.
+- DNS records for the stage hostnames.
+
+Tokens are never printed, logged, or written to files by a Claude session;
+checks query metadata such as `expiresOn` only.
 
 ## Shared resources (`rg-novedu-shared`)
 
@@ -110,7 +329,7 @@ environment*) — purging one of those leaves the stage unable to restart.
 | Network | public endpoint, TLS |
 | Authentication | **Entra-only — password authentication is disabled** |
 | Entra admin | the security group `novedu-dev` |
-| Databases | `novedu_dev`, `novedu_prod` — each migrated by its own stage at boot. `novedu_dev` holds the copy of the old environment's data (*Data in the dev stage*) and serves local development (`docs/database.md`) |
+| Databases | `novedu_dev`, `novedu_prod` — each migrated by its own stage at boot. `novedu_dev` holds the copy of the prototype's data (*Data in the dev stage*) and serves local development (`docs/database.md`) |
 
 The firewall is an "allow Azure services" rule plus one rule per developer
 machine IP. Adding one:
@@ -188,7 +407,8 @@ at their custom domain (*The staging concept*).
 RBAC mode, soft delete 90 days, no purge protection. The `novedu-dev` group is
 Key Vault Secrets Officer, the stage's app identity is Key Vault Secrets User.
 It holds the four secrets of *Configuration* below; a secret value is never
-displayed, logged or written to a file on its way in (`docs/azure-access.md`).
+displayed, logged or written to a file on its way in (*Access*, "What stays
+with a human").
 
 ### Storage account `stnovedudev` / `stnoveduprod`
 
@@ -249,7 +469,7 @@ updates its own app, so a promotion can never introduce a new image.
 
 Human access runs entirely on the group's rights — nobody needs a personal role
 assignment. Group membership therefore includes prod and its production data
-(`docs/azure-access.md`).
+(*Access*).
 
 The resource groups also **inherit every assignment made on the subscription**
 `Novedu`. There it is the subscription Owners only — no Contributor, no service
@@ -285,15 +505,13 @@ versionless, so a new secret version needs no change to the app.
 
 | Key Vault secret | App secret | Environment variable | Value |
 |---|---|---|---|
-| `AUTH-SECRET` | `auth-secret` | `AUTH_SECRET` | dev: the same value as the old environment on standby. prod: its own, randomly generated (32 bytes, base64) |
-| `AZURE-CLIENT-SECRET` | `azure-client-secret` | `AZURE_CLIENT_SECRET` | dev: the secret of the registration *Novedu Chat MVP*, shared with the old environment, expiring 2028-06-08. prod: the secret `novedu-prod` of *Novedu Chat (prod)*, expiring 2028-09-20. The vault secret's `expires` attribute carries the same date |
+| `AUTH-SECRET` | `auth-secret` | `AUTH_SECRET` | each stage its own value; prod's randomly generated (32 bytes, base64) |
+| `AZURE-CLIENT-SECRET` | `azure-client-secret` | `AZURE_CLIENT_SECRET` | dev: the secret of the registration *Novedu Chat MVP*, expiring 2028-06-08. prod: the secret `novedu-prod` of *Novedu Chat (prod)*, expiring 2028-09-20. The vault secret's `expires` attribute carries the same date |
 | `SCCH-API-KEY` | `scch-api-key` | `SCCH_API_KEY` | the one SCCH key — the **only** secret that is identical in both stages |
 | `APPLICATIONINSIGHTS-CONNECTION-STRING` | `appinsights-connection-string` | `APPLICATIONINSIGHTS_CONNECTION_STRING` | the stage's own `appi-novedu-<stage>` |
 
 Apart from the SCCH key no secret is shared between the stages, so
-compromising dev's vault tells nobody anything about prod. Dev's `AUTH_SECRET`
-and client secret are, however, the values of the old environment on standby
-(`docs/azure-access.md`): whoever reads dev's vault holds two of its secrets.
+compromising dev's vault tells nobody anything about prod.
 
 ### Environment variables
 
@@ -345,8 +563,8 @@ app registrations in it:
 
 | Registration | Client id | Used by | Redirect URIs |
 |---|---|---|---|
-| *Novedu Chat MVP* | `4d44fc4b-0434-4981-9765-62e2074ceecb` | `ca-novedu-dev`, local development | `https://dev.novedu.at/api/auth/callback/microsoft` beside localhost's (and the old environment's) |
-| *Novedu Chat (prod)* | `d36756ba-5d79-4809-8a01-896d02639a34` | `ca-novedu-prod` | `https://app.novedu.at/api/auth/callback/microsoft` |
+| *Novedu Chat MVP* | `4d44fc4b-0434-4981-9765-62e2074ceecb` | `ca-novedu-dev`, local development | `https://dev.novedu.at/api/auth/callback/microsoft`, the same path on `ca-novedu-dev`'s generated name, and `http://localhost:3000/api/auth/callback/microsoft` |
+| *Novedu Chat (prod)* | `d36756ba-5d79-4809-8a01-896d02639a34` | `ca-novedu-prod` | `https://app.novedu.at/api/auth/callback/microsoft` and the same path on `ca-novedu-prod`'s generated name |
 
 Both are single-tenant, carry `groupMembershipClaims: All` with the optional
 `groups` claim on the id and the access token — that is what `TEACHER_GROUP_ID`
@@ -361,7 +579,7 @@ data, because each has its own database (`docs/auth.md`).
 ### Setting or rotating a secret
 
 The value goes in on stdin — never in an argument, and never displayed, in a
-terminal or a Claude session (`docs/azure-access.md`):
+terminal or a Claude session (*Access*):
 
 ```bash
 export AZURE_CONFIG_DIR=~/.htl-azure-novedu
@@ -435,13 +653,14 @@ such default; there the group is a plain admin.
 
 ## Data in the dev stage
 
-`novedu_dev` and the dev image share hold a **copy of the old environment's
-data**, taken when its app was stopped, so teachers and students can continue
+`novedu_dev` and the dev image share hold a **copy of the prototype's data**
+— the single app that ran at `novedu.at` before these stages — taken when that
+app was stopped, so teachers and students can continue
 activities that started there (the prod stage started empty). It is real student and
 teacher data: treat the dev stage like production when it comes to exporting or
 sharing what is in it. Everything created on dev since then lives beside it.
 
-The copy differs from the old environment in four deliberate ways:
+The copy differs from the prototype's data in four deliberate ways:
 
 - **No chat messages.** `mastra.mastra_messages` is empty; the threads exist, so
   a stored chat opens with an empty transcript.
@@ -457,9 +676,9 @@ The copy differs from the old environment in four deliberate ways:
   therefore has the origin `https://dev.novedu.at`. Changing a stage's
   hostname means rewriting them to the new `CODE_ORIGIN`.
 - **Only active images.** The share holds the bytes of the active image rows
-  under `images/<key>/content`; closed rows had no bytes in the old environment either.
+  under `images/<key>/content`; closed rows had no bytes in the prototype either.
 
-Sign-in needs no mapping: both environments authenticate against the same Entra
+Sign-in needs no mapping: the prototype authenticated against the same Entra
 tenant and teacher group, so a user's `oid` finds their copied
 `novedu_account` row and the teacher flag is recomputed as usual.
 
@@ -498,7 +717,8 @@ gh workflow run promote.yml                        # the version dev currently r
 ```
 
 An empty `version` resolves to what dev reports at `/api/version`. **Rollback is
-the same command with an older version**, and it rolls the teacher guide back
+the same command with an older version** — one that is in `crnovedu` and in the
+GHCR package, where `promote.yml` reads the image's commit — and it rolls the teacher guide back
 too — except to a version from before the guide had its own host, which leaves
 the guide as it is. Migrations are forward-only, so rolling back across one only
 works if that migration was backward-compatible.
@@ -510,7 +730,7 @@ environment **variables** (`docs/ci-security.md`).
 
 | Scope | Name | Holds |
 |---|---|---|
-| repository variable | `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | the tenant and subscription of `docs/azure-access.md` |
+| repository variable | `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | the tenant and subscription of *Access* |
 | repository variable | `AZURE_DEV_CLIENT_ID` | client id of `id-novedu-gh-dev` |
 | repository variable | `DEV_BASE_URL` | dev's public base URL, no trailing slash |
 | environment `production` | `AZURE_PROD_CLIENT_ID` | client id of `id-novedu-gh-prod` |
@@ -544,7 +764,7 @@ pulls its `:demo` and `:fake-llm` images from it anonymously too.
 ## Reviewing the environment
 
 Read-only; safe at any time, unlike anything that creates or changes a
-resource (`docs/azure-access.md`).
+resource (*Access*).
 
 ```bash
 export AZURE_CONFIG_DIR=~/.htl-azure-novedu
@@ -616,6 +836,4 @@ az containerapp show -g rg-novedu-<stage> -n ca-novedu-<stage> \
 node scripts/db/provision-stage.mjs <stage> --check
 ```
 
-`az containerapp` works from the core CLI. The extension this profile needs is
-`application-insights`, for any `az monitor app-insights` command; extensions
-are installed per profile (`docs/azure-access.md`).
+The profile's CLI extensions: *Access*, "CLI extensions".

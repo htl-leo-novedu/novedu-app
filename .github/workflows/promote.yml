@@ -60,27 +60,18 @@ jobs:
 
       # The commit the image was built from (Dockerfile ARG APP_GIT_SHA), read
       # anonymously from the GHCR copy of the same image, so the package must be
-      # Public (docs/azure-runtime-env.md, "GitHub configuration"). Versions built
-      # before the move to GHCR exist only in the old Docker Hub repository, so
-      # promoting (or rolling back to) one of those falls back to it.
+      # Public (docs/azure-runtime-env.md, "GitHub configuration").
       - name: Resolve the image's commit
         id: sha
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          sha=""
-          err="$RUNNER_TEMP/inspect.err"
-          for image in "ghcr.io/htl-leo-novedu/novedu-app" "docker.io/rstropek/novedu-chat-mvp"; do
-            if config=$(docker buildx imagetools inspect "$image:$VERSION" --format '{{json .Image}}' 2>"$err"); then
-              sha=$(jq -r '.config.Env[] | select(startswith("APP_GIT_SHA=")) | sub("^APP_GIT_SHA="; "")' <<< "$config" || true)
-              echo "Read the commit from $image:$VERSION"
-              break
-            fi
-            # A private GHCR package answers "unauthorized" here, not "not found".
-            echo "Could not read $image:$VERSION: $(cat "$err")"
-          done
+          image="ghcr.io/htl-leo-novedu/novedu-app:$VERSION"
+          # A private package answers "unauthorized" here, not "not found".
+          config=$(docker buildx imagetools inspect "$image" --format '{{json .Image}}')
+          sha=$(jq -r '.config.Env[] | select(startswith("APP_GIT_SHA=")) | sub("^APP_GIT_SHA="; "")' <<< "$config" || true)
           if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::could not read the commit of image $VERSION from either registry (errors above), or it carries no commit sha: '$sha'"
+            echo "::error::image $image carries no commit sha: '$sha'"
             exit 1
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
