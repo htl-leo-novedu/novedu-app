@@ -33,7 +33,7 @@ import { auth } from "@/auth";
 import { FEEDBACK_JUDGE_CRITERIA } from "@/lib/quiz-feedback-judge";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
 import { bearerSession } from "@/tests/mock-auth-session";
-import { POST } from "./route";
+import { JUDGE_MAX_OUTPUT_TOKENS, POST } from "./route";
 
 const getSession = vi.mocked(auth.api.getSession);
 
@@ -72,9 +72,10 @@ async function postRequest(
 interface GenerateOptions {
   requestContext: { get(key: string): unknown };
   structuredOutput: { schema: { safeParse(value: unknown): { success: boolean } } };
+  modelSettings?: { maxOutputTokens?: number };
 }
 
-/** The `{ requestContext, structuredOutput }` the route handed the agent. */
+/** The `{ requestContext, structuredOutput, modelSettings }` the route handed the agent. */
 function generateOptions(): GenerateOptions {
   return (mocks.generate.mock.calls[0] as unknown[])[1] as GenerateOptions;
 }
@@ -200,6 +201,11 @@ describe("POST /api/eval/judge judging", () => {
     expect(ctx.get(USAGE_CODE)).toBe("cli-eval");
     expect(ctx.get(USAGE_MODULE)).toBe("eval");
     expect(ctx.get(USAGE_USER_ID)).toBe("teacher-oid-1");
+  });
+
+  it("caps the judge's output tokens", async () => {
+    await postRequest(VALID_BODY, await mint());
+    expect(generateOptions().modelSettings?.maxOutputTokens).toBe(JUDGE_MAX_OUTPUT_TOKENS);
   });
 
   it("sets the reasoning key only when the body pins a level", async () => {

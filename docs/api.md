@@ -338,7 +338,8 @@ any page, and its handler re-validates the session itself on top of that.
   with no server change, and the model can never name a criterion the caller cannot
   render. Failure matrix identical to the grade route (`400` malformed body / unknown or
   unavailable provider / terminal upstream model error; `413` above 256 KB; `401`/`403`
-  from the gate; `502` for no structured judgment or a retryable upstream failure — its
+  from the gate; `502` for no structured judgment (including one cut off by the
+  8192-token output cap, `JUDGE_MAX_OUTPUT_TOKENS`) or a retryable upstream failure — its
   opaque wording names judging, not grading). Same trust argument as the grade route, one
   step stronger: `evalJudge` is never web-reachable by students (the CopilotKit runtime
   route 404s every agent id but the code module's own), the gate has no student mode, and
