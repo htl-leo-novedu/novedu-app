@@ -146,10 +146,10 @@ export const tutorAgent = new Agent({
   // is disabled — it would require a vector store + embedder we don't run; plain
   // recent-message history is all the tutor needs.
   //
-  // `lastMessages` is the ENTIRE context the tutor gets: the CopilotKit route
-  // trims each run to just the new turn (see `trimToNewTurn` — so Mastra stops
-  // re-persisting the whole client history every run), which means prior turns
-  // reach the model ONLY through this recalled window. 40 ≈ 20 exchanges, enough
+  // `lastMessages` is the ENTIRE context the tutor gets: `@ag-ui/mastra` hands
+  // the agent only the messages the thread's memory does not hold yet (the new
+  // turn), which means prior turns reach the model ONLY through this recalled
+  // window. 40 ≈ 20 exchanges, enough
   // for a sentence-by-sentence tutor; raise it if longer sessions need to see
   // further back.
   //

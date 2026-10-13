@@ -57,29 +57,6 @@ function declaresOversizedBody(req: Request): boolean {
   return Number.isFinite(declared) && declared > MAX_RUN_BODY_BYTES;
 }
 
-// CopilotKit/AG-UI re-sends the ENTIRE client-side conversation on every run,
-// and Mastra persists whatever messages it is handed (each with a fresh id) —
-// so forwarding the whole history re-stores every prior turn again. The
-// conversation then balloons quadratically and the read-only viewer shows each
-// turn many times. Mastra's own guidance (`@mastra/memory` message-history
-// docs) is to send ONLY the new message and let `lastMessages` memory supply
-// the prior context. So keep just the turn AFTER the last assistant reply:
-// everything up to and including it is already persisted in this thread. The
-// first turn (no assistant message yet) and any degenerate empty tail pass
-// through unchanged — returning the SAME array signals "no trim needed".
-export function trimToNewTurn<T extends { role?: unknown }>(messages: T[]): T[] {
-  let lastAssistant = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]?.role === "assistant") {
-      lastAssistant = i;
-      break;
-    }
-  }
-  if (lastAssistant < 0) return messages;
-  const tail = messages.slice(lastAssistant + 1);
-  return tail.length > 0 ? tail : messages;
-}
-
 // resourceId handed to the runtime when serving `/info` (metadata only, runs no
 // agent), so it is never used to read or write memory — it just satisfies the
 // required parameter. Distinct from any real code (codes are [a-z0-9-]{1,32}).
@@ -145,51 +122,32 @@ function classifyRequest(req: Request): RuntimeRequest {
   return { kind: "unsupported" };
 }
 
-// Shared THREAD-OWNERSHIP check (+ run-history trim). Only run/connect/stop reach
-// here; run/connect carry the threadId in their AG-UI body — peek it out of a
-// clone, the runtime still needs the original. `run` additionally carries the
-// full client-side message history; we rebuild its request with a body trimmed to
-// the new turn (see trimToNewTurn) so Mastra persists only that turn + its reply
-// instead of re-storing the whole history. `connect` is not trimmed — it opens
-// the stream and carries no new turn.
+// Shared THREAD-OWNERSHIP check. Only run/connect/stop reach here; run/connect
+// carry the threadId in their AG-UI body — peek it out of a clone, the runtime
+// still needs the original. A `run` body also carries the full client-side
+// message history; it is forwarded untouched — `@ag-ui/mastra` drops every
+// message whose id the thread's memory already holds, so Mastra stores only the
+// new turn + its reply.
 //
 // `code` is the value the thread token is bound to (the same for every module:
 // the code itself, which is also the Mastra memory resourceId). Returns the
-// verified threadId + the request to forward, or a 403 response.
+// verified threadId, or a 403 response.
 async function resolveThreadOwnership(
   req: Request,
   runtimeRequest: Extract<RuntimeRequest, { kind: "run" | "connect" | "stop" }>,
   code: string,
   userId: string,
-): Promise<
-  { ok: true; threadId: string; forwardReq: Request } | { ok: false; response: Response }
-> {
+): Promise<{ ok: true; threadId: string } | { ok: false; response: Response }> {
   let threadId: string | undefined;
-  let forwardReq: Request = req;
   if (runtimeRequest.kind === "stop") {
     threadId = runtimeRequest.threadId;
   } else {
     const body = (await req
       .clone()
       .json()
-      .catch(() => undefined)) as { threadId?: unknown; messages?: unknown } | undefined;
+      .catch(() => undefined)) as { threadId?: unknown } | undefined;
     const bodyThreadId = body?.threadId;
     threadId = typeof bodyThreadId === "string" ? bodyThreadId : undefined;
-
-    if (runtimeRequest.kind === "run" && body && Array.isArray(body.messages)) {
-      const trimmed = trimToNewTurn(body.messages as Array<{ role?: unknown }>);
-      if (trimmed !== body.messages) {
-        // Rebuild the request with the trimmed history. Drop content-length so
-        // the platform recomputes it for the shorter body.
-        const headers = new Headers(req.headers);
-        headers.delete("content-length");
-        forwardReq = new Request(req.url, {
-          method: req.method,
-          headers,
-          body: JSON.stringify({ ...body, messages: trimmed }),
-        });
-      }
-    }
   }
   const token = req.headers.get(RUNTIME_THREAD_TOKEN_HEADER);
   if (
@@ -202,7 +160,7 @@ async function resolveThreadOwnership(
       response: Response.json({ error: THREAD_REJECTION_MESSAGE }, { status: 403 }),
     };
   }
-  return { ok: true, threadId, forwardReq };
+  return { ok: true, threadId };
 }
 
 // The chat backend, for EVERY module. Server-side checks gate every DATA request
@@ -394,7 +352,7 @@ async function handler(req: Request): Promise<Response> {
   // (Request) => Response handler. Mounted on an optional catch-all route so it
   // serves both the base path and sub-routes like `/info`.
   const app = createCopilotEndpoint({ runtime, basePath: "/api/copilotkit" });
-  const res = await app.fetch(ownership.forwardReq);
+  const res = await app.fetch(req);
 
   // Attribution bookkeeping AFTER the run actually started: the triple is
   // token-verified above, and gating on `res.ok` keeps requests the runtime

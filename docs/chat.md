@@ -246,9 +246,9 @@ allow.
 Consequences worth knowing:
 
 - continuing a restored thread is an ordinary run: the client re-sends the
-  snapshotted history, the route trims it to the new turn (`trimToNewTurn`), and
-  `@ag-ui/mastra` dedupes re-sent messages by id; the tutor still recalls only its
-  `lastMessages` window (40), while the student sees every message;
+  snapshotted history, and `@ag-ui/mastra` drops the re-sent messages by id; the
+  tutor still recalls only its `lastMessages` window (40), while the student sees
+  every message;
 - restored photos ride the connect stream as the data URLs the student sent
   (≤ 5 MB each);
 - a duplicated tab inherits `sessionStorage` and shares the thread; two
@@ -598,7 +598,7 @@ gate on this path.
 
 Out of scope for this chapter. The `/api/copilotkit` route, the per-module
 `CodeModuleRuntime` (agent selection, `RequestContext` building), the `x-code` /
-`x-thread-token` re-verification, thread ownership, and the `trimToNewTurn`
+`x-thread-token` re-verification, thread ownership, and the new-turn-only
 persistence rule all live in `docs/codes.md`. `ModuleChat` only talks to that route
 through `runtimeUrl` + the runtime headers.
 

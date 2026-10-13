@@ -49,9 +49,9 @@ function providerFrom(requestContext: RequestContext): LlmProvider {
 
 // The feedback chat. Memory-backed exactly like `tutorAgent` and the quiz
 // discussion agent (recent-message window, no semantic recall) so a thread
-// persists and earlier turns reach the model through the recalled window after
-// `trimToNewTurn`. The runtime route sets the system prompt (the activity's
-// `instructions`) and model, and scopes memory to `resourceId = the code`.
+// persists and earlier turns reach the model through the recalled window. The
+// runtime route sets the system prompt (the activity's `instructions`) and
+// model, and scopes memory to `resourceId = the code`.
 export const writingAgent = new Agent({
   id: "writing",
   name: "Writing",

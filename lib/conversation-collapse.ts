@@ -86,9 +86,9 @@ function messageKey(message: Message): string {
 
 /**
  * Collapses the replayed history in a stored conversation so each turn shows
- * once. CopilotKit/AG-UI re-sent the entire conversation on every run, and
- * Mastra persisted all of it with fresh ids, so conversations recorded before
- * the route-level fix (`trimToNewTurn`) hold the history many times over: a
+ * once. CopilotKit/AG-UI re-sends the entire conversation on every run, and
+ * older conversations — recorded when Mastra stored that re-sent history under
+ * fresh ids — hold the history many times over: a
  * sequence of telescoping "runs" `R1 ⊂ R2 ⊂ … ⊂ Rk`, each re-sending the whole
  * prefix and appending one new turn. `Rk` is the full, correct conversation.
  *
