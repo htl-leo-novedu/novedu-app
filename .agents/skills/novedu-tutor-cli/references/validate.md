@@ -4,7 +4,10 @@
 validate <pathOrUrl> [--kind tutor|fragment|quiz|writing|coding|eval] [--json]
 ```
 
-Offline (no server, no sign-in). Exit `0` = valid, `1` = errors, so it works
+Offline for a local path or an external URL (no server, no sign-in). A file
+uploaded to Novedu (`https://<server>/api/files/<name>`) is read with the stored
+`login` session for that server — no other host ever gets the token; a refusal adds
+an error naming the `novedu-cli login --server <origin>` that fixes it. Exit `0` = valid, `1` = errors, so it works
 directly as a pre-commit or CI gate.
 
 `validate` takes **one file per call** — only `eval` accepts globs. For many

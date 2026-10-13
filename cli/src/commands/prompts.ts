@@ -6,7 +6,7 @@ import {
   type PromptKind,
   promptSections,
 } from "@/lib/prompt-dump";
-import { cliFetcher } from "../file-fetcher";
+import { cliFetcher, signInErrors } from "../file-fetcher";
 import { formatPromptDump } from "../format";
 import { toUrl } from "./validate";
 
@@ -82,7 +82,9 @@ Examples:
       const result = await runPrompts(pathOrUrl, kind);
       if (!result.ok) {
         // Failures follow the CLI's JSON-on-stderr convention.
-        console.error(JSON.stringify({ errors: result.errors }, null, 2));
+        // A refused uploaded file names the sign-in that fixes it.
+        const errors = [...result.errors, ...signInErrors()];
+        console.error(JSON.stringify({ errors }, null, 2));
         process.exitCode = 1;
         return;
       }

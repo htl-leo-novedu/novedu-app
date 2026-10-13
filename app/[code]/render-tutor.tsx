@@ -1,15 +1,16 @@
 import { Notice } from "@/components/notice";
 import { Main } from "@/components/page-main";
 import { ErrorList, WarningList } from "@/components/validation-result";
+import { serverYamlFetcher } from "@/lib/app-hosted-fetcher";
 import type { CodeEntry } from "@/lib/code-store";
-import { defaultFetcher } from "@/lib/prompt-fragments";
 import { buildRuntimeHeaders } from "@/lib/runtime-headers";
 import { historyEnabled } from "@/lib/tutor-history-gate";
 import { loadAndBuildTutorPrompt, sampleExampleQuestions } from "@/lib/tutors";
 import { TutorChat } from "../tutor-chat";
 
 // The tutor module's student render: load + build the tutor prompt from the
-// code's file_url (deliberately uncached so YAML edits show immediately), then
+// code's file_url (deliberately uncached so YAML edits show immediately; an
+// app-hosted file is read from the database, never a loopback fetch), then
 // render the chat. A build failure shows the validation errors. Invoked by the
 // thin module switch in app/[code]/page.tsx.
 export async function RenderTutor({
@@ -23,7 +24,7 @@ export async function RenderTutor({
   threadId: string;
   threadToken: string;
 }) {
-  const result = await loadAndBuildTutorPrompt(entry.fileUrl, defaultFetcher);
+  const result = await loadAndBuildTutorPrompt(entry.fileUrl, await serverYamlFetcher());
   if (!result.ok) {
     return (
       <Main>

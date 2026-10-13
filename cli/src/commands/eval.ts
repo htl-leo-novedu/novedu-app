@@ -23,7 +23,7 @@ import {
   sameEvalSpec,
   summarizeBatch,
 } from "../eval-run";
-import { cliFetcher } from "../file-fetcher";
+import { cliFetcher, signInErrors } from "../file-fetcher";
 import { formatEvalBatchReport, formatEvalReport } from "../format";
 import { renderEvalMarkdownReport } from "../report-md";
 import { resolveServerUrl } from "../server-url";
@@ -538,15 +538,18 @@ export async function runEvalCommand(
 
   // Not ONE usable file is a hard failure, not a report: JSON on stderr, exit 1, no
   // grading call and no `--out` file (the CLI's convention, same as `codes sync`).
+  // A refused uploaded file (an eval target on the app) names the sign-in that fixes it.
+  const signIn = signInErrors();
   if (checked.size === 0) {
     failJson({
       message:
         files.length === 1 ? "The eval file is not usable." : "None of the eval files are usable.",
       files: files.map((file) => ({ source: file.source, errors: file.errors ?? [] })),
-      errors: files.flatMap((file) => file.errors ?? []),
+      errors: [...files.flatMap((file) => file.errors ?? []), ...signIn],
     });
     return;
   }
+  for (const hint of signIn) process.stderr.write(`${hint.message}\n`);
 
   {
     // A teacher about to fire hundreds of LLM calls should see the number FIRST — and

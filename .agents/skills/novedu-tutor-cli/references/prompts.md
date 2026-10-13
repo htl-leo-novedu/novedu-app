@@ -10,7 +10,7 @@ it whenever the question is about BEHAVIOUR rather than validity ("why does the
 grader accept this?", "does my safety fragment reach the tutor?", "show me the
 grading prompt for question 3"), and when preparing prompt evals.
 
-Offline and no sign-in. `--kind` is caller-declared exactly as in
+Reads files exactly like [validate.md](validate.md) (local and external files offline; uploaded files with the stored sign-in). `--kind` is caller-declared exactly as in
 [validate.md](validate.md), minus `fragment` — a library has no prompt of its
 own; its fragments show up rendered inside the activity that places them.
 

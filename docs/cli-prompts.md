@@ -6,8 +6,12 @@ what their file turns into; the eval harness (`novedu-cli eval`, `docs/cli-eval.
 uses it to grade prompts without re-implementing (and slowly drifting from) our
 assembly rules.
 
-Like `validate`, it is **offline and sign-in-free**: a local path or a `file:` /
-`http(s)` URL, no server, no database, no LLM call.
+Like `validate`, it needs **no server, database or LLM call**: a local path or a
+`file:` / `http(s)` URL. An `http(s)` URL on a Novedu server the CLI is signed in to
+(an uploaded file, `…/api/files/<name>`) is fetched with that server's stored session
+token; no other host ever receives a token, and such a request refuses redirects
+(`cli/src/file-fetcher.ts`). A `401`/`403` on an uploaded file adds an error naming
+the `novedu-cli login --server <origin>` that fixes it.
 
 ```
 novedu-cli prompts <pathOrUrl> [--kind tutor|quiz|writing|coding] [--json]

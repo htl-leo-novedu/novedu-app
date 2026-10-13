@@ -181,9 +181,10 @@ any page, and its handler re-validates the session itself on top of that.
   optional. The web page spells the same narrowing `?owner=` (a user id, or `all`)
   and has no `mine` — `docs/filtered-lists.md`. Bare JSON
   array, newest first, of
-  `{ code, url, module, note, fileUrl, anonymous, validFrom, validUntil, llm, createdBy, createdAt }`
+  `{ code, url, module, note, fileUrl, anonymous, validFrom, validUntil, llm, createdBy, ownerName, createdAt }`
   (`url` the shareable link, `llm` the override
-  `{ provider, model, reasoning? }` or `null`).
+  `{ provider, model, reasoning? }` or `null`, `ownerName` the creator's display
+  name or `null` — the name the `/codes` list shows).
 - **`POST /api/codes`** (same file, teacher-only) — mints a code through the
   SAME pipeline as the web form (`createCodeForUser`,
   `lib/code-service.ts`). JSON body
@@ -222,7 +223,8 @@ any page, and its handler re-validates the session itself on top of that.
   (`q` over name/title/description; `mine` default on, where the web page
   spells it `?owner=`). Bare JSON array of active
   versions **without content**:
-  `{ name, kind, title, description, createdBy, createdAt, url }` (`url` the
+  `{ name, kind, title, description, createdBy, ownerName, createdAt, url }`
+  (`ownerName` as on `GET /api/codes`; `url` the
   public download URL; download itself needs nothing new — the per-name GET
   is public).
 - **`PUT /api/files/<name>`** (`app/api/files/[name]/route.ts`, teacher-only;

@@ -31,8 +31,10 @@ function authErrorResponse(error: ApiAuthError): Response {
 // Date fields as ISO 8601 UTC strings (or null for an open window bound). The
 // origin is the request-time resolved app origin — NEVER the stored row's
 // `origin` column (operator-only; a code created on localhost must yield a
-// production share URL from the production API).
-function toWire(entry: CodeEntry, origin: string) {
+// production share URL from the production API). `ownerName` is the creator's
+// display name (`novedu_user.name`, null when unknown) — the same name the /codes
+// list shows every teacher.
+function toWire(entry: CodeEntry, origin: string, ownerName: string | null) {
   return {
     code: entry.code,
     url: `${origin}/${entry.code}`,
@@ -44,6 +46,7 @@ function toWire(entry: CodeEntry, origin: string) {
     validUntil: entry.validUntil?.toISOString() ?? null,
     llm: entry.llm,
     createdBy: entry.createdBy,
+    ownerName,
     createdAt: entry.createdAt.toISOString(),
   };
 }
@@ -97,7 +100,7 @@ export async function GET(request: Request) {
 
     const origin = await resolveAppOriginOr("");
     return json(
-      result.rows.map((entry) => toWire(entry, origin)),
+      result.rows.map((entry) => toWire(entry, origin, entry.ownerName)),
       200,
     );
   } catch (error) {
@@ -156,7 +159,7 @@ export async function POST(request: Request) {
     }
 
     const origin = await resolveAppOriginOr("");
-    return json(toWire(result.entry, origin), 201);
+    return json(toWire(result.entry, origin, user.name), 201);
   } catch (error) {
     if (error instanceof ApiAuthError) return authErrorResponse(error);
     recordError(error, { "novedu.area": "api-codes" });

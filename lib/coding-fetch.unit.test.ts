@@ -7,9 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ bodies: {} as Record<string, string> }));
 
-vi.mock("@/lib/app-origin", () => ({ resolveAppOriginOr: async () => "https://app.test" }));
 vi.mock("@/lib/app-hosted-fetcher", () => ({
-  appHostedFetcher: () => async (url: string) => {
+  serverYamlFetcher: async () => async (url: string) => {
     const text = state.bodies[url];
     return text === undefined
       ? { ok: false as const, status: 404, text: async () => "" }

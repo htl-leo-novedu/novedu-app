@@ -11,7 +11,7 @@ import {
 import { loadAndCheckQuiz, type QuizCheckResult } from "@/lib/quiz-validate";
 import { loadAndBuildTutorPrompt } from "@/lib/tutors";
 import { loadAndCheckWriting, type WritingCheckResult } from "@/lib/writing-validate";
-import { cliFetcher } from "../file-fetcher";
+import { cliFetcher, signInErrors } from "../file-fetcher";
 import {
   formatCodingResult,
   formatEvalResult,
@@ -147,6 +147,8 @@ Examples:
       }
       const kind = (options.kind ?? "tutor") as ValidateKind;
       const outcome = await runValidate(pathOrUrl, kind);
+      // A refused uploaded file names the sign-in that fixes it.
+      if (!outcome.result.ok) outcome.result.errors.push(...signInErrors());
       if (options.json) {
         console.log(JSON.stringify(outcome.result, null, 2));
       } else {
