@@ -12,14 +12,14 @@ related:
   - 20-building-activities/02-available-llms
 ---
 
-You've written an activity in YAML. Before you can hand it to a class, Novedu has to be able to read it. Novedu doesn't store your activity inside a code; it reads the file from a public web address every time students use it. So the last authoring step is giving your file such an address.
+You've written an activity in YAML. Before you can hand it to a class, Novedu has to be able to read it. Novedu doesn't store your activity inside a code; it reads the file from its web address every time students use it. So the last authoring step is giving your file such an address.
 
 There are two ways to do that, and both work equally well:
 
 - **Host it on GitHub** in a public repository and use the file's raw URL.
 - **Upload it in the app** on the Files page, and let Novedu host it for you.
 
-Pick whichever fits how you work. GitHub gives you version history and works well if you already keep teaching material there; the Files page needs no account or tooling beyond Novedu itself.
+Pick whichever fits how you work. GitHub gives you version history and works well if you already keep teaching material there; the Files page needs no account or tooling beyond Novedu itself, and it keeps the file away from students.
 
 ## Option A: host the file on GitHub
 
@@ -34,7 +34,7 @@ One thing to get right: Novedu reads the **pushed** version, not the copy on you
 
 ## Option B: upload the file in the app
 
-The Files page in Novedu lets you create and edit activity files without any hosting of your own. The app stores the file and serves it at a public address.
+The Files page in Novedu lets you create and edit activity files without any hosting of your own. The app stores the file and gives it an address that only teachers can read.
 
 1. Open the Files page and select **New file**.
 2. Give the file a name (letters, digits, hyphens, and underscores only, no spaces) and pick its kind: tutor, fragment, quiz, writing, or coding.
@@ -42,7 +42,15 @@ The Files page in Novedu lets you create and edit activity files without any hos
 4. Select **Validate** to check the YAML without saving, as often as you like.
 5. Select **Validate & create** to save.
 
-Saving always validates first: an invalid file is never stored, so anything the Files page has published is a file Novedu can actually run. After saving, the edit page shows the file's **Public URL** with a copy button; that address is what you use when you create a code. The file list also offers a **Create code** shortcut next to each activity file, which starts the code form with the file already filled in.
+Saving always validates first: an invalid file is never stored, so anything the Files page has published is a file Novedu can actually run. After saving, the edit page shows the file's **File URL** with a copy button; that address is what you use when you create a code. The file list also offers a **Create code** shortcut next to each activity file, which starts the code form with the file already filled in.
+
+## Who can read an uploaded file
+
+Students can't read a file you uploaded on the Files page, even if they know its name or address. Novedu reads the file itself to run the activity, but nobody else gets the raw YAML. That makes the Files page the right place for an exam: the questions and the grading instructions stay private.
+
+Opening an uploaded file's address in a browser doesn't show the file, not even for a teacher. To look at a file, open it on the Files page. The Novedu CLI can read uploaded files too, once you've signed in with your teacher account (`novedu-cli login`).
+
+A file on GitHub works differently: in a public repository, anyone can read it, students included. Keep exams off public GitHub.
 
 ## Finding a file in the list
 

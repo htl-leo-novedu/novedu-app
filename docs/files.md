@@ -1,11 +1,12 @@
 # App-hosted YAML Files
 
 Deep reference for the **YAML Files** feature: teachers author tutor and fragment
-YAML *in the app* instead of hosting it on GitHub/S3/Azure Blob. Each file is
-served at a public `GET /api/files/<name>` as raw YAML, so its URL drops straight
-into the existing tutor-code flow with **zero** changes to the tutor-code
-mechanism — the loader (`lib/tutors/load.ts`) fetches any `http(s)` URL through an
-injectable `Fetcher` and does not care about host or content-type. The always-on
+YAML *in the app* instead of hosting it on GitHub/S3/Azure Blob. Each file has the
+URL `<origin>/api/files/<name>`, which drops straight into a code like any other
+activity URL: the server reads it from the database (`appHostedFetcher`, below),
+and the raw `GET` on that URL answers only a teacher bearer (`novedu-cli`). So
+students cannot read an uploaded file — an exam's questions and its server-only
+`evaluation` prompts stay private even if the name or URL leaks. The always-on
 invariants are summarized in `AGENTS.md`; this file has the full mechanics. Read it
 before touching `app/files/*`, `app/api/files/*`, `lib/file-store.ts`,
 `lib/file-service.ts`, `lib/files-actions.ts`, `lib/app-hosted-fetcher.ts`, the
@@ -19,8 +20,8 @@ documented in `docs/api.md`.
 | --- | --- | --- | --- |
 | List | `/files` (`app/files/page.tsx`) | teacher | active versions only, contains-filter + an **owner** dropdown (the signed-in teacher by default) |
 | Create | `/files/new` (`create-file-form.tsx`) | teacher | name + kind + CodeMirror editor + upload |
-| Edit | `/files/edit/[...name]` (`edit-file-form.tsx`) | teacher | preloaded with the active version; copyable public URL (delete is the list's "Delete Selected" only) |
-| Public GET | `/api/files/<name>` (`app/api/files/[name]/route.ts`) | **anyone** | active version as `text/yaml`, `no-store` (404 once deleted) |
+| Edit | `/files/edit/[...name]` (`edit-file-form.tsx`) | teacher | preloaded with the active version; copyable file URL (delete is the list's "Delete Selected" only) |
+| Raw GET | `/api/files/<name>` (`app/api/files/[name]/route.ts`) | teacher (bearer) | active version as `text/yaml`, `no-store` (404 once deleted) — `novedu-cli`'s read of an uploaded file |
 | API upsert | `PUT /api/files/<name>` (same route file) | teacher (bearer) | create-or-new-version for `novedu-cli files upload` — `docs/api.md` |
 | API list | `GET /api/files` (`app/api/files/route.ts`) | teacher (bearer) | the list's filters as query params, JSON without content — `docs/api.md` |
 | GUI editor | `/files/gui/edit/<name>` (`app/files/gui/edit/[...name]/page.tsx`) | teacher | student-built form GUI; "Edit in GUI" on the list |
@@ -172,7 +173,7 @@ kind is a **module** — tutor, quiz, writing, and coding, i.e. everything excep
 (gated by `isCodeModule`, linking to `/codes/new?module=<kind>&file=<url>`).
 
 The public origin is resolved once on the server (`resolveAppOrigin` /
-`resolveAppOriginOr` in `lib/app-origin.ts`) and the public URL is built by
+`resolveAppOriginOr` in `lib/app-origin.ts`) and the file URL is built by
 `filePublicUrl` / `filesUrlPrefix` in `lib/file-url.ts` (pure, importable by client
 and server).
 
@@ -191,20 +192,24 @@ authoring validators resolve it strictly. It is a plain module (NOT `"use server
 so every server module can import it. Don't reimplement this resolution at a call
 site.
 
-## Public GET endpoint & the access gate
+## Raw GET endpoint & the access gate
 
-`app/api/files/[name]/route.ts` is **PUBLIC and unauthenticated** — deliberately
-excluded from the proxy gate so the tutor-code loader can fetch it server-side
-with no cookies and teachers may share it. `proxy.ts` must keep `api/files` in its
-negative-lookahead matcher (alongside `api/auth`, `api/version`) — **keep the route
-and the matcher in sync**. The handler is `force-dynamic` with `Cache-Control: no-store`
-(edits must be visible immediately — the tutor-code flow re-fetches on every chat
-open/message); `404` for a malformed/unknown/deleted name, `503` on a DB error.
-Teacher CRUD runs on two gated channels: the server actions on authed pages, and
-the **bearer** handlers riding the same `api/files` proxy exclusion —
-`PUT /api/files/<name>` (upsert) and the `GET /api/files` list — which gate
-THEMSELVES with `requireBearerTeacher` (`docs/api.md`); the per-name GET is the
-only public one.
+`GET /api/files/<name>` (`app/api/files/[name]/route.ts`) serves the raw YAML to a
+**teacher bearer only** — `novedu-cli validate` / `prompts` / `eval` on an uploaded
+file, whose fetcher sends the stored session token to the server it is signed in to
+(`docs/cli-prompts.md`). `requireBearerTeacher` runs FIRST: no name check and no
+store lookup before it, so an unauthenticated or student caller learns nothing
+about which names exist. There is deliberately no cookie-session read: a browser
+opening the URL gets `401`; teachers view a file on its edit page. The server's own
+loaders never call this route — they read the file from the database
+(`appHostedFetcher`). The handler is `force-dynamic` with `Cache-Control: no-store`;
+after the gate, `404` for a malformed/unknown/deleted name, `503` on a DB error.
+
+Teacher CRUD runs on two gated channels: the server actions on authed pages, and the
+**bearer** handlers — the raw GET, `PUT /api/files/<name>` (upsert) and the
+`GET /api/files` list — which ride the `api/files` exclusion in `proxy.ts` and gate
+THEMSELVES with `requireBearerTeacher` (`docs/api.md`). **Keep the route and the
+matcher in sync.**
 
 ## Reused building blocks
 

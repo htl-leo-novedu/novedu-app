@@ -125,8 +125,9 @@ prompt:
 
     # Hosting and validation
 
-    - The quiz file must be reachable at a public https URL. Easiest: the
-      app's YAML Files page (`/files`) hosts and versions it at
+    - The quiz file must be reachable at a public https URL or uploaded to
+      the app. Easiest: the app's YAML Files page (`/files`) hosts and versions
+      it, readable only by teachers (students cannot open it), at
       `https://<origin>/api/files/<name>` (file kind "Quiz"). A public GitHub
       repo's raw URL works too. Quiz files are self-contained — they
       reference no other YAML.

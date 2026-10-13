@@ -57,7 +57,9 @@ A web address works in place of a file path, and reads the file as it's publishe
 npx @novedu/cli prompts https://raw.githubusercontent.com/htl-leo-novedu/novedu-app/refs/heads/main/activities/examples/sorting-algorithms/sorting-tutor.yaml
 ```
 
-If your file lives on GitHub, commit and push before you check a web address, otherwise you're reading an older version. Nothing is uploaded either way, and you don't need to sign in: the command only reads your file.
+If your file lives on GitHub, commit and push before you check a web address, otherwise you're reading an older version. Nothing is uploaded either way, and for a file on your computer or on GitHub you don't need to sign in: the command only reads your file.
+
+A file you uploaded on the Novedu Files page is only readable by teachers, so the command needs your teacher sign-in for it. Run `npx @novedu/cli login` once, then use the file's address from the Files page. If you aren't signed in, the command tells you which `login` to run.
 
 ## Tell the CLI what kind of activity it is
 
@@ -133,4 +135,4 @@ Novedu does this for you. The CLI's `eval` command, covered in the chapter on te
 
 With the Novedu skill installed in your AI coding assistant, you can ask "show me the grading prompt for question 3" or "did my safety fragment reach the tutor?", and it runs the command, reads the output, and answers in plain language. The introduction chapter on the Novedu CLI and its AI skill shows how to install that skill.
 
-That's also why this lives in a command rather than as a screen in the app: it's meant to be used by an assistant at least as much as by a person, it works without signing in, and it uploads nothing. A screen in the app can follow later if teachers ask for one.
+That's also why this lives in a command rather than as a screen in the app: it's meant to be used by an assistant at least as much as by a person, it works on your own files without signing in, and it uploads nothing. A screen in the app can follow later if teachers ask for one.

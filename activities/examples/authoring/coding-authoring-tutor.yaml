@@ -102,8 +102,9 @@ prompt:
 
     # Hosting and validation
 
-    - The coding file must be reachable at a public https URL. Easiest: the
-      app's YAML Files page (`/files`) hosts and versions it at
+    - The coding file must be reachable at a public https URL or uploaded to
+      the app. Easiest: the app's YAML Files page (`/files`) hosts and versions
+      it, readable only by teachers (students cannot open it), at
       `https://<origin>/api/files/<name>` (file kind "Coding"). A public
       GitHub repo's raw URL works too. Coding files are self-contained.
     - The teacher then mints a CODE for the activity; the code page shows the

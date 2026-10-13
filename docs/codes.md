@@ -26,7 +26,7 @@ A **code** is a `[a-z0-9-]` string (1–32 chars; `generateCode()` mints 10 rand
 | `code` (PK) | the code, `varchar(32)` (sized for future teacher-defined memorable codes) |
 | `module` | the dispatch discriminator — `tutor` \| `quiz` \| `writing` \| `coding`, picks the renderer + agent (the `coding` module has no in-app agent — it is an OpenAI-compatible endpoint; see `docs/coding.md`) |
 | `created_by` | session user id (`novedu_user.id`) of the creating teacher |
-| `file_url` | public URL of the activity YAML (normalized via `URL.href`) |
+| `file_url` | URL of the activity YAML — a public http(s) URL, or an uploaded file's `<origin>/api/files/<name>` (normalized via `URL.href`) |
 | `valid_from` / `valid_until` | availability window, UTC `timestamptz`, **both bounds inclusive**. Each is **nullable** — a null `valid_from` opens the code immediately, a null `valid_until` never expires it (both null = always valid). `checkCode` / `windowStatus` coalesce a null bound to `DISTANT_PAST` / `DISTANT_FUTURE` |
 | `note` | teacher's label, shown in their code list and as the recents label (≤ 200 chars) |
 | `origin` | **documentation-only**: where the code was created (DEV vs PROD rows). Lookups never read it — a code created on localhost works in production, since all environments share the database |

@@ -2,7 +2,7 @@ import type { VariantProps } from "class-variance-authority";
 import Link from "next/link";
 import { CopyIconButton } from "@/components/copy-icon-button";
 import { DataList, type ListColumn } from "@/components/data-list";
-import { EditIcon, ExternalLinkIcon, LayoutIcon, ShareIcon } from "@/components/icons";
+import { EditIcon, LayoutIcon, ShareIcon } from "@/components/icons";
 import { ListFilterBar, OwnerFilter } from "@/components/list-filter-bar";
 import { DeleteSelectedButton, SelectionProvider } from "@/components/list-selection";
 import { Notice } from "@/components/notice";
@@ -154,16 +154,6 @@ export default async function FilesPage({
         return (
           <>
             <CopyIconButton text={url} label="Copy URL" promptLabel="Copy the file URL:" />
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={iconButtonVariants()}
-              aria-label="Open raw YAML"
-              title="Open raw YAML"
-            >
-              <ExternalLinkIcon />
-            </a>
             {isCodeModule(row.kind) ? (
               <Link
                 href={`/codes/new?module=${row.kind}&file=${encodeURIComponent(url)}`}
@@ -206,9 +196,9 @@ export default async function FilesPage({
           columns={columns}
           hint={
             <>
-              App-hosted YAML files. Copy a file's public URL and paste it into a tutor code (tutor
-              files offer a one-click shortcut). Every save is validated; an invalid file is
-              rejected.
+              App-hosted YAML files (students cannot read them). Copy a file's URL and paste it into
+              a code (tutor, quiz, writing and coding files offer a one-click shortcut). Every save
+              is validated; an invalid file is rejected.
             </>
           }
           actions={

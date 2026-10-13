@@ -87,7 +87,7 @@ under the same name. Activities that reference the name then show the new
 image. Deleting is only possible in the app, not with the CLI; an activity that
 references a deleted name simply shows no image.
 
-## Three things to get right
+## Four things to get right
 
 - Reference images by **name** with `hosted: true`, never by pasting a link.
   The link the image list offers only opens for a signed-in Novedu user, in a
@@ -97,3 +97,7 @@ references a deleted name simply shows no image.
 - Hosting an image is not the same as letting students **answer** with a photo.
   Photo answers are a quiz setting (`imageInput`); hosted images are pictures
   you show to students.
+- Hosted images are visible to every signed-in Novedu user, students included,
+  unlike uploaded YAML files, which only teachers can read. If an exam uses a
+  hosted image, a student who finds the image's link can open it before the
+  exam. Keep anything that would give away an answer out of hosted images.

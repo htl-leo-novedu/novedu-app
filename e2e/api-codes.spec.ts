@@ -67,9 +67,21 @@ test("valid non-teacher token → 403 on GET /api/codes/<code>/conversations", a
   expect(response.status()).toBe(403);
 });
 
-test("bare PUT /api/files/<name> → 401 — the public GET never implies a public PUT", async ({
-  request,
-}) => {
+test("bare GET /api/files/<name> → 401 — uploaded YAML is teacher-only", async ({ request }) => {
+  const response = await request.get("/api/files/e2e-api-gate-probe", { maxRedirects: 0 });
+  expect(response.status()).toBe(401);
+  expect(response.headers()["www-authenticate"]).toBe("Bearer");
+});
+
+test("valid non-teacher token → 403 on GET /api/files/<name>", async ({ request }) => {
+  const token = await mintSessionToken();
+  const response = await request.get("/api/files/e2e-api-gate-probe", {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  expect(response.status()).toBe(403);
+});
+
+test("bare PUT /api/files/<name> → 401", async ({ request }) => {
   const response = await request.put("/api/files/e2e-api-gate-probe", {
     data: { kind: "fragment", content: "id: x\n" },
     maxRedirects: 0,

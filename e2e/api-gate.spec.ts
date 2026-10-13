@@ -52,8 +52,8 @@ for (const { path, body } of EVAL_ROUTES) {
   });
 }
 
-// The two PUBLIC, non-Entra coding routes (AGENTS.md lists exactly two such
-// surfaces besides GET /api/files). They authenticate with a per-user API key,
+// The PUBLIC, non-Entra coding routes (AGENTS.md lists them as the one such
+// surface). They authenticate with a per-user API key,
 // so their rejection is OpenAI-shaped rather than WWW-Authenticate — but the
 // "not a sign-in redirect" property is identical, and it is the whole reason
 // they carry their own exclusion.

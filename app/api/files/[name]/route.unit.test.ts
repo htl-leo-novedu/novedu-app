@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// GET is the only UNAUTHENTICATED surface of the YAML Files feature; PUT on the
-// same URL is a bearer-teacher upsert. The GET tests pin its status mapping:
-// malformed name → 404 (no DB hit), DB error → 503 (transient, not "missing"),
-// no active version → 404, active version → 200 raw YAML with no-store. The
-// PUT tests pin the 401/403 matrix (real auth gate over a stubbed `getSession`),
-// the body checks, and the upsert-reason → status mapping. The pure
-// validateFileName stays real; getActiveFile and the file service are mocked.
+// GET and PUT on one URL, both teacher-bearer only (real auth gate over a stubbed
+// `getSession`). The GET tests pin the gate running FIRST (no store lookup for an
+// unauthenticated or student caller — no existence oracle) and its status mapping:
+// malformed name → 404 (no DB hit), DB error → 503 (transient, not "missing"), no
+// active version → 404, active version → 200 raw YAML with no-store. The PUT tests
+// pin the 401/403 matrix, the body checks, and the upsert-reason → status mapping.
+// The pure validateFileName stays real; getActiveFile and the file service are
+// mocked.
 
 const mocks = vi.hoisted(() => ({
   getActiveFile: vi.fn(),
@@ -30,8 +31,11 @@ import { GET, PUT } from "./route";
 
 const getSession = vi.mocked(auth.api.getSession);
 
-const req = () => new Request("http://localhost/api/files/whatever");
-const call = (name: string) => GET(req(), { params: Promise.resolve({ name }) });
+const req = (token?: string) =>
+  new Request("http://localhost/api/files/whatever", {
+    headers: token === undefined ? {} : { authorization: `Bearer ${token}` },
+  });
+const call = async (name: string) => GET(req(await mint()), { params: Promise.resolve({ name }) });
 
 async function mint(teacher = true): Promise<string> {
   getSession.mockResolvedValue(
@@ -66,6 +70,28 @@ beforeEach(() => {
   mocks.resolveAppOriginOr.mockResolvedValue("https://app.example");
 });
 
+describe("GET /api/files/[name] auth", () => {
+  it("401s without a token, with WWW-Authenticate, before any lookup", async () => {
+    const res = await GET(req(), { params: Promise.resolve({ name: "exam-quiz" }) });
+    expect(res.status).toBe(401);
+    expect(res.headers.get("www-authenticate")).toBe("Bearer");
+    expect(await res.json()).toEqual({ message: "Unauthorized" });
+    expect(mocks.getActiveFile).not.toHaveBeenCalled();
+  });
+
+  it("answers a malformed name the same 401 — no oracle before the gate", async () => {
+    const res = await GET(req(), { params: Promise.resolve({ name: "bad name!" }) });
+    expect(res.status).toBe(401);
+  });
+
+  it("403s a student token without reading the file", async () => {
+    const res = await GET(req(await mint(false)), { params: Promise.resolve({ name: "exam" }) });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ message: "Forbidden" });
+    expect(mocks.getActiveFile).not.toHaveBeenCalled();
+  });
+});
+
 describe("GET /api/files/[name]", () => {
   it("404s a malformed name without hitting the database", async () => {
     const res = await call("bad name!");
@@ -96,7 +122,7 @@ describe("GET /api/files/[name]", () => {
 });
 
 describe("PUT /api/files/[name] auth", () => {
-  it("401s without a token, with WWW-Authenticate — the public GET never implies a public PUT", async () => {
+  it("401s without a token, with WWW-Authenticate", async () => {
     const res = await putRequest("linked-lists", { content: "id: x\n" });
     expect(res.status).toBe(401);
     expect(res.headers.get("www-authenticate")).toBe("Bearer");

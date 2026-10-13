@@ -99,10 +99,12 @@ export function EditFileForm({
       </div>
 
       <Field>
-        <FieldLabel htmlFor="public-file-url">Public URL (use this in a tutor code)</FieldLabel>
+        <FieldLabel htmlFor="file-url">
+          File URL (for codes and novedu-cli; students cannot read it)
+        </FieldLabel>
         <div className="flex items-center gap-2">
           <Input
-            id="public-file-url"
+            id="file-url"
             className="min-w-0 flex-1 font-mono"
             readOnly
             value={publicUrl}

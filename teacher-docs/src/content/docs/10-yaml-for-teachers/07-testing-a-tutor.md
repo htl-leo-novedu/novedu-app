@@ -101,7 +101,7 @@ Write `required_tools` only where the tool really is the point, such as a practi
 npx @novedu/cli validate ./sorting-tutor.eval.yaml --kind eval
 ```
 
-This checks the eval file offline: no sign-in, no AI call, no cost. It also checks the tutor the file points at, and that every tool you required is one that tutor actually grants, so a typo never costs you a paid run.
+This checks the eval file offline: no sign-in, no AI call, no cost. It also checks the tutor the file points at, and that every tool you required is one that tutor actually grants, so a typo never costs you a paid run. If the tutor is a file you uploaded on the Novedu Files page, the check reads it with your teacher sign-in (`npx @novedu/cli login`), because only teachers can read uploaded files.
 
 ## Run it against the real tutor
 

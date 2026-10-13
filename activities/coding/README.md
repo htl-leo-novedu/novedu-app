@@ -231,7 +231,8 @@ The server fetches your activity over the internet, so it must be at a **public
 
 The easiest option is to **host it in the app itself** — no GitHub needed. On the
 **YAML Files** page (`/files`) create a file of kind **Coding**; it is served at
-`https://<origin>/api/files/<name>` and drops straight into a code. The file is
+`https://<origin>/api/files/<name>` and drops straight into a code. Students cannot
+read an uploaded file — only the app does, to run the activity. The file is
 **validated when you save it**.
 
 Alternatively, put the `.yaml` in a public GitHub repo and use its **raw** URL

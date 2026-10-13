@@ -118,6 +118,16 @@ prose carries everything an editor needs.
   exit code reflects run health only: an invalid file, a call that errored, a case
   the run never reached.
 
+## 20-building-activities/01-handling-yaml
+
+- Uploaded files are readable only by teachers: students cannot read one even with
+  its name or address, and a browser opening the address gets nothing, a teacher's
+  browser included (teachers view files on the Files page; the CLI reads them after
+  `novedu-cli login`). Never call an uploaded file's address "public".
+- Hosted images are the opposite: any signed-in user, students included, can open
+  one. Do not let the chapter suggest an exam is private end to end if it shows
+  hosted images.
+
 ## 20-building-activities/02-available-llms
 
 - The per-code override's provider and model are both-or-nothing, and a reasoning

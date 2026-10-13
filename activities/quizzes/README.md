@@ -421,7 +421,9 @@ The easiest option is GitHub:
 Alternatively, **host the quiz in the app itself** — no GitHub needed. On the
 **YAML Files** page (`/files`) a teacher can create, edit and version a quiz file
 (kind **Quiz**); it is served at `https://<origin>/api/files/<name>` and drops
-straight into a quiz code. The file is **validated when you save it**.
+straight into a quiz code. Students cannot read an uploaded file — not its
+questions, not its `evaluation` prompts — so it suits an exam. The file is
+**validated when you save it**.
 
 A quiz is shared like any activity: mint a **code** pointing at the quiz URL and
 hand the `/<code>` link to students.

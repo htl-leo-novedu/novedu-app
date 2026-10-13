@@ -652,8 +652,8 @@ tutor's published URL, so the library must be pushed too.)
 
 Alternatively, **host your files in the app itself** — no GitHub or external storage
 needed. On the **YAML Files** page (`/files`) a teacher can create, edit and version a
-tutor or fragment file; each is served at a public URL `https://<origin>/api/files/<name>`
-that drops straight into a tutor code. The file is validated when you save it, sibling
+tutor or fragment file; each is served at `https://<origin>/api/files/<name>`, a URL
+that drops straight into a tutor code and that students cannot read. The file is validated when you save it, sibling
 hosted files can be referenced by relative name (`./<other-name>`), and editing always
 serves the latest version. This is the easiest option when the app is deployed for you.
 

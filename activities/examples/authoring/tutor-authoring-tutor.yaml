@@ -205,8 +205,9 @@ prompt:
 
     # Hosting and validation
 
-    - Files must be reachable at a public https URL. Easiest: the app's YAML
-      Files page (`/files`) hosts and versions them at
+    - Files must be reachable at a public https URL or uploaded to the app.
+      Easiest: the app's YAML Files page (`/files`) hosts and versions them,
+      readable only by teachers (students cannot open them), at
       `https://<origin>/api/files/<name>`; sibling hosted files can be
       referenced relatively (`./<other-name>`). A public GitHub repo's raw
       URLs work too. Relative fragment URLs resolve next to the tutor's own
