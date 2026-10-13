@@ -3,13 +3,13 @@ import { getStoredMessages, LIVE_TUTOR_URL, mintTutorCode } from "./code.utils";
 
 // REGRESSION GUARD for the "replayed history" persistence bug (issue #28).
 //
-// CopilotKit/AG-UI re-sends the ENTIRE conversation on every run. Without the
-// route-level `trimToNewTurn` fix, Mastra re-persisted that whole history each
-// turn (fresh ids), so a k-turn chat ballooned to k·(k+1) rows — the early
-// turns stored over and over. This is the ONE thing a unit test can't prove: it
-// needs the real chat → real Mastra → real database round-trip. The route unit
-// test asserts we FORWARD a trimmed body; this asserts Mastra then STORES only
-// the new turn. The replies come from the fake LLM (docs/testing.md, "Fake LLM")
+// CopilotKit/AG-UI re-sends the ENTIRE conversation on every run. The route
+// forwards it untouched and relies on `@ag-ui/mastra` dropping the messages the
+// thread's memory already holds (by id); if that ever stops working, Mastra
+// re-persists the whole history each turn and a k-turn chat balloons to
+// k·(k+1) rows — the early turns stored over and over. This is the ONE thing a
+// unit test can't prove: it needs the real chat → real Mastra → real database
+// round-trip, asserting Mastra STORES only the new turn. The replies come from the fake LLM (docs/testing.md, "Fake LLM")
 // — their content is irrelevant here.
 //
 // @live-db: it reads the stored messages through e2e/db.ts — runs in CI.

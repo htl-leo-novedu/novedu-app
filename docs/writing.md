@@ -303,8 +303,8 @@ against the shared `scchProvider`). The keys are distinct from the other agents'
 a request for one can never satisfy another (defense in depth on top of the runtime
 route's agent gating). It is **memory-backed** exactly like `tutorAgent` and the
 quiz discussion agent — `lastMessages` window (40), **no** semantic recall — so a
-thread persists and earlier turns reach the model through the recalled window after
-`trimToNewTurn`. `resourceId = the code`, set by the runtime route.
+thread persists and earlier turns reach the model through the recalled window.
+`resourceId = the code`, set by the runtime route.
 
 Because `getCurrentText` is the only tool and it cannot mutate, and because the
 agent is just another `runtime.agentId` on its descriptor, the runtime route gates

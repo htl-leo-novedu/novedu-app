@@ -104,7 +104,7 @@ import {
 } from "@/lib/thread-token";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
 import { studentModeCookies, TEST_SESSION_ID } from "@/tests/mocks/student-mode-cookies";
-import { GET, POST, trimToNewTurn } from "./route";
+import { GET, POST } from "./route";
 
 const CODE = "a1b2c3d4e5";
 const USER_ID = "user-1";
@@ -754,32 +754,10 @@ describe("attribution after a run", () => {
   });
 });
 
-describe("trimToNewTurn (replayed-history trimming)", () => {
-  it("keeps the turn after the last assistant reply, dropping the replayed prefix", () => {
-    const messages = [
-      { role: "user", content: "hi" },
-      { role: "assistant", content: "hello" },
-      { role: "user", content: "u2" },
-      { role: "assistant", content: "a2" },
-      { role: "user", content: "u3 — the new turn" },
-    ];
-    expect(trimToNewTurn(messages)).toEqual([{ role: "user", content: "u3 — the new turn" }]);
-  });
-
-  it("passes the first turn through unchanged (no assistant message yet)", () => {
-    const messages = [{ role: "user", content: "first message" }];
-    expect(trimToNewTurn(messages)).toBe(messages);
-  });
-
-  it("does not trim to empty when the history ends with an assistant message", () => {
-    const messages = [
-      { role: "user", content: "u1" },
-      { role: "assistant", content: "a1" },
-    ];
-    expect(trimToNewTurn(messages)).toBe(messages);
-  });
-
-  it("forwards a run with only the new turn in its body", async () => {
+describe("run message history", () => {
+  // The route forwards the body untouched: `@ag-ui/mastra` drops the messages
+  // the thread's memory already holds, so only the new turn is stored.
+  it("forwards a run with its full message history", async () => {
     const threadId = crypto.randomUUID();
     const messages = [
       { role: "user", content: "hi" },
@@ -790,7 +768,7 @@ describe("trimToNewTurn (replayed-history trimming)", () => {
     expect(res.status).toBe(200);
     const forwarded = endpointFetch.mock.calls[0]?.[0] as Request;
     const body = (await forwarded.json()) as { messages: unknown[]; threadId: string };
-    expect(body.messages).toEqual([{ role: "user", content: "the new turn" }]);
+    expect(body.messages).toEqual(messages);
     expect(body.threadId).toBe(threadId);
   });
 });

@@ -435,16 +435,18 @@ Today only per-thread `lastMessages` is configured — keep it that way or re-th
 the scoping first.
 
 **Only the new turn is persisted per run.** CopilotKit/AG-UI re-sends the ENTIRE
-client-side history on every run, and Mastra persists whatever messages it is
-handed (each with a fresh id) — so forwarding the whole history re-stores every
-prior turn again, ballooning a conversation quadratically (`@mastra/memory`'s own
-docs warn against this). The runtime route therefore trims each `run` body to the
-turn AFTER the last assistant reply (`trimToNewTurn`) before forwarding it; prior
-turns are already stored, so Mastra appends only the new user message + its reply.
-The flip side: the model's whole view of the conversation is then the recalled
-`lastMessages` window (currently **40** ≈ 20 exchanges, in `tutor-agent.ts` /
-`quiz-agents.ts`) — raise it if longer sessions must see further back.
-Conversations recorded without this trimming hold telescoped duplicates; the
+client-side history on every run, and the runtime route forwards it untouched. The
+`@ag-ui/mastra` bridge recalls the thread from memory and drops every incoming
+message whose id is already stored (message ids survive the round-trip), so the
+agent is handed — and Mastra appends — only the new user message + its reply. Two
+edges of that diff: when every incoming message is already stored, or the recall
+throws, the bridge forwards the full history; Mastra's Postgres store upserts
+messages by id, so that run stores no duplicate rows, but the model sees the
+re-sent history on top of the recalled window for that one turn. Otherwise the
+model's whole view of the conversation is the recalled `lastMessages` window
+(currently **40** ≈ 20 exchanges, in `tutor-agent.ts` / `quiz-agents.ts`) — raise
+it if longer sessions must see further back. Older conversations (recorded when
+Mastra stored the re-sent history under fresh ids) hold telescoped duplicates; the
 viewer collapses them on read (see below).
 
 ## Stats & conversation viewer
@@ -801,8 +803,8 @@ in-page discussion live in `app/[code]/_quiz/`.
   returns only `{ threadId, threadToken }`. The modal shows the graded **feedback**
   on top, then a live `CopilotChat` (agentId `"quizDiscussion"`) that starts
   visually empty (explicit-threadId `connect` replays only the in-process run
-  cache) while the model recalls the full seeded context from memory. A follow-up
-  is the only NEW turn, so `trimToNewTurn` keeps the DB from re-storing the seeds.
+  cache) while the model recalls the full seeded context from memory. The seeds
+  never reach the client, so a follow-up run carries only the new turn.
 
 ## Lifecycle
 
