@@ -243,7 +243,8 @@ The easiest option is GitHub:
 Alternatively, **host the activity in the app itself** — no GitHub needed. On the
 **YAML Files** page (`/files`) a teacher can create, edit and version a writing
 file (kind **Writing**); it is served at `https://<origin>/api/files/<name>` and
-drops straight into a code. The file is **validated when you save it**.
+drops straight into a code. Students cannot read an uploaded file. The file is
+**validated when you save it**.
 
 An activity is shared like any other: mint a **code** pointing at the writing URL
 and hand the `/<code>` link to students.

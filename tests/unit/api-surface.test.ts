@@ -15,7 +15,6 @@ const NON_BEARER_HANDLERS: Record<string, string> = {
   "GET /api/auth/[...all]": "better-auth's own endpoints (sign-in, OAuth, device flow)",
   "POST /api/auth/[...all]": "better-auth's own endpoints (sign-in, OAuth, device flow)",
   "GET /api/version": "public build-identity probe, no data beyond the build",
-  "GET /api/files/[name]": "public raw-YAML GET (the tutor-code loader fetches it)",
   "POST /api/coding/v1/chat/completions": "public coding route, per-user API key",
   "GET /api/coding/v1/models": "public coding route, per-user API key",
   "GET /api/copilotkit/[[...slug]]": "cookie-session chat runtime (checkCode + thread token)",

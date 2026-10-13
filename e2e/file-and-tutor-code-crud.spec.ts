@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { unixSecondsToDatetimeLocal } from "../lib/datetime-local";
+import { mintSessionToken } from "./api-auth.utils";
 import { TEACHER_STORAGE_STATE } from "./auth.constants";
 import { VALID_CODING_URL, VALID_TUTOR_URL } from "./code.utils";
 import { setEditorContent } from "./page.utils";
@@ -25,6 +26,13 @@ fragments:
     version: 2
     content: "Hello from version two"
 `;
+
+// The raw-YAML GET is teacher-bearer only (the CLI's channel), never the
+// browser's cookie session — so read a file the way `novedu-cli` does.
+async function getRawFile(page: Page, path: string) {
+  const token = await mintSessionToken({ teacher: true });
+  return page.request.get(path, { headers: { authorization: `Bearer ${token}` } });
+}
 
 async function applyFilter(page: Page, label: string, term: string): Promise<void> {
   await page.getByLabel(label).fill(term);
@@ -76,7 +84,7 @@ test("CRUD on a hosted file and a tutor link, with DB-side filtering", {
   await applyFilter(page, "Filter files", "no-such-file-xyz");
   await expect(page.getByText("No files match your filter.")).toBeVisible();
 
-  // FILE — update: edit to v2, the public GET then serves v2.
+  // FILE — update: edit to v2, the raw GET then serves v2.
   await applyFilter(page, "Filter files", fileName);
   await page
     .getByRole("row")
@@ -87,12 +95,12 @@ test("CRUD on a hosted file and a tutor link, with DB-side filtering", {
   await setEditorContent(page, FRAGMENT_V2);
   await page.getByRole("button", { name: "Validate & save" }).click();
   await expect(page.getByText("Saved")).toBeVisible();
-  const fileRes = await page.request.get(fileUrl);
+  const fileRes = await getRawFile(page, fileUrl);
   expect(await fileRes.text()).toContain("Hello from version two");
 
   // FILE — delete (via the list's "Delete Selected" — the only list delete path).
   await bulkDeleteRow(page, "/files", "Filter files", fileName);
-  expect((await page.request.get(fileUrl)).status()).toBe(404);
+  expect((await getRawFile(page, fileUrl)).status()).toBe(404);
 
   // =========================================================================
   // TUTOR LINK — create (sharing the fixture tutor YAML, VALID_TUTOR_URL)
@@ -314,7 +322,7 @@ test("the files list pages, sorts and multi-deletes — all DB-side", {
   // Both rows are gone and neither file is served any more.
   for (const name of names) {
     await expect(page.getByRole("row").filter({ hasText: name })).toHaveCount(0);
-    expect((await page.request.get(`/api/files/${name}`)).status()).toBe(404);
+    expect((await getRawFile(page, `/api/files/${name}`)).status()).toBe(404);
   }
   expect(dialogMessage).toContain("2 files");
 });

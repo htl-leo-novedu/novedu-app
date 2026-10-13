@@ -54,7 +54,7 @@ The question ids must match the quiz. For a final quiz assembled from several ch
 npx @novedu/cli validate ./sorting-quiz.eval.yaml --kind eval
 ```
 
-This checks the eval file offline: no sign-in, no AI call, no cost. It also checks the quiz the file points at and that every question id really exists there, so a typo never costs you a paid run.
+This checks the eval file offline: no sign-in, no AI call, no cost. It also checks the quiz the file points at and that every question id really exists there, so a typo never costs you a paid run. If the quiz is a file you uploaded on the Novedu Files page, the check reads it with your teacher sign-in (`npx @novedu/cli login`), because only teachers can read uploaded files.
 
 ## Run it against the real grader
 

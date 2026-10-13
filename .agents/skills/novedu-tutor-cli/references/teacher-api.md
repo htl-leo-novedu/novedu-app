@@ -27,7 +27,8 @@ reports resolve <id...>
 
 ## `codes create`
 
-The YAML at `--file <url>` — public, or an app-hosted `…/api/files/<name>` URL —
+The YAML at `--file <url>` — public, or an app-hosted `…/api/files/<name>` URL
+(teacher-only to read, but the server reads it from its own database) —
 is validated server-side before the code is stored, running the identical
 pipeline as the web forms. The response includes the shareable `url`; hand that
 to students.

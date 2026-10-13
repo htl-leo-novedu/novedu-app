@@ -240,7 +240,7 @@ export default async function CodesPage({
             // A plain <a>, not <Link>: opening in a new tab is always a full
             // document load (next/link bails out of client navigation for any
             // target other than _self), so <Link> would only add a prefetch
-            // whose payload can never be used. Same as /files' "Open raw YAML".
+            // whose payload can never be used.
             <a
               href={`/${row.code}`}
               className={iconButtonVariants()}

@@ -62,8 +62,10 @@ test("file upsert → file list → code create → code list, over real HTTP", 
     expect(createdBody).toMatchObject({ name: FILE_NAME, kind: "fragment", action: "created" });
     expect(createdBody.url).toContain(`/api/files/${FILE_NAME}`);
 
-    // The public GET serves what was uploaded.
-    expect(await (await request.get(`/api/files/${FILE_NAME}`)).text()).toBe(FRAGMENT_V1);
+    // The teacher-bearer GET serves what was uploaded.
+    expect(await (await request.get(`/api/files/${FILE_NAME}`, { headers })).text()).toBe(
+      FRAGMENT_V1,
+    );
 
     // UPDATE: same PUT, no kind needed; a WRONG kind fails loudly instead.
     const mismatch = await request.put(`/api/files/${FILE_NAME}`, {
@@ -79,7 +81,9 @@ test("file upsert → file list → code create → code list, over real HTTP", 
     });
     expect(updated.status()).toBe(200);
     expect(await updated.json()).toMatchObject({ action: "updated", kind: "fragment" });
-    expect(await (await request.get(`/api/files/${FILE_NAME}`)).text()).toBe(FRAGMENT_V2);
+    expect(await (await request.get(`/api/files/${FILE_NAME}`, { headers })).text()).toBe(
+      FRAGMENT_V2,
+    );
 
     // LIST files: the default (mine=on) list of the uploading teacher finds it.
     const files = await request.get(`/api/files?q=${FILE_NAME}`, { headers });

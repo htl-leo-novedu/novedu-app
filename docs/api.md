@@ -224,11 +224,16 @@ any page, and its handler re-validates the session itself on top of that.
   spells it `?owner=`). Bare JSON array of active
   versions **without content**:
   `{ name, kind, title, description, createdBy, ownerName, createdAt, url }`
-  (`ownerName` as on `GET /api/codes`; `url` the
-  public download URL; download itself needs nothing new — the per-name GET
-  is public).
-- **`PUT /api/files/<name>`** (`app/api/files/[name]/route.ts`, teacher-only;
-  the GET on the same URL stays public) — **upsert** via `upsertFileForUser`
+  (`ownerName` as on `GET /api/codes`; `url` the file's URL — the one a code
+  references and the per-name GET below serves).
+- **`GET /api/files/<name>`** (`app/api/files/[name]/route.ts`, teacher-only) —
+  the active version as raw `text/yaml` (`no-store`): how `novedu-cli`
+  `validate` / `prompts` / `eval` read an uploaded file. The gate runs before any
+  name check or lookup (no existence oracle); then `404` for a malformed, unknown
+  or deleted name, `503` on a DB error. No cookie session and no student mode — the
+  server's own loaders read uploaded files from the database instead
+  (`docs/files.md`).
+- **`PUT /api/files/<name>`** (same file, teacher-only) — **upsert** via `upsertFileForUser`
   (`lib/file-service.ts`): create if the name is free (`kind` then required —
   a missing one fails naming the five kinds), else a new version validated
   against the **stored** kind; a supplied `kind` that mismatches the stored
@@ -243,7 +248,7 @@ any page, and its handler re-validates the session itself on top of that.
   is the per-version row id and `url` the absolute
   `/api/image-content/<id>` link, which only resolves bytes for a **signed-in
   browser session** (`docs/images.md`) — not a programmatic download endpoint.
-  Unlike `/api/files` there is **no public GET** anywhere under this prefix.
+  There is no raw-bytes GET on the bearer channel under this prefix.
 - **`POST /api/images/<name>`** (`app/api/images/[name]/route.ts`,
   teacher-only) — ONE `multipart/form-data` request that carries the bytes to
   the app and returns the confirmed result — no slot, no confirm step. Fields:
@@ -376,7 +381,7 @@ any page, and its handler re-validates the session itself on top of that.
   the `proxy.ts` matcher (`api/me(?:/|$)`, `api/codes(?:/|$)`,
   `api/reports(?:/|$)`, `api/images(?:/|$)`, `api/eval(?:/|$)` — which bounds ALL THREE
   eval routes) — never a blanket `/api` prefix. The files handlers ride
-  the public `api/files` exclusion and self-gate. Adding a bearer endpoint = new route
+  the `api/files(?:/|$)` exclusion and self-gate. Adding a bearer endpoint = new route
   file gated by `requireBearerUser`/`requireBearerTeacher` + its own matcher
   exclusion + documentation here. `tests/unit/api-surface.test.ts` checks every `api/`
   matcher exclusion is path-bounded (`(?:/|$)`), probes which paths run the proxy,
@@ -539,8 +544,8 @@ any page, and its handler re-validates the session itself on top of that.
   a valid session → `{ userId, name, isTeacher }`, the teacher gate's 403, and
   that a cookie-only request (no `Authorization` header) never authenticates.
 - **Route unit tests** (`app/api/codes/route.unit.test.ts`,
-  `app/api/files/route.unit.test.ts`, the PUT cases in
-  `app/api/files/[name]/route.unit.test.ts`, the two images routes —
+  `app/api/files/route.unit.test.ts`, `app/api/files/[name]/route.unit.test.ts`
+  (GET and PUT), the two images routes —
   `app/api/images/route.unit.test.ts`,
   `app/api/images/[name]/route.unit.test.ts` — and the three reports
   routes — `app/api/reports/route.unit.test.ts`,
