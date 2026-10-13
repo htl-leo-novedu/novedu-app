@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   loadWriting: vi.fn(),
   loadAndCheckWriting: vi.fn(),
   loadAndCheckCoding: vi.fn(),
+  // The server's YAML fetcher as a sentinel (resolution: app-hosted-fetcher's test).
+  serverFetcher: vi.fn(),
 }));
 
 vi.mock("@/lib/tutors", () => ({
@@ -21,8 +23,10 @@ vi.mock("@/lib/tutors", () => ({
 }));
 vi.mock("@/lib/prompt-fragments", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/prompt-fragments")>()),
-  defaultFetcher: {},
   loadAndCheckFragmentFile: mocks.loadAndCheckFragmentFile,
+}));
+vi.mock("@/lib/app-hosted-fetcher", () => ({
+  serverYamlFetcher: async () => mocks.serverFetcher,
 }));
 vi.mock("@/lib/quiz-fetch", () => ({ loadQuiz: mocks.loadQuiz }));
 vi.mock("@/lib/quiz-validate", () => ({ loadAndCheckQuiz: mocks.loadAndCheckQuiz }));
@@ -284,8 +288,9 @@ describe("readAnonymousFlag (runtime-light, by FileKind)", () => {
   it("tutor → reads the built flag WITHOUT the heavy library check", async () => {
     mocks.loadAndBuildTutorPrompt.mockResolvedValue({ ok: true, anonymous: false });
     expect(await readAnonymousFlag("tutor", URL_)).toEqual({ anonymous: false, definitive: true });
-    // Called with the default fetcher and NO { validateLibraries: true } option.
-    expect(mocks.loadAndBuildTutorPrompt).toHaveBeenCalledWith(URL_, {});
+    // Called with the server fetcher (app-hosted files from the DB, never a
+    // loopback) and NO { validateLibraries: true } option.
+    expect(mocks.loadAndBuildTutorPrompt).toHaveBeenCalledWith(URL_, mocks.serverFetcher);
   });
 
   it("writing → reads the live flag via loadWriting, DEFAULTING to false (definitive)", async () => {

@@ -1,6 +1,7 @@
 import { Agent } from "@mastra/core/agent";
 import type { RequestContext } from "@mastra/core/request-context";
 import { Memory } from "@mastra/memory";
+import { serverYamlFetcher } from "@/lib/app-hosted-fetcher";
 import { providerUnavailableReason } from "@/lib/llm/availability";
 import {
   type LlmProvider,
@@ -8,7 +9,6 @@ import {
   parseLenientReasoningLevel,
   type ReasoningLevel,
 } from "@/lib/llm/provider";
-import { defaultFetcher } from "@/lib/prompt-fragments";
 import { loadAndBuildTutorPrompt } from "@/lib/tutors";
 import { modelEntry } from "./model-entry";
 import { reasoningStrippingProcessor } from "./reasoning-processor";
@@ -57,8 +57,9 @@ function loadTutor(requestContext: RequestContext): Promise<LoadedTutor> {
   const inFlight = perRequestBuild.get(requestContext);
   if (inFlight) return inFlight;
 
-  const promise = loadAndBuildTutorPrompt(tutorUrl(requestContext), defaultFetcher).then(
-    (result) => {
+  const promise = serverYamlFetcher()
+    .then((fetcher) => loadAndBuildTutorPrompt(tutorUrl(requestContext), fetcher))
+    .then((result) => {
       if (!result.ok) {
         const first = result.errors[0];
         throw new Error(
@@ -82,8 +83,7 @@ function loadTutor(requestContext: RequestContext): Promise<LoadedTutor> {
       const unavailable = providerUnavailableReason(provider);
       if (unavailable) throw new Error(unavailable);
       return { prompt: result.prompt, model, provider, reasoning, tools: result.tools };
-    },
-  );
+    });
 
   perRequestBuild.set(requestContext, promise);
   return promise;

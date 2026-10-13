@@ -8,6 +8,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // (providerUnavailableReason) stays real, driven via the env.
 
 const loadAndBuildTutorPrompt = vi.hoisted(() => vi.fn());
+// The server's YAML fetcher (app-hosted URLs from the DB) as a sentinel: its own
+// resolution is lib/app-hosted-fetcher.unit.test.ts's; here only that the agent
+// loads through it — never a plain network fetch.
+const serverFetcher = vi.hoisted(() => vi.fn());
 const resolveLanguageModel = vi.hoisted(() => vi.fn());
 // The providerOptions KEY is @ai-sdk package trivia owned by lib/llm/model.ts (and
 // asserted there); a sentinel keeps these tests about which LEVEL won.
@@ -24,10 +28,7 @@ vi.mock("@mastra/core/agent", () => ({
 }));
 vi.mock("@mastra/memory", () => ({ Memory: class {} }));
 vi.mock("@/lib/tutors", () => ({ loadAndBuildTutorPrompt }));
-vi.mock("@/lib/prompt-fragments", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/prompt-fragments")>()),
-  defaultFetcher: {},
-}));
+vi.mock("@/lib/app-hosted-fetcher", () => ({ serverYamlFetcher: async () => serverFetcher }));
 vi.mock("@/lib/llm/model", () => ({ resolveLanguageModel, reasoningOptionsKey }));
 
 import {
@@ -88,8 +89,12 @@ describe("tutorAgent per-request resolution", () => {
     // key at all, so the model's own default effort applies.
     expect(entries).toEqual([{ model: "resolved-model" }]);
     expect(entries[0]).not.toHaveProperty("providerOptions");
-    // Both resolvers share ONE request-scoped build.
+    // Both resolvers share ONE request-scoped build, read through the server fetcher.
     expect(loadAndBuildTutorPrompt).toHaveBeenCalledTimes(1);
+    expect(loadAndBuildTutorPrompt).toHaveBeenCalledWith(
+      "https://example.com/t.yaml",
+      serverFetcher,
+    );
   });
 
   it("carries the YAML's reasoning level as providerOptions on the model entry", async () => {

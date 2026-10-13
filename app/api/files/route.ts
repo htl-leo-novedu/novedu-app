@@ -52,6 +52,7 @@ export async function GET(request: Request) {
         title: entry.title,
         description: entry.description,
         createdBy: entry.createdBy,
+        ownerName: entry.ownerName,
         createdAt: entry.validFrom.toISOString(),
         url: filePublicUrl(origin, entry.name),
       })),

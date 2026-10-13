@@ -6,8 +6,9 @@ and Node 20 is end-of-life). It covers two jobs:
 
 - **Validate activity YAML** — tutors, fragment libraries, quizzes, writing
   activities, coding activities, and eval files — with the app's exact
-  validation pipeline, offline and without signing in. `prompts` dumps the exact
-  system prompts an activity produces, the same way.
+  validation pipeline, offline for local files and external URLs. `prompts` dumps
+  the exact system prompts an activity produces, the same way. A file uploaded to
+  Novedu (`…/api/files/<name>`) is read with your sign-in to that server.
 - **Manage the app as a teacher** — sign in (`login` prints a link to approve in
   your browser), then mint
   activity codes, upload app-hosted YAML files and images, triage student
@@ -52,8 +53,7 @@ npx @novedu/cli validate ./my-quiz.yaml --kind quiz --json
 ## Seeing the exact prompts: `prompts`
 
 `prompts` prints the **exact system prompts** an activity YAML produces — the
-strings the app really sends to the model. Offline and sign-in-free, exactly like
-`validate`.
+strings the app really sends to the model. It reads files exactly like `validate`.
 
 ```bash
 # A tutor's assembled system prompt (summary: kind, id, model, size per prompt)

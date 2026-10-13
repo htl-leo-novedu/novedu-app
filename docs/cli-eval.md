@@ -141,6 +141,10 @@ novedu-cli validate ./welcome-quiz.eval.yaml --kind eval
 novedu-cli validate ./loops-tutor.eval.yaml --kind eval
 ```
 
+A `target` uploaded to Novedu (`…/api/files/<name>`) is read with the CLI's stored
+session token for that server — the same fetcher as `validate` / `prompts`
+(`docs/cli-prompts.md`).
+
 `--kind eval` also runs the **strict check of the TARGET's own kind** — `loadAndCheckQuiz`
 for a quiz eval, the `validateLibraries` tutor build for a tutor eval, i.e. exactly what
 `--kind quiz` / `--kind tutor` run. So validating an eval never asserts less about the

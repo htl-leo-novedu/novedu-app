@@ -12,13 +12,26 @@ export type Fetcher = (url: string) => Promise<FetchResponse>;
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-/** Production fetcher: global `fetch` with an abort-based timeout so a slow host can't hang the request. */
-export const defaultFetcher: Fetcher = async (url) => {
+/** Optional request extras — only the CLI passes them (a bearer header, no redirects). */
+export interface FetchInit {
+  headers?: Record<string, string>;
+  redirect?: RequestInit["redirect"];
+}
+
+/**
+ * Production fetcher: global `fetch` with an abort-based timeout so a slow host can't
+ * hang the request. Follows redirects unless `init.redirect` says otherwise.
+ */
+export async function defaultFetcher(url: string, init: FetchInit = {}): Promise<FetchResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   try {
-    return await fetch(url, { signal: controller.signal, redirect: "follow" });
+    return await fetch(url, {
+      signal: controller.signal,
+      redirect: init.redirect ?? "follow",
+      headers: init.headers,
+    });
   } finally {
     clearTimeout(timeout);
   }
-};
+}

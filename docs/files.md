@@ -178,13 +178,18 @@ and server).
 
 ### App-hosted URL resolution — `lib/app-hosted-fetcher.ts`
 
-Resolving a YAML reference (the save-time validator, the quiz loader, and the GUI's
-`loadYamlFromUrlAction`) goes through one shared resolver, **`appHostedFetcher`** in
-`lib/app-hosted-fetcher.ts`. It handles absolute / relative / app-hosted URLs and
-reads an app-hosted file straight from the DB (`getActiveFile`) instead of a loopback
-HTTP fetch. It is a plain module (NOT `"use server"`), so every server module can
-import it; `lib/files-actions.ts` and `lib/quiz-fetch.ts` both do. Don't reimplement
-this resolution at a call site.
+Every server path that reads activity YAML goes through one shared resolver,
+**`appHostedFetcher`** in `lib/app-hosted-fetcher.ts`: the tutor (the agent, the
+student render, and the `anonymous` read behind attribution and the history gate),
+the quiz / writing / coding loaders (`loadAppHostedYaml`), the save-time validator,
+code creation, and the GUI's `loadYamlFromUrlAction`. A URL starting with
+`<origin>/api/files/` is read straight from the DB (`getActiveFile`) instead of a
+loopback HTTP fetch — `404` when no active file has the name, `503` on a DB error —
+and anything else is fetched for real. The read/serve paths bind the origin
+leniently through `serverYamlFetcher()` (no resolvable origin → a plain fetch); the
+authoring validators resolve it strictly. It is a plain module (NOT `"use server"`),
+so every server module can import it. Don't reimplement this resolution at a call
+site.
 
 ## Public GET endpoint & the access gate
 
@@ -233,3 +238,7 @@ params, not in memory (see `docs/filtered-lists.md`).
   (errors / passed note / warnings, and no save).
 - `e2e/files.spec.ts` — the auth gate (hermetic, runs in CI) and a single `@live`
   create → list → update → soft-delete lifecycle (writes the real DB).
+- `lib/app-hosted-fetcher.unit.test.ts` — the app-hosted resolution: own-origin file
+  from the DB with no network call, `404` / `503`, foreign URLs fetched.
+- `e2e/tutor-hosted.spec.ts` (`@live-db`, CI, fake LLM) — an uploaded tutor placing a
+  fragment from an uploaded sibling library opens and chats.

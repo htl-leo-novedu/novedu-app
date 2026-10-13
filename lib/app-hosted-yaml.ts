@@ -1,5 +1,4 @@
-import { appHostedFetcher } from "@/lib/app-hosted-fetcher";
-import { resolveAppOriginOr } from "@/lib/app-origin";
+import { serverYamlFetcher } from "@/lib/app-hosted-fetcher";
 import type { Fetcher } from "@/lib/prompt-fragments";
 
 // Loads + leniently parses the YAML behind a (verified) activity URL — the single
@@ -10,8 +9,8 @@ import type { Fetcher } from "@/lib/prompt-fragments";
 // database via the SHARED `appHostedFetcher` — the one definition of that
 // loopback-avoiding resolution (a container may not be able to reach its own public
 // origin). Anything else (e.g. a file hosted on GitHub) is fetched for real, uncached,
-// so edits show immediately. Origin is resolved leniently (`resolveAppOriginOr("")`):
-// on the read/serve path we degrade to a network fetch rather than hard-failing the way
+// so edits show immediately. Origin is resolved leniently (`serverYamlFetcher`): on
+// the read/serve path we degrade to a network fetch rather than hard-failing the way
 // the authoring validator does. The friendly `noun` ("quiz", "coding activity", …)
 // personalizes the not-found / could-not-load messages.
 //
@@ -33,8 +32,7 @@ export async function loadAppHostedYaml<R extends { ok: boolean }>(
   ) => Promise<R | { ok: false; message: string }>,
 ): Promise<R | { ok: false; message: string }> {
   try {
-    const origin = await resolveAppOriginOr("");
-    const fetcher = appHostedFetcher(origin);
+    const fetcher = await serverYamlFetcher();
     const res = await fetcher(url);
     if (!res.ok) {
       return res.status === 404

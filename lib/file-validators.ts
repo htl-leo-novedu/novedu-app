@@ -1,9 +1,9 @@
+import { serverYamlFetcher } from "@/lib/app-hosted-fetcher";
 import { loadAndCheckCoding } from "@/lib/coding-validate";
 import type { FileKind } from "@/lib/file-name";
 import { providerUnavailableReason } from "@/lib/llm/availability";
 import type { LlmProvider } from "@/lib/llm/provider";
 import {
-  defaultFetcher,
   type Fetcher,
   loadAndCheckFragmentFile,
   type ValidationError,
@@ -175,7 +175,7 @@ export async function readAnonymousFlag(
       const loaded = await loadQuiz(fileUrl);
       if (loaded.ok) return { anonymous: loaded.quiz.anonymous, definitive: true };
     } else if (kind === "tutor") {
-      const tutor = await loadAndBuildTutorPrompt(fileUrl, defaultFetcher);
+      const tutor = await loadAndBuildTutorPrompt(fileUrl, await serverYamlFetcher());
       if (tutor.ok) return { anonymous: tutor.anonymous, definitive: true };
     } else if (kind === "writing") {
       // Writing DEFAULTS `anonymous: false` (the writing divergence). When the YAML

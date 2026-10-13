@@ -83,13 +83,14 @@ const WIRE_ENTRY = {
   validUntil: null,
   llm: null,
   createdBy: "teacher-oid-1",
+  ownerName: "Test Teacher",
   createdAt: "2026-07-07T07:59:12.000Z",
 };
 
 beforeEach(() => {
   getSession.mockReset();
   getSession.mockResolvedValue(null);
-  mocks.listCodes.mockResolvedValue(unpagedResult([ENTRY]));
+  mocks.listCodes.mockResolvedValue(unpagedResult([{ ...ENTRY, ownerName: "Test Teacher" }]));
   mocks.createCodeForUser.mockResolvedValue({
     ok: true,
     entry: ENTRY,
@@ -142,6 +143,15 @@ describe("GET /api/codes", () => {
       createdBy: undefined,
       module: "quiz",
     });
+  });
+
+  it("names each code's owner from the list row, not the caller", async () => {
+    mocks.listCodes.mockResolvedValue(
+      unpagedResult([{ ...ENTRY, createdBy: "teacher-oid-2", ownerName: "Other Teacher" }]),
+    );
+    const res = await getRequest("?mine=0", await mint());
+    const [row] = await res.json();
+    expect(row).toMatchObject({ createdBy: "teacher-oid-2", ownerName: "Other Teacher" });
   });
 
   it("ignores an unknown module filter", async () => {

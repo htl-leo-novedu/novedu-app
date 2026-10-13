@@ -54,6 +54,7 @@ beforeEach(() => {
         description: "Intro",
         validFrom: new Date("2026-07-07T08:00:00Z"),
         createdBy: "teacher-oid-1",
+        ownerName: "Test Teacher",
       },
     ]),
   );
@@ -93,6 +94,7 @@ describe("GET /api/files", () => {
         title: "Linked Lists",
         description: "Intro",
         createdBy: "teacher-oid-1",
+        ownerName: "Test Teacher",
         createdAt: "2026-07-07T08:00:00.000Z",
         url: "https://app.example/api/files/linked-lists",
       },

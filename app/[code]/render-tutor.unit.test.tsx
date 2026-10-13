@@ -7,15 +7,15 @@ import { describe, expect, it, vi } from "vitest";
 // mocked, so no DB/LLM; runs in CI.
 
 const loadAndBuildTutorPrompt = vi.hoisted(() => vi.fn());
+// The server's YAML fetcher as a sentinel (its resolution is tested in
+// lib/app-hosted-fetcher.unit.test.ts); here only that the render loads through it.
+const serverFetcher = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/tutors", () => ({
   loadAndBuildTutorPrompt,
   sampleExampleQuestions: (q: unknown) => q ?? [],
 }));
-vi.mock("@/lib/prompt-fragments", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/prompt-fragments")>()),
-  defaultFetcher: {},
-}));
+vi.mock("@/lib/app-hosted-fetcher", () => ({ serverYamlFetcher: async () => serverFetcher }));
 // Stub the chat so the happy path needs no CopilotKit/runtime.
 vi.mock("../tutor-chat", () => ({
   TutorChat: ({ code, historyEnabled }: { code: string; historyEnabled: boolean }) => (
@@ -60,6 +60,7 @@ describe("RenderTutor", () => {
     });
     const html = await render();
     expect(html).toContain("chat for a1b2c3d4e5");
+    expect(loadAndBuildTutorPrompt).toHaveBeenCalledWith(entry.fileUrl, serverFetcher);
   });
 
   // "Previous conversations" only when the frozen flag on the code row AND the
