@@ -50,6 +50,16 @@ const EVAL_USAGE_CODE = "cli-eval";
 /** The usage module label for eval runs (its own group in the dashboard). */
 const EVAL_USAGE_MODULE = "eval";
 
+/**
+ * Output-token cap per judgment. A judgment is a short `{ issues }` object, but a
+ * schema-constrained model can get stuck emitting whitespace inside it (observed on
+ * SCCH) and would otherwise run on until the model's own limit — minutes per call.
+ * The cap also covers reasoning tokens (OpenAI-style providers count them against
+ * the same budget), hence the headroom. A judgment cut off by it parses as no
+ * judgment: a retryable 502.
+ */
+export const JUDGE_MAX_OUTPUT_TOKENS = 8192;
+
 const JudgeBodySchema = z.strictObject({
   llm: z.strictObject({
     provider: z.string().optional(),
@@ -137,6 +147,7 @@ export async function POST(request: Request): Promise<Response> {
         // Built from the CALLER's criteria, so the model is constrained to exactly the
         // taxonomy the caller can render — see lib/quiz-feedback-judge.ts.
         structuredOutput: { schema: judgmentSchema(body.criteria) },
+        modelSettings: { maxOutputTokens: JUDGE_MAX_OUTPUT_TOKENS },
         requestContext,
       });
       const object = res.object as { issues?: FeedbackJudgeIssue[] } | undefined;

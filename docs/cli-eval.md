@@ -424,7 +424,10 @@ generation smoke test, `judging: "off"`).
 the sibling of the grade route in every respect: `requireBearerTeacher`, the same
 `api/eval` proxy exclusion, the same 400-terminal / 502-retryable split
 (`lib/llm/upstream-error.ts`), the same optional `usage` derivation, and it **persists
-nothing**. It runs the memory-less Mastra agent **`evalJudge`**.
+nothing**. It runs the memory-less Mastra agent **`evalJudge`**, capped at
+`JUDGE_MAX_OUTPUT_TOKENS` (8192, reasoning included) per judgment: a schema-constrained
+model that gets stuck emitting whitespace stops there instead of at the model's own limit,
+and the cut-off judgment is a retryable `502`.
 
 It is **kind-agnostic by construction**: the judge system prompt, the assembled subject
 AND the criteria taxonomy all arrive in the request body, and the criteria become the

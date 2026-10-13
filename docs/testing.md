@@ -64,10 +64,9 @@ Five kinds of e2e, by the external infra they need beyond that baseline:
   `vendor/model` id resolution — `coding-agent` "via OpenRouter › pi gets a
   non-empty reply from the overridden OpenRouter model" — the coding-proxy path
   through a code's LLM override — and the `health-openrouter` assertions) key on
-  `OPENROUTER_API_KEY`. The judge deliberately has no Foundry leg:
-  it resolves its model through the same `resolveLanguageModel` branch the tutor
-  leg already drives (see `e2e/eval-judge.live.spec.ts`'s header for what that
-  knowingly gives up).
+  `OPENROUTER_API_KEY`, and so do the **judge** probes, which run on OpenRouter
+  (`z-ai/glm-5.3-flash`) — a judge runs on OpenRouter or Foundry in practice, and SCCH's
+  gemma is unreliable under a schema (see `e2e/eval-judge.live.spec.ts`'s header).
   (Such a test is tagged `@live-llm` ONLY — the DB it also uses is implied — so a
   `--grep @live-db` run never selects it.) Every other LLM-backed spec runs against
   the **fake LLM** (see "Fake LLM" below) and is tagged by what it needs beyond it:

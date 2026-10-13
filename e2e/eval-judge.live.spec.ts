@@ -1,3 +1,4 @@
+import { loadEnvConfig } from "@next/env";
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import type { EvalConversationTurn } from "@/lib/eval-schema";
@@ -26,24 +27,28 @@ import { mintSessionToken } from "./api-auth.utils";
 // design time caught, including the weakest. Do NOT weaken a probe to chase determinism:
 // a probe a real judge misses is signal, not flake.
 //
-// SCCH only, by choice. The provider branch this route takes is `resolveLanguageModel`,
-// the same one `e2e/tutor-chat-reply.spec.ts` already drives against Foundry, so a
-// Foundry leg here would re-prove that branch rather than anything about the judge.
-// KNOWINGLY GIVEN UP: nothing now proves the judge's STRUCTURED OUTPUT (the `issues`
-// schema) round-trips on Foundry, which is a provider-sensitive feature. Restore a
-// one-probe Foundry leg here if a judge ever runs on Foundry in anger.
+// OpenRouter, because a judge runs on OpenRouter or Foundry in practice — and the judge's
+// STRUCTURED OUTPUT (the `issues` schema) is a provider-sensitive feature. SCCH is no
+// judge: under a schema its gemma intermittently emits nothing but whitespace inside the
+// object until the output-token cap. KNOWINGLY GIVEN UP: no Foundry leg yet (a local
+// Foundry token comes from the Novedu tenant, the Foundry resource lives elsewhere).
+// Skipped when OPENROUTER_API_KEY is not set.
 //
 // The teacher token is minted exactly like `e2e/api-management.live.spec.ts` /
 // `api-me.spec.ts`: a real better-auth session token minted straight into
 // `novedu_session` (`api-auth.utils.ts`), under its own principal id.
+
+// Read the dev server's .env the way Next does, so the OPENROUTER_API_KEY skip mirrors
+// exactly what the server sees.
+loadEnvConfig(process.cwd());
 
 // No cookies: this is the bearer channel, and it must succeed on the token ALONE.
 test.use({ storageState: { cookies: [], origins: [] } });
 // Dev compilation of the route + five real model round-trips per test.
 test.setTimeout(180_000);
 
-/** The SCCH default model, pinned like the other `@live-llm` fixtures. */
-const SCCH_MODEL = "RedHatAI/gemma-4-31B-it-FP8-Dynamic";
+/** The OpenRouter model the other `@live-llm` OpenRouter legs pin. */
+const JUDGE_LLM = { provider: "OpenRouter", model: "z-ai/glm-5.3-flash" };
 
 /**
  * The probe set as DATA — one list per eval kind, both fed to the same assertion loop, so
@@ -373,7 +378,8 @@ async function runProbes(
 test("the real judge flags planted feedback violations and leaves good feedback alone", {
   tag: ["@live", "@live-llm"],
 }, async ({ request }) => {
-  await runProbes(request, QUIZ_PROBES, { provider: "SCCH", model: SCCH_MODEL });
+  test.skip(!process.env.OPENROUTER_API_KEY, "OPENROUTER_API_KEY is not set");
+  await runProbes(request, QUIZ_PROBES, JUDGE_LLM);
 });
 
 test("the real judge flags planted tutor-response violations and leaves a good response alone", {
@@ -381,5 +387,6 @@ test("the real judge flags planted tutor-response violations and leaves a good r
 }, async ({ request }) => {
   // The tutor kind's ONLY check. A regression here is not a report-quality nuisance —
   // it means a tutor eval reports nothing at all.
-  await runProbes(request, TUTOR_PROBES, { provider: "SCCH", model: SCCH_MODEL });
+  test.skip(!process.env.OPENROUTER_API_KEY, "OPENROUTER_API_KEY is not set");
+  await runProbes(request, TUTOR_PROBES, JUDGE_LLM);
 });
