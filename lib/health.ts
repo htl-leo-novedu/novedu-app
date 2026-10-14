@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { mastra } from "@/app/mastra";
+import { type FoundryCredentialKind, foundryCredentialKind } from "@/lib/azure-credential";
 import { databaseHost } from "@/lib/db/pool";
 import { verifyImageRoot } from "@/lib/image-fs";
 import {
@@ -90,21 +91,52 @@ export async function checkScch(): Promise<HealthIndicator> {
   }
 }
 
+const FOUNDRY_CREDENTIAL_LABEL: Record<FoundryCredentialKind, string> = {
+  "managed-identity": "managed identity / az login",
+  "service-principal-secret": "service principal, secret",
+  "service-principal-certificate": "service principal, certificate",
+};
+
+// Entra (AADSTS) errors embed the service principal's client id and tenant id;
+// the probe names the credential KIND only, so the configured values are masked.
+function redactFoundryIdentifiers(message: string): string {
+  const masks = [
+    ["AZURE_FOUNDRY_CLIENT_SECRET", "<secret>"],
+    ["AZURE_FOUNDRY_CLIENT_ID", "<client id>"],
+    ["AZURE_FOUNDRY_TENANT_ID", "<tenant id>"],
+  ] as const;
+  return masks.reduce((text, [name, mask]) => {
+    const value = process.env[name];
+    return value ? text.replaceAll(value, mask) : text;
+  }, message);
+}
+
 /**
  * Two-stage Foundry probe covering what is most likely misconfigured: Entra
- * token acquisition (proves the Managed Identity / `az login` identity holds the
+ * token acquisition (proves the configured identity — the Foundry service
+ * principal, or the Managed Identity / `az login` identity — holds the
  * `Cognitive Services OpenAI User` role) and endpoint reachability (a model
- * listing with that token, mirroring the SCCH probe).
+ * listing with that token, mirroring the SCCH probe). The detail names which
+ * kind of credential is in use, never its id or secret.
  */
 export async function checkFoundry(): Promise<HealthIndicator> {
   if (!foundryConfigured()) {
     return { ok: false, detail: "Not configured (AZURE_FOUNDRY_ENDPOINT is missing)." };
   }
+  let credential: string;
+  try {
+    credential = FOUNDRY_CREDENTIAL_LABEL[foundryCredentialKind()];
+  } catch (e) {
+    return { ok: false, detail: errorMessage(e) };
+  }
   let token: string;
   try {
     token = await withTimeout(foundryBearerToken(), "Entra token acquisition", TIMEOUT_MS);
   } catch (e) {
-    return { ok: false, detail: `Entra token acquisition failed: ${errorMessage(e)}` };
+    return {
+      ok: false,
+      detail: `Entra token acquisition (${credential}) failed: ${redactFoundryIdentifiers(errorMessage(e))}`,
+    };
   }
   try {
     const res = await fetch(foundryModelsUrl(), {
@@ -114,7 +146,7 @@ export async function checkFoundry(): Promise<HealthIndicator> {
     });
     if (!res.ok) return { ok: false, detail: `Model listing failed (HTTP ${res.status}).` };
     const json = (await res.json()) as { data?: { id: string }[] };
-    return { ok: true, detail: `${json.data?.length ?? 0} models available.` };
+    return { ok: true, detail: `${json.data?.length ?? 0} models available (${credential}).` };
   } catch (e) {
     return { ok: false, detail: errorMessage(e) };
   }

@@ -43,7 +43,7 @@ See [`docs/azure-runtime-env.md`](docs/azure-runtime-env.md).
 | **Coding proxy** (`app/api/coding/**`, `lib/coding-proxy.ts`, `lib/coding-key-store.ts`) | A **public**, OpenAI-compatible `POST /api/coding/v1/chat/completions` (plus `GET /api/coding/v1/models` as the sanctioned key-validity check) that authenticates with a **per-user API key** minted on the code's page (`novedu_coding_keys`; key row + code row re-verified on every request), appends the teacher's system prompt, pins the model, and streams the upstream's response straight back. See [`docs/coding.md`](docs/coding.md). |
 | **Images** (`app/images/**`, `lib/image-*.ts`) | Teacher-uploaded images stored under a configured filesystem root (`IMAGE_STORAGE_ROOT` — an Azure Files mount in production), streamed through the app on upload and served through the app's own cookie-session route `GET /api/image-content/<id>` — no signed URL of any kind, no direct-to-storage traffic. See [`docs/images.md`](docs/images.md). |
 | **Usage metering** (`lib/usage-store.ts`, `app/mastra/usage-exporter.ts`) | Per-hour token / tool-call / activity counts written off the response path into two anonymity-preserving tables (`novedu_usage_by_code`, `novedu_usage_by_user`), surfaced on the teacher `/usage` dashboard. See [`docs/usage-metering.md`](docs/usage-metering.md) and [`docs/dashboard.md`](docs/dashboard.md). |
-| **LLM providers** (`lib/llm/`, `app/mastra/scch.ts`, `lib/scch-endpoint.ts`) | Three OpenAI-compatible upstreams behind one server-only seam: a self-hosted vLLM GPU server ("SCCH", the default) plus two optional ones — **Azure Foundry** when `AZURE_FOUNDRY_ENDPOINT` is set (passwordless Entra auth, no API key) and **OpenRouter** when `OPENROUTER_API_KEY` is set. The activity YAML's `llm:` block picks provider + model + an optional reasoning level, and a code can override the whole block; endpoints, keys, and tokens stay server-side. See [`docs/ai-models.md`](docs/ai-models.md). |
+| **LLM providers** (`lib/llm/`, `app/mastra/scch.ts`, `lib/scch-endpoint.ts`) | Three OpenAI-compatible upstreams behind one server-only seam: a self-hosted vLLM GPU server ("SCCH", the default) plus two optional ones — **Azure Foundry** when `AZURE_FOUNDRY_ENDPOINT` is set (Entra auth via managed identity / `az login` or a Foundry service principal, no API key) and **OpenRouter** when `OPENROUTER_API_KEY` is set. The activity YAML's `llm:` block picks provider + model + an optional reasoning level, and a code can override the whole block; endpoints, keys, and tokens stay server-side. See [`docs/ai-models.md`](docs/ai-models.md). |
 | **Auth** (`auth.ts`, `proxy.ts`, `lib/api-auth.ts`) | **better-auth** with Microsoft Entra ID as the sign-in provider (the gate is `proxy.ts`, Next 16's name for middleware, which checks only for a session cookie). Any signed-in user passes the gate; teacher-only operations are gated by `TEACHER_GROUP_ID` membership (`session.user.isTeacher`), enforced server-side via `requireEffectiveTeacher()` (which honors "view as student" mode). Sessions are database-backed (`novedu_session`, no cookie cache). See [`docs/auth.md`](docs/auth.md). A second, cookie-free channel serves CLI/API clients: the same **session token as a bearer**, obtained by the CLI's own OAuth device flow, validated on every request by `lib/api-auth.ts` (`requireBearerUser` / `requireBearerTeacher`; no student mode on this channel). See [`docs/api.md`](docs/api.md). |
 | **Teacher docs** (`teacher-docs/`) | The teacher-facing guide as a **hand-maintained Markdown corpus** (`teacher-docs/src/content/docs/` — human-owned chapters, kept current from code changes by hand or via the `novedu-teacher-docs` skill) and an **Astro Starlight site** that renders it (the rest of `teacher-docs/`, an npm workspace) — as HTML pages plus an [llms.txt](https://llmstxt.org) surface for AI agents (`/llms.txt`, `/llms-full.txt`, and a `.md` twin of every chapter). Served **publicly at `https://docs.novedu.at`** from an Azure Static Web App, released by `promote.yml` from the promoted image's commit; the app 308-redirects `/docs/*` there. `npm run docs:dev` for local authoring; the corpus-contract test + site build are the consistency checks. See [`docs/teacher-docs.md`](docs/teacher-docs.md). |
 | **API routes** (`app/api/`) | `copilotkit` (chat runtime), `coding/v1/chat/completions` + `coding/v1/models` (**public** OpenAI-compatible endpoints, per-user API key auth), `files/<name>` (**bearer**, teacher-only: GET the raw YAML for `novedu-cli`, PUT to upsert for `novedu-cli files upload`), `files` + `codes` (**bearer**, teacher-only: list/create/sync for the CLI — see [`docs/api.md`](docs/api.md)), `codes/<code>/conversations` (**bearer**, the code's creator only: the conversation export behind `novedu-cli codes export`, with no student identity), `images` + `images/<name>` (**bearer**, teacher-only: image upload/list for the CLI), `image-content/<id>` (cookie session: serves an image's bytes to any signed-in user), `eval/grade` + `eval/judge` + `eval/respond` (**bearer**, teacher-only: stateless one-shot grading / judging / tutor turns for `novedu-cli eval`), `reports` + `reports/<id>` + `reports/resolve` (**bearer**, teacher-only: report triage for the CLI; a chat report's detail embeds the conversation transcript), `auth` (sign-in), `me` (**bearer-token** identity probe backing `novedu-cli whoami`), `version` (public build-identity probe), `health` (teacher-gated probe). |
@@ -135,9 +135,18 @@ SCCH_API_KEY=your-vllm-api-key
 # --- Azure Foundry (optional) — second LLM provider ---
 # Bare resource endpoint of an Azure OpenAI / Foundry resource. Unset => the app
 # runs without it (Foundry activities are rejected at authoring time and guarded at
-# runtime). Auth is passwordless Entra — your `az login` identity locally, the
-# Managed Identity on Azure; there is NO API key. See docs/ai-models.md.
+# runtime). Auth is Entra — your `az login` identity locally, the Managed Identity
+# on Azure; there is NO API key. See docs/ai-models.md.
 AZURE_FOUNDRY_ENDPOINT=https://your-foundry-resource.cognitiveservices.azure.com
+# Optional: a service principal in the Foundry resource's tenant (reaches a
+# resource in ANY tenant). All of tenant + client id + exactly ONE of secret or
+# PEM certificate (cert + unencrypted key, double-quoted multi-line) — or none.
+# AZURE_FOUNDRY_TENANT_ID=00000000-0000-0000-0000-000000000000
+# AZURE_FOUNDRY_CLIENT_ID=00000000-0000-0000-0000-000000000000
+# AZURE_FOUNDRY_CLIENT_SECRET=your-client-secret
+# AZURE_FOUNDRY_CLIENT_CERTIFICATE="-----BEGIN CERTIFICATE-----
+# ...
+# -----END PRIVATE KEY-----"
 
 # --- OpenRouter (optional) — third LLM provider ---
 # The key alone makes the provider configured. Unset => the app runs without it
@@ -243,7 +252,8 @@ Notes:
 - If `SCCH_BASE_URL` / `SCCH_API_KEY` are unset, the app still starts but no SCCH chat
   models are available (a warning is logged).
 - `AZURE_FOUNDRY_ENDPOINT` and `OPENROUTER_API_KEY` are **optional**: the app boots
-  without either. Activities naming an unconfigured provider are rejected at
+  without either. The Foundry service-principal variables are optional too; a
+  partial set (or a secret AND a certificate) fails on first Foundry use. Activities naming an unconfigured provider are rejected at
   authoring time and gated at runtime with a readable reason, never a raw
   missing-env error (`docs/ai-models.md`). `/health` shows a provider's rows only
   when it is configured.

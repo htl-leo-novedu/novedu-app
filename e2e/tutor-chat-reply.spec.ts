@@ -14,7 +14,8 @@ import { setEditorContent } from "./page.utils";
 // random_number tool test in between runs against the fake LLM instead.
 //
 // - SCCH: the local fixtures server's live-tutor.yaml (a real model).
-// - Azure Foundry: proves Managed-Identity/`az login` auth + deployment-as-model
+// - Azure Foundry: proves Entra auth (Managed Identity / `az login` or the
+//   Foundry service principal) + deployment-as-model
 //   end-to-end through Mastra. Its tutor YAML is authored app-hosted through
 //   /files/new (the quiz.spec pattern). Skipped when AZURE_FOUNDRY_ENDPOINT is
 //   not set. The other module specs stay SCCH-only by design.
@@ -114,8 +115,9 @@ test.describe("via Azure Foundry", () => {
   // /<code> works for any signed-in user, so the teacher session covers both).
   test.use({ storageState: TEACHER_STORAGE_STATE });
 
-  // @live: needs the Foundry endpoint (MI / `az login` with the Cognitive
-  // Services OpenAI User role) + the database — excluded in CI (test:e2e:ci).
+  // @live: needs the Foundry endpoint (an identity with the Cognitive Services
+  // OpenAI User role — MI / `az login`, or the AZURE_FOUNDRY_* service principal)
+  // + the database — excluded in CI (test:e2e:ci).
   test("sending a message gets a non-empty reply from a Foundry tutor", {
     tag: ["@live", "@live-llm"],
   }, async ({ page }) => {

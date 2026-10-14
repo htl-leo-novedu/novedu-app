@@ -10,9 +10,11 @@ import { withTimeout } from "@/lib/promise-timeout";
 // when called, so an SCCH-only deployment never notices this file exists.
 //
 // Auth is Entra, not an API key: `foundryBearerToken()` lazily creates ONE
-// `getBearerTokenProvider` for the process (chain: `az login` locally, Managed
-// Identity on Azure — the app's identity needs the `Cognitive Services OpenAI
-// User` role on the resource). The provider caches the token and refreshes it
+// `getBearerTokenProvider` for the process over `buildCognitiveServicesCredential()`
+// — the Foundry service principal (client secret or certificate) when configured,
+// else the chain of `az login` locally and Managed Identity on Azure; whichever
+// identity it is needs the `Cognitive Services OpenAI User` role on the resource
+// (lib/azure-credential.ts). The provider caches the token and refreshes it
 // before its ~60-minute expiry, so callers just await a fresh bearer per request
 // and never hold a token themselves. `https://ai.azure.com/.default` would work
 // as the scope too; the Cognitive Services one is the canonical scope for
@@ -49,10 +51,11 @@ export const foundryModelsUrl = (): string => `${foundryV1Base()}/models`;
 
 let tokenProvider: (() => Promise<string>) | undefined;
 
-// `AzureCliCredential` shells out to `az` with no subprocess timeout and the
-// Managed Identity leg retries IMDS, so an unbounded acquisition can stall a
-// request forever. 15 s clears a cold `az` run plus the IMDS retry budget while
-// keeping every caller (coding proxy, agent fetch, health probe) bounded.
+// `AzureCliCredential` shells out to `az` with no subprocess timeout, the
+// Managed Identity leg retries IMDS, and a service principal calls the Entra
+// token endpoint, so an unbounded acquisition can stall a request forever. 15 s
+// clears a cold `az` run plus the IMDS retry budget while keeping every caller
+// (coding proxy, agent fetch, health probe) bounded, whichever credential is used.
 export const FOUNDRY_TOKEN_TIMEOUT_MS = 15_000;
 
 export function foundryBearerToken(): Promise<string> {
