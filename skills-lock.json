@@ -37,12 +37,6 @@
       "skillPath": ".github/skills/microsoft-docs/SKILL.md",
       "computedHash": "0acd8d2629937e021d605fd1426e641295909e13bab47cad1153793f5564e85e"
     },
-    "next-browser": {
-      "source": "vercel-labs/next-browser",
-      "sourceType": "github",
-      "skillPath": "skills/next-browser/SKILL.md",
-      "computedHash": "d8e316eaad3004a1de8f6f4e1b1f774a180a65f22bc821ec07eb492a3f2689ae"
-    },
     "skill-creator": {
       "source": "anthropics/skills",
       "sourceType": "github",

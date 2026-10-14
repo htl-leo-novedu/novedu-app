@@ -1,6 +1,6 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
@@ -13,7 +13,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Do **not** push to GitHub unless the user explicitly asks.
 - `CLAUDE.md` is a symlink to **`AGENTS.md`** — edit `AGENTS.md`.
 - ALL documentation (`docs/**`, `teacher-docs/**`, READMEs, activity guides) describes the **current state only** — no change history, no migration notes, no version-gated remarks ("needs ≥ x", "since version y"). The app is an MVP under heavy development; assume the latest app and CLI are what everyone runs. Describing a live compatibility *mechanism* is fine (e.g. "an outdated CLI rejects unknown provider names — use `npx @novedu/cli@latest`"); naming versions is not.
-- Load the **`mastra`** skill before any Mastra work; never rely on cached APIs. Register every agent/tool/workflow/scorer in `app/mastra/index.ts`; use the `dev`/`build` package scripts, never raw `mastra dev`/`mastra build`.
+- Load the **`mastra`** skill before any Mastra work; never rely on cached APIs. Register every agent/tool/workflow/scorer in `app/mastra/index.ts`; use the `dev`/`build` package scripts, never raw `mastra dev`/`mastra build`. Never send a report to Mastra's feedback endpoint (the skill's `references/feedback.md`) without the user's explicit OK for that report.
 - Research current docs before non-trivial work with **Drizzle** ([llms.txt](https://orm.drizzle.team/llms.txt)), **Tailwind v4** (context7 via `ctx7` — CSS-first, differs from training data), or **Recharts** (context7 `/recharts/recharts`).
 
 ## Security & privacy invariants
