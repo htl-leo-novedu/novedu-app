@@ -148,11 +148,12 @@ Read before touching: `app/files/gui/**`, `lib/yaml-files.ts`.
 
 ### Styling → `docs/styling.md`
 
-Read before touching: `app/globals.css`, `components/ui/**`, `lib/utils.ts`, `app/layout.tsx`, `components/app-chrome.tsx`, or any non-trivial `className` work.
+Read before touching: `app/globals.css`, `components/ui/**`, `lib/utils.ts`, `lib/keyboard-shortcuts.ts`, `app/layout.tsx`, `components/app-chrome.tsx`, any keyboard shortcut, or any non-trivial `className` work.
 
 - Tailwind v4, CSS-first: all config in `app/globals.css`; light-only. App CSS stays inside the declared layers — an unlayered rule silently breaks CopilotKit's utilities.
 - A recipe used in ≥2 places becomes a cva primitive in `components/ui/`, consumed via `cn()`; no `@apply`.
 - The status bar is rendered by the root layout through `AppChrome`, which drops it on the bare routes `/sign-in` and `/device`.
+- Keyboard shortcuts (Ctrl/⌘+Enter submits a multi-line field, Ctrl/⌘+S saves an editor page) go only through `lib/keyboard-shortcuts.ts` — never a hand-rolled key handler.
 
 ### Filtered lists → `docs/filtered-lists.md`
 

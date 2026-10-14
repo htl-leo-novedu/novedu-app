@@ -66,6 +66,17 @@ The core rule: **formatting for a repeated construct is written once.**
 - Runtime-computed values flow through CSS variables set in a `style` prop and consumed by static arbitrary-value utilities (e.g. the writing split panes: `style={{ "--editor-grow": … }}` + `flex-[var(--editor-grow,1)_1_0]`). Class strings stay static so the scanner sees them (markdown is excluded from scanning — see Stack).
 - Values snap to Tailwind's default scale; an arbitrary value is acceptable only where a real constraint demands it, with a comment saying which.
 
+## Keyboard shortcuts
+
+Every shortcut goes through `lib/keyboard-shortcuts.ts` — never a hand-rolled `onKeyDown` key check.
+
+- **Ctrl/⌘+Enter submits a multi-line field**: `onKeyDown={onModEnter(submit)}` on the textarea, which keeps plain Enter as a newline. Used by the quiz answer and the report description.
+- **Ctrl/⌘+S saves an editor page**: `useSaveShortcut(save, enabled)` — a page-level listener, so it works from inside CodeMirror or a chat box, and it always suppresses the browser's "Save page" while enabled. Used by the writing surface (attributed activities only) and the `/files` create/edit forms.
+- The callback applies the same guards as the button it mirrors (busy, empty, not dirty); the shortcut never does more than a click.
+- Both modifiers work on every platform. The hint is the button's native `title` with the platform's name from `useShortcutHint` (`Save (Ctrl+S)` / `Save (⌘+S)`), plus `aria-keyshortcuts` (`SUBMIT_KEYSHORTCUTS` / `SAVE_KEYSHORTCUTS`) on the control that owns the shortcut — the textarea for Ctrl/⌘+Enter, the button for Ctrl/⌘+S. No inline hint, no overlay.
+- Enter stays native everywhere else: a single-line form submits on it, and the CopilotKit chats send on Enter (Shift+Enter = newline) by themselves.
+- The quiz moves focus with the flow: the verdict focuses Next/Finish, Next/Skip focuses the next answer box. The first question is not focused on load, so a phone keyboard doesn't pop up uninvited.
+
 ## Lint and formatting
 
 - Biome sorts utility classes (`nursery.useSortedClasses`, applied by `npm run check:fix`) in `class`/`className` attributes and inside `cn`/`cva`/`clsx` calls.

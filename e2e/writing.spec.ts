@@ -79,8 +79,9 @@ test("write → save → reload restores → teacher review", {
     await expect(page.locator(".cm-content")).toBeVisible();
     await setEditorContent(page, DRAFT);
 
-    // 2. Save it. The button flips Save → Saved on success.
-    await page.getByRole("button", { name: "Save" }).click();
+    // 2. Save it with Ctrl/⌘+S from inside the editor (lib/keyboard-shortcuts.ts;
+    //    the round-trip test below clicks the button). It flips Save → Saved.
+    await page.keyboard.press("ControlOrMeta+s");
     await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
 
     // 3. Reload: the saved draft is prefilled back into the editor.

@@ -14,6 +14,7 @@ import {
   type ImageDiagnostics,
   normalizeStudentImage,
 } from "@/lib/image-normalize";
+import { onModEnter, SUBMIT_KEYSHORTCUTS, useShortcutHint } from "@/lib/keyboard-shortcuts";
 import { startDiscussion, submitAnswer } from "@/lib/quiz-actions";
 import {
   type AttemptState,
@@ -124,8 +125,25 @@ export function QuizRunner({
     diagnostics: ImageDiagnostics[];
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Keyboard flow (docs/styling.md, "Keyboard shortcuts"): Ctrl/⌘+Enter submits,
+  // the verdict focuses Next/Finish, and Next/Skip focuses the next answer box —
+  // never on first load, so a phone keyboard doesn't pop up uninvited.
+  const answerRef = useRef<HTMLTextAreaElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+  const focusAnswer = useRef(false);
+  const submitHint = useShortcutHint("submit");
   const [grading, setGrading] = useState(false);
   const [verdict, setVerdict] = useState<{ result: QuizVerdict; feedback: string } | null>(null);
+
+  useEffect(() => {
+    if (verdict) nextRef.current?.focus();
+  }, [verdict]);
+  // Set by `moveTo`; runs after the render that shows the next question.
+  useEffect(() => {
+    if (!focusAnswer.current) return;
+    focusAnswer.current = false;
+    answerRef.current?.focus();
+  });
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<VerdictCounts>({ correct: 0, partial: 0, incorrect: 0 });
   const [answered, setAnswered] = useState(0);
@@ -285,6 +303,7 @@ export function QuizRunner({
   function moveTo(next: AttemptState) {
     reset();
     setAttempt(next);
+    focusAnswer.current = true;
     const nextSlot = currentSlot(next);
     const draft = nextSlot === undefined ? undefined : drafts.current.get(nextSlot);
     if (draft) {
@@ -342,9 +361,12 @@ export function QuizRunner({
           </div>
           <textarea
             id="quiz-answer"
+            ref={answerRef}
             className="mb-3 min-h-28 w-full resize-y rounded-lg border border-foreground/25 bg-background px-3 py-2.5 text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1"
             value={answer}
             onChange={(event) => setAnswer(event.target.value)}
+            onKeyDown={onModEnter(() => handleSubmit(current))}
+            aria-keyshortcuts={SUBMIT_KEYSHORTCUTS}
             disabled={grading}
             placeholder="Type your answer…"
           />
@@ -367,6 +389,7 @@ export function QuizRunner({
           <div className={ACTIONS}>
             <Button
               onClick={() => handleSubmit(current)}
+              title={`Submit answer (${submitHint})`}
               disabled={grading || (answer.trim() === "" && images.length === 0)}
             >
               {grading ? "Checking…" : "Submit answer"}
@@ -453,7 +476,9 @@ export function QuizRunner({
                 Continue discussion
               </Button>
             )}
-            <Button onClick={goNext}>{isLast ? "Finish" : "Next question"}</Button>
+            <Button ref={nextRef} onClick={goNext}>
+              {isLast ? "Finish" : "Next question"}
+            </Button>
             {!isLast ? (
               <Button variant="outline" onClick={() => setFinished(true)}>
                 Finish now

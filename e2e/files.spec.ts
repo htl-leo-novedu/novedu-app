@@ -21,7 +21,9 @@ test.describe("as a teacher", () => {
     await page.getByLabel(/Name/).fill("keep-this-name");
     await page.getByLabel("Kind").selectOption("fragment");
     await setEditorContent(page, "id: incomplete\nfragments: []\n");
-    await page.getByRole("button", { name: "Validate & create" }).click();
+    // Ctrl/⌘+S from inside the editor submits like "Validate & create"
+    // (lib/keyboard-shortcuts.ts).
+    await page.keyboard.press("ControlOrMeta+s");
 
     // The detailed validator errors are shown (not just a generic message)…
     await expect(page.getByRole("heading", { name: /Validation failed/ })).toBeVisible();

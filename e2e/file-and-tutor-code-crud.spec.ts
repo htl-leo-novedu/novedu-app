@@ -93,7 +93,8 @@ test("CRUD on a hosted file and a tutor link, with DB-side filtering", {
     .click();
   await expect(page.locator(".cm-content")).toContainText("Hello from version one");
   await setEditorContent(page, FRAGMENT_V2);
-  await page.getByRole("button", { name: "Validate & save" }).click();
+  // Ctrl/⌘+S from inside the editor = "Validate & save" (lib/keyboard-shortcuts.ts).
+  await page.keyboard.press("ControlOrMeta+s");
   await expect(page.getByText("Saved")).toBeVisible();
   const fileRes = await getRawFile(page, fileUrl);
   expect(await fileRes.text()).toContain("Hello from version two");

@@ -1,12 +1,13 @@
 "use client";
 
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useRef, useState, useTransition } from "react";
 import { BackLink } from "@/components/back-link";
 import { PageBody } from "@/components/page-main";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldHint, FieldLabel, FieldSuccess } from "@/components/ui/field";
 import { Input, Select } from "@/components/ui/input";
 import { ErrorList, WarningList } from "@/components/validation-result";
+import { SAVE_KEYSHORTCUTS, useSaveShortcut, useShortcutHint } from "@/lib/keyboard-shortcuts";
 import {
   createFileAction,
   type ValidationError,
@@ -37,6 +38,14 @@ export function CreateFileForm() {
   const [warnings, setWarnings] = useState<ValidationWarning[] | null>(null);
   const [passed, setPassed] = useState(false);
   const pending = validating || saving;
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Ctrl/⌘+S = "Validate & create", from anywhere on the page. `requestSubmit`
+  // runs the form's own constraint checks and `onSubmit`, exactly like the button.
+  useSaveShortcut(() => {
+    if (!pending) formRef.current?.requestSubmit();
+  });
+  const saveHint = useShortcutHint("save");
 
   // Clear every validation outcome — called when starting an action and whenever
   // the buffer changes (so the result always reflects the CURRENT content).
@@ -82,7 +91,11 @@ export function CreateFileForm() {
         <strong>Validate &amp; create</strong> stores it — an invalid tutor or fragment is rejected.
       </FieldHint>
 
-      <form className="flex min-h-0 flex-1 flex-col items-stretch gap-3.5" onSubmit={onSubmit}>
+      <form
+        ref={formRef}
+        className="flex min-h-0 flex-1 flex-col items-stretch gap-3.5"
+        onSubmit={onSubmit}
+      >
         <div className="flex flex-wrap items-end gap-3.5">
           <Field className="grow basis-72">
             <FieldLabel htmlFor="file-name">
@@ -138,7 +151,12 @@ export function CreateFileForm() {
           <Button variant="outline" size="sm" onClick={onValidate} disabled={pending}>
             {validating ? "Validating…" : "Validate"}
           </Button>
-          <Button type="submit" disabled={pending}>
+          <Button
+            type="submit"
+            title={`Validate & create (${saveHint})`}
+            aria-keyshortcuts={SAVE_KEYSHORTCUTS}
+            disabled={pending}
+          >
             {saving ? "Creating…" : "Validate & create"}
           </Button>
           {message ? <FieldError>{message}</FieldError> : null}

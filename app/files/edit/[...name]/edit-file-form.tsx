@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, FieldSuccess } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ErrorList, WarningList } from "@/components/validation-result";
+import { SAVE_KEYSHORTCUTS, useSaveShortcut, useShortcutHint } from "@/lib/keyboard-shortcuts";
 import {
   updateFileAction,
   type ValidationError,
@@ -85,6 +86,12 @@ export function EditFileForm({
     });
   }
 
+  // Ctrl/⌘+S = "Validate & save", from anywhere on the page.
+  useSaveShortcut(() => {
+    if (!pending) onSave();
+  });
+  const saveHint = useShortcutHint("save");
+
   return (
     <PageBody>
       <BackLink href="/files">Back to files</BackLink>
@@ -128,7 +135,12 @@ export function EditFileForm({
         <Button variant="outline" size="sm" onClick={onValidate} disabled={pending}>
           {validating ? "Validating…" : "Validate"}
         </Button>
-        <Button onClick={onSave} disabled={pending}>
+        <Button
+          onClick={onSave}
+          title={`Validate & save (${saveHint})`}
+          aria-keyshortcuts={SAVE_KEYSHORTCUTS}
+          disabled={pending}
+        >
           {saving ? "Saving…" : "Validate & save"}
         </Button>
         {message ? <FieldError>{message}</FieldError> : null}
