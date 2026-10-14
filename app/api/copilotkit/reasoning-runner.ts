@@ -17,15 +17,25 @@ import { filter, type Observable } from "rxjs";
 //
 // AG-UI's reasoning events. The enum is the contract (never hardcode the
 // strings): `@ag-ui/mastra` emits only the five REASONING_* ones, but the whole
-// family is filtered — the deprecated THINKING_* aliases carry exactly the same
-// content under older names, and REASONING_MESSAGE_CHUNK /
-// REASONING_ENCRYPTED_VALUE are the shapes another emitter may use. Filtering
-// something nobody emits costs nothing; missing one leaks the scratchpad.
+// family is filtered — REASONING_MESSAGE_CHUNK / REASONING_ENCRYPTED_VALUE are
+// the shapes another emitter may use. The legacy THINKING_* names are the one
+// exception to "never hardcode": the enum no longer defines them, yet
+// `@ag-ui/client` still upgrades them to REASONING_* in the browser, so a frame
+// under an old name would still render as reasoning. Filtering something nobody
+// emits costs nothing; missing one leaks the scratchpad.
 //
 // Dropping the whole START…END group SYMMETRICALLY is what keeps the browser's
 // `verifyEvents` validator happy — a lone REASONING_END would be a protocol
 // error. The filter also sits DOWNSTREAM of the runtime's own verifier, so it
 // can never trip server-side validation either.
+export const LEGACY_THINKING_EVENT_TYPES = [
+  "THINKING_START",
+  "THINKING_TEXT_MESSAGE_START",
+  "THINKING_TEXT_MESSAGE_CONTENT",
+  "THINKING_TEXT_MESSAGE_END",
+  "THINKING_END",
+] as const;
+
 const REASONING_EVENT_TYPES: ReadonlySet<string> = new Set<string>([
   EventType.REASONING_START,
   EventType.REASONING_MESSAGE_START,
@@ -34,11 +44,7 @@ const REASONING_EVENT_TYPES: ReadonlySet<string> = new Set<string>([
   EventType.REASONING_MESSAGE_CHUNK,
   EventType.REASONING_END,
   EventType.REASONING_ENCRYPTED_VALUE,
-  EventType.THINKING_START,
-  EventType.THINKING_TEXT_MESSAGE_START,
-  EventType.THINKING_TEXT_MESSAGE_CONTENT,
-  EventType.THINKING_TEXT_MESSAGE_END,
-  EventType.THINKING_END,
+  ...LEGACY_THINKING_EVENT_TYPES,
 ]);
 
 /** True for every AG-UI event that carries (or frames) reasoning text. */

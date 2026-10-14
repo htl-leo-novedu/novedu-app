@@ -408,8 +408,10 @@ the runtime, not in React:
   `connect` (the replay/reconnect stream) are the **only two paths into the SSE
   writer**, so both are `filter`ed (rxjs) against the `EventType` enum's whole
   reasoning family — the five `REASONING_*` events `@ag-ui/mastra` actually
-  emits, plus `REASONING_MESSAGE_CHUNK` / `REASONING_ENCRYPTED_VALUE` and the
-  deprecated `THINKING_*` aliases. `isRunning` / `stop` delegate untouched.
+  emits, plus `REASONING_MESSAGE_CHUNK` / `REASONING_ENCRYPTED_VALUE` — and the
+  legacy `THINKING_*` names, which the enum no longer defines but
+  `@ag-ui/client` still upgrades to `REASONING_*` in the browser.
+  `isRunning` / `stop` delegate untouched.
   Dropping each START…END group **symmetrically** keeps the browser's
   `verifyEvents` validator happy, and the filter sits downstream of the runtime's
   own verifier, so it cannot trip server-side validation either. It lives beside
