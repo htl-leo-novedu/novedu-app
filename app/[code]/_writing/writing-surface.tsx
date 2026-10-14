@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cardVariants } from "@/components/ui/card";
 import { DIALOG_BODY, DialogShell } from "@/components/ui/dialog-shell";
 import { FieldError } from "@/components/ui/field";
+import { SAVE_KEYSHORTCUTS, useSaveShortcut, useShortcutHint } from "@/lib/keyboard-shortcuts";
 import type { RuntimeHeaders } from "@/lib/runtime-headers";
 import { cn } from "@/lib/utils";
 import { saveWriting } from "@/lib/writing-actions";
@@ -159,6 +160,13 @@ export function WritingSurface({
     setLastSaved(buffer.trim());
   }
 
+  // Ctrl/⌘+S saves from anywhere on the page, including the editor and the chat
+  // box. Anonymous activities never save, so they keep the browser's default.
+  useSaveShortcut(() => {
+    if (dirty) void onSave();
+  }, !anonymous);
+  const saveHint = useShortcutHint("save");
+
   // Drag the divider to resize the columns. Mouse-only progressive enhancement
   // on top of the toggle: pointer-move updates the editor's width fraction while
   // the button is held, clamped so both columns stay usable. Skipped when the
@@ -222,7 +230,12 @@ export function WritingSurface({
                   Read formatted
                 </Button>
                 {!anonymous ? (
-                  <Button onClick={onSave} disabled={saving || !dirty}>
+                  <Button
+                    onClick={onSave}
+                    title={`Save (${saveHint})`}
+                    aria-keyshortcuts={SAVE_KEYSHORTCUTS}
+                    disabled={saving || !dirty}
+                  >
                     {saving ? "Saving…" : dirty ? "Save" : "Saved"}
                   </Button>
                 ) : null}

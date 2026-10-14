@@ -28,7 +28,7 @@ Students open the activity and see a split screen:
 - **On one side, their draft.** A plain text editor where they write, with simple formatting (Markdown). It can start blank, or with a scaffold you provide.
 - **On the other side, the coach.** A chat where they ask for feedback whenever they like: on the whole draft, on one paragraph, or on a specific worry ("is my tone polite enough?").
 
-Students move back and forth: write a bit, ask for feedback, revise, ask again. When they're happy with the text, they press **Save** and their finished version is stored so you can review it later. Each student saves one text per activity, and saving again replaces their earlier version.
+Students move back and forth: write a bit, ask for feedback, revise, ask again. When they're happy with the text, they press **Save** (or Ctrl+S, ⌘+S on a Mac) and their finished version is stored so you can review it later. Each student saves one text per activity, and saving again replaces their earlier version.
 
 ## How you shape a writing activity
 

@@ -40,7 +40,7 @@ The Files page in Novedu lets you create and edit activity files without any hos
 2. Give the file a name (letters, digits, hyphens, and underscores only, no spaces) and pick its kind: tutor, fragment, quiz, writing, or coding.
 3. Write the YAML in the editor, or select **Upload file…** to load a file from your computer into it.
 4. Select **Validate** to check the YAML without saving, as often as you like.
-5. Select **Validate & create** to save.
+5. Select **Validate & create** to save, or press Ctrl+S (⌘+S on a Mac).
 
 Saving always validates first: an invalid file is never stored, so anything the Files page has published is a file Novedu can actually run. After saving, the edit page shows the file's **File URL** with a copy button; that address is what you use when you create a code. The file list also offers a **Create code** shortcut next to each activity file, which starts the code form with the file already filled in.
 
@@ -65,7 +65,7 @@ If you prefer the command line, the Novedu CLI can upload a file too, with `nove
 A published file is not frozen. Novedu reads the current published version each time students use the activity, so your changes reach the class without touching any existing codes.
 
 - **GitHub**: edit, commit, and push. The pushed version is live immediately.
-- **Files page**: open the file, edit, and select **Validate & save**. The saved version is live immediately, and the address stays the same.
+- **Files page**: open the file, edit, and select **Validate & save** (or press Ctrl+S, ⌘+S on a Mac). The saved version is live immediately, and the address stays the same.
 
 Deleting an uploaded file makes its address stop working, so any code that points at it stops working too.
 

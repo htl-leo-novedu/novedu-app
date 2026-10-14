@@ -58,7 +58,8 @@ test("student reports a conversation and the teacher resolves, reopens, and dele
   // and submit.
   await page.getByRole("button", { name: "Holy sh.." }).click();
   await page.getByLabel(/What happened/i).fill(`${marker} the tutor said something wild`);
-  await page.getByRole("button", { name: "Send report" }).click();
+  // Ctrl/⌘+Enter in the description sends, like "Send report" (lib/keyboard-shortcuts.ts).
+  await page.getByLabel(/What happened/i).press("ControlOrMeta+Enter");
 
   // Success / thank-you state.
   await expect(page.getByText(/your teacher will take a look/i)).toBeVisible();

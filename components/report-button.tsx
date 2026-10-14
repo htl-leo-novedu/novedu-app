@@ -7,6 +7,7 @@ import { ATTRIBUTION_NOTICE } from "@/components/ui/attribution-notice";
 import { Button } from "@/components/ui/button";
 import { DialogShell } from "@/components/ui/dialog-shell";
 import { Field, FieldError, FieldLabel, FieldSuccess } from "@/components/ui/field";
+import { onModEnter, SUBMIT_KEYSHORTCUTS, useShortcutHint } from "@/lib/keyboard-shortcuts";
 import type { QuizVerdict } from "@/lib/quiz-types";
 import { submitChatReport, submitQuizReport } from "@/lib/report-actions";
 import {
@@ -75,6 +76,7 @@ export function ReportButton({ target, className }: { target: ReportTarget; clas
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const descriptionId = useId();
+  const submitHint = useShortcutHint("submit");
 
   // The attribution notice names the reported thing by kind; the answer/quiz
   // wording is only reached from the quiz grade card.
@@ -182,6 +184,8 @@ export function ReportButton({ target, className }: { target: ReportTarget; clas
                   value={description}
                   maxLength={REPORT_DESCRIPTION_MAX}
                   onChange={(event) => setDescription(event.target.value)}
+                  onKeyDown={onModEnter(onSubmit)}
+                  aria-keyshortcuts={SUBMIT_KEYSHORTCUTS}
                   disabled={pending}
                   placeholder="Add anything that would help your teacher understand…"
                 />
@@ -191,7 +195,11 @@ export function ReportButton({ target, className }: { target: ReportTarget; clas
               </Field>
 
               <div className="flex items-center gap-3">
-                <Button onClick={onSubmit} disabled={!reaction || pending}>
+                <Button
+                  onClick={onSubmit}
+                  title={`Send report (${submitHint})`}
+                  disabled={!reaction || pending}
+                >
                   {pending ? (
                     <>
                       <Spinner /> Sending…

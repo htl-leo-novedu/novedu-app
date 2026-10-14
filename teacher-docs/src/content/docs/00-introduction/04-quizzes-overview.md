@@ -21,6 +21,8 @@ Students open a quiz and see a welcome screen with a greeting and a short descri
 
 For each question, a student reads it, types an answer in their own words, and submits. Where your school's server offers it, a small label beside the answer box gives a live hint while they type, showing whether the answer looks right so far; it is only a hint, and you can switch it off for a quiz. The AI grades the answer and immediately shows a verdict, correct, partial, or incorrect, together with feedback that confirms or gently corrects them. After seeing the feedback, the student can open a short discussion chat about that question to ask why an answer was wrong or to dig into the idea behind it.
 
+Students can work through a quiz from the keyboard: Ctrl+Enter (⌘+Enter on a Mac) submits an answer, and Enter moves on to the next question once the feedback is shown.
+
 A student who is stuck on a question can skip it and come back to it later. The skipped question moves to the end of the quiz and returns after all the questions the student hasn't seen yet, with any half-written answer still in place. A skipped question doesn't count as answered.
 
 If you allow it, students can also attach a photo of their work, for example a handwritten calculation, and the AI grades the photo together with (or instead of) the typed text. Photo answers are off by default.
