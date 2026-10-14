@@ -2,7 +2,7 @@ import type { VariantProps } from "class-variance-authority";
 import Link from "next/link";
 import { CopyIconButton } from "@/components/copy-icon-button";
 import { DataList, type ListColumn } from "@/components/data-list";
-import { EditIcon, LayoutIcon, ShareIcon } from "@/components/icons";
+import { EditIcon, ShareIcon } from "@/components/icons";
 import { ListFilterBar, OwnerFilter } from "@/components/list-filter-bar";
 import { DeleteSelectedButton, SelectionProvider } from "@/components/list-selection";
 import { Notice } from "@/components/notice";
@@ -171,14 +171,6 @@ export default async function FilesPage({
               title="Edit"
             >
               <EditIcon />
-            </Link>
-            <Link
-              href={`/files/gui/edit/${row.name}`}
-              className={iconButtonVariants()}
-              aria-label={`Open ${row.name} in GUI editor`}
-              title="Edit in GUI (experimental)"
-            >
-              <LayoutIcon />
             </Link>
           </>
         );

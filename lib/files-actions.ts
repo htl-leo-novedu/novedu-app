@@ -2,27 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { appHostedFetcher } from "@/lib/app-hosted-fetcher";
-import { resolveAppOrigin } from "@/lib/app-origin";
 import {
   createFileForUser,
   type FileServiceResult,
   updateFileForUser,
   validateFileContent,
 } from "@/lib/file-service";
-import {
-  type FileKind,
-  getActiveFile,
-  isFileKind,
-  softDeleteFiles,
-  validateFileName,
-} from "@/lib/file-store";
-import {
-  defaultFetcher,
-  type Fetcher,
-  type ValidationError,
-  type ValidationWarning,
-} from "@/lib/prompt-fragments";
+import { getActiveFile, isFileKind, softDeleteFiles, validateFileName } from "@/lib/file-store";
+import type { ValidationError, ValidationWarning } from "@/lib/prompt-fragments";
 import { requireTeacherUserId } from "@/lib/student-mode";
 
 // Teacher-only server actions for app-hosted YAML files: thin auth + FormData
@@ -185,79 +172,4 @@ export async function deleteSelectedFilesAction(names: string[]): Promise<Delete
 
   revalidatePath("/files");
   return { ok: true, deleted: result.deleted };
-}
-
-/**
- * Loads raw YAML by URL for the student GUI, so it can pull in a tutor's
- * referenced fragment files and read their parameters (`input_schema`). Resolves
- * all three URL shapes a `fragment_files[].url` can take:
- *   - absolute http(s) — fetched for real;
- *   - relative (e.g. `simple-fragments.yaml`) — resolved against `baseUrl`, the
- *     tutor's own URL, via `new URL(url, baseUrl)`;
- *   - app-hosted (`<origin>/api/files/<name>`) — served from the DB to avoid a
- *     self-loopback fetch (reusing {@link appHostedFetcher}).
- * Returns the raw text plus the resolved absolute URL.
- *
- * SSRF note: like the save-time validators this fetches an arbitrary
- * user-supplied URL server-side; for this prototype we only restrict the scheme
- * to http(s). A production deployment should additionally allow-list hosts /
- * block private IP ranges and disable redirects.
- */
-export async function loadYamlFromUrlAction(input: {
-  url: string;
-  baseUrl?: string;
-}): Promise<{ ok: true; content: string; resolvedUrl: string } | { ok: false; message: string }> {
-  const gate = await requireTeacherUserId();
-  if (!gate.ok) return gateFailure("load");
-
-  let resolvedUrl: string;
-  try {
-    resolvedUrl = input.baseUrl ? new URL(input.url, input.baseUrl).toString() : input.url;
-  } catch {
-    return { ok: false, message: "That URL could not be resolved." };
-  }
-  if (!/^https?:\/\//i.test(resolvedUrl)) {
-    return {
-      ok: false,
-      message: "Provide a public http(s) URL (or a path relative to the file).",
-    };
-  }
-
-  // Resolve app-hosted references from the DB; a plain fetch still works for
-  // absolute external URLs if the app origin can't be determined.
-  let fetcher: Fetcher = defaultFetcher;
-  try {
-    fetcher = appHostedFetcher(await resolveAppOrigin());
-  } catch {
-    // origin unknown — keep the plain fetcher
-  }
-
-  try {
-    const res = await fetcher(resolvedUrl);
-    if (!res.ok)
-      return { ok: false, message: `The file could not be loaded (HTTP ${res.status}).` };
-    return { ok: true, content: await res.text(), resolvedUrl };
-  } catch {
-    return { ok: false, message: "The file could not be loaded. Check the URL and try again." };
-  }
-}
-
-/**
- * Loads an app-hosted file's active content by name for the student GUI's edit
- * flow (the file being edited, or a known sibling). Thin wrapper over
- * {@link getActiveFile}.
- */
-export async function loadFileFromDbAction(
-  name: string,
-): Promise<
-  | { ok: true; name: string; kind: FileKind; content: string }
-  | { ok: false; reason: "not-found" | "error" }
-> {
-  const gate = await requireTeacherUserId();
-  if (!gate.ok) return { ok: false, reason: "error" };
-
-  const file = await getActiveFile(name);
-  if (file === undefined) return { ok: false, reason: "error" };
-  if (file === null || !isFileKind(file.kind)) return { ok: false, reason: "not-found" };
-  return { ok: true, name: file.name, kind: file.kind, content: file.content };
 }

@@ -164,7 +164,7 @@ and never re-implement any of it.
 - **`resolveFragmentUrl`, the fragment schemas** (`FragmentFileRefSchema`,
   `FragmentFileSchema`, `FragmentSchema`, …), the **error model**
   (`ValidationError` / `ValidationWarning`, `error`/`warning`), `Fetcher` /
-  `defaultFetcher`, `getFragmentInputSchema`, `checkFragmentFileValue`.
+  `defaultFetcher`, `checkFragmentFileValue`.
 
 ## The isolation invariant
 

@@ -129,9 +129,9 @@ Read before touching: `app/module-chat.tsx`, the per-module chat components, the
 
 ### App-hosted YAML files → `docs/files.md`
 
-Read before touching: `app/files/**`, `app/api/files/**`, `lib/file-store.ts`, `lib/file-service.ts`, `lib/yaml-files.ts`, `novedu_files`.
+Read before touching: `app/files/**`, `app/api/files/**`, `lib/file-store.ts`, `lib/file-service.ts`, `novedu_files`.
 
-- `novedu_files` is temporal/append-only; `lib/file-store.ts` is the only access. `lib/yaml-files.ts` is the client-safe facade and must not import the store.
+- `novedu_files` is temporal/append-only; `lib/file-store.ts` is the only access.
 - App-hosted URL resolution goes through the shared `appHostedFetcher` — never a loopback fetch (the raw GET is teacher-bearer only, so a loopback would be refused).
 
 ### App-hosted images → `docs/images.md`
@@ -139,12 +139,6 @@ Read before touching: `app/files/**`, `app/api/files/**`, `lib/file-store.ts`, `
 Read before touching: `app/images/**`, `app/api/images/**`, `app/api/image-content/**`, `lib/image-*.ts`, `components/content-image.tsx`, `novedu_images`.
 
 - Bytes live under the operator-provisioned `IMAGE_STORAGE_ROOT`; the adapter (`lib/image-fs.ts`) never creates the root, `images/`, or its sentinel — no fallback directory, ever. Upload is ONE request per channel (server action / bearer multipart POST) — no slot, no confirm step. `GET /api/image-content/<id>` is the one deliberate cookie-session transport beside `/api/copilotkit` and the teacher-only `/api/health` probe in an otherwise bearer-authenticated API namespace — not a public API exception, and not a precedent for a fourth.
-
-### Student YAML GUI module → `docs/yaml-gui-student-contribution.md`
-
-Read before touching: `app/files/gui/**`, `lib/yaml-files.ts`.
-
-- `app/files/gui/_studio/**` is student-owned client-side React; the `page.tsx` shells are app-owned. The students' only app import is `@/lib/yaml-files`.
 
 ### Styling → `docs/styling.md`
 

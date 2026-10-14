@@ -7,13 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldHint, FieldLabel, FieldSuccess } from "@/components/ui/field";
 import { Input, Select } from "@/components/ui/input";
 import { ErrorList, WarningList } from "@/components/validation-result";
+import { createFileAction, validateNewFileAction } from "@/lib/files-actions";
 import { SAVE_KEYSHORTCUTS, useSaveShortcut, useShortcutHint } from "@/lib/keyboard-shortcuts";
-import {
-  createFileAction,
-  type ValidationError,
-  type ValidationWarning,
-  validateNewFileAction,
-} from "@/lib/yaml-files";
+import type { ValidationError, ValidationWarning } from "@/lib/prompt-fragments/errors";
 import { YamlEditor } from "../yaml-editor";
 
 // Create form: name + kind + the CodeMirror editor (with an upload button). Name,
