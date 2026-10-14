@@ -4,7 +4,7 @@ import { z } from "zod";
 // activity schemas, the lenient runtime parsers, the two resolvers in this folder,
 // and the usage exporter — imports these literals from here; the provider names
 // never appear as string literals anywhere else. Pure and client-safe (no I/O, no
-// server-only imports), so the studio GUI may import it later.
+// server-only imports).
 
 // The literals themselves, as a tuple, so schemas that need an *enum* (rather than
 // `providerSchema`, which carries a default) can be built from them without restating

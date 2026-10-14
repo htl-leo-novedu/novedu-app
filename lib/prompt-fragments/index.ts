@@ -28,7 +28,6 @@ export {
   checkFragmentTemplates,
   findDuplicateFragmentIds,
 } from "./fragment";
-export { getFragmentInputSchema } from "./fragment-inputs";
 export {
   type FileResolver,
   type FragmentResolver,

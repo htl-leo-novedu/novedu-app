@@ -9,13 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel, FieldSuccess } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ErrorList, WarningList } from "@/components/validation-result";
+import { updateFileAction, validateExistingFileAction } from "@/lib/files-actions";
 import { SAVE_KEYSHORTCUTS, useSaveShortcut, useShortcutHint } from "@/lib/keyboard-shortcuts";
-import {
-  updateFileAction,
-  type ValidationError,
-  type ValidationWarning,
-  validateExistingFileAction,
-} from "@/lib/yaml-files";
+import type { ValidationError, ValidationWarning } from "@/lib/prompt-fragments/errors";
 import { YamlEditor } from "../../yaml-editor";
 
 // Edit form: read-only name/kind + the copyable public URL + the CodeMirror

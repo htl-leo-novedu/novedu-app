@@ -14,7 +14,7 @@ import { type SortColumns, sortOrder } from "@/lib/db/sort-order";
 import type { Sort } from "@/lib/db/sorting";
 import { containsAny } from "@/lib/db/text-filter";
 // The pure name/kind helpers live in `lib/file-name.ts` (no DB import) so the
-// public GET route and the client-safe `@/lib/yaml-files` API can use them too.
+// public GET route, the image store and client components can use them too.
 // Re-exported here so existing `@/lib/file-store` importers are unaffected.
 import {
   FILE_NAME_PATTERN,

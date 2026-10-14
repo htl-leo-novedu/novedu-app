@@ -11,8 +11,7 @@ import { defaultFetcher, type Fetcher } from "@/lib/prompt-fragments";
 //
 // Shared by every server path that reads activity YAML: the tutor (agent, student
 // render, `anonymous` read), the quiz/writing/coding loaders, the save-time buffer
-// validator, code creation, and the student GUI's referenced-fragment loader — so
-// this resolution lives in EXACTLY ONE place (docs/files.md). A plain module (NOT
+// validator and code creation — so this resolution lives in EXACTLY ONE place (docs/files.md). A plain module (NOT
 // "use server") on purpose: a `"use server"` file may only export async actions,
 // so the resolver could not be shared from there.
 //

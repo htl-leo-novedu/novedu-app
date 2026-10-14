@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveRelativeUrl } from "@/lib/relative-url";
 
 // `resolveRelativeUrl` is the pure URL-resolution seam shared by image refs and
-// the GUI loaders: an absolute http(s) ref passes through untouched, anything
+// the fragment loader: an absolute http(s) ref passes through untouched, anything
 // else is resolved against the base (standard URL semantics — the base's
 // filename is dropped and `./` / `../` segments apply). The fragment-loader's
 // `resolveFragmentUrl` exercises the same behaviour and is covered in

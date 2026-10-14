@@ -24,17 +24,13 @@ documented in `docs/api.md`.
 | Raw GET | `/api/files/<name>` (`app/api/files/[name]/route.ts`) | teacher (bearer) | active version as `text/yaml`, `no-store` (404 once deleted) — `novedu-cli`'s read of an uploaded file |
 | API upsert | `PUT /api/files/<name>` (same route file) | teacher (bearer) | create-or-new-version for `novedu-cli files upload` — `docs/api.md` |
 | API list | `GET /api/files` (`app/api/files/route.ts`) | teacher (bearer) | the list's filters as query params, JSON without content — `docs/api.md` |
-| GUI editor | `/files/gui/edit/<name>` (`app/files/gui/edit/[...name]/page.tsx`) | teacher | student-built form GUI; "Edit in GUI" on the list |
 
 The edit route is a **catch-all** (`[...name]`) and the `name` column is a
 generous `varchar(450)`, both deliberately folder-ready (`/`-separated names) —
 a deferred extension; today names are flat (`FILE_NAME_PATTERN`).
 
-The **GUI editor/viewer** are a separate, student-built form interface over the
-**same** actions/validators, exposed through the documented facade
-**`lib/yaml-files.ts`** (the only import the student module uses) — see
-`docs/yaml-gui-student-contribution.md`. The pure name/kind helpers live in
-**`lib/file-name.ts`** (no DB import) so that client-safe facade can re-export them.
+The pure name/kind helpers live in **`lib/file-name.ts`** (no DB import), so
+client components can import them without pulling in the store.
 
 ## Data model — `novedu_files` (temporal / append-only)
 
@@ -73,8 +69,7 @@ version" invariant lives in one place. Never throws — a DB problem surfaces as
 - `FILE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,100}$/`, the pure `validateFileName()` and
   `isFileKind()` live in **`lib/file-name.ts`** (no DB import) and are re-exported
   here — one definition of a legal name (trims, then enforces the
-  pattern), shared by the GET route, the create action, AND the client-safe
-  `@/lib/yaml-files` facade (which must not import the DB-bound store).
+  pattern), shared by the GET route, the create action and the image store.
 - `listFiles({ search?, createdBy? })` — active rows, newest first, **without**
   `content` (kept cheap). Optional filters are applied **in SQL** (a `WHERE`/`ILIKE`
   over name/title/description for `search`, `createdBy` for the owner dropdown) —
@@ -148,9 +143,9 @@ and any fragility around exact self-URL string matching.
 The sibling/external part — "app-hosted URL → DB, anything else → real fetch" — is
 the shared **`appHostedFetcher`** (`lib/app-hosted-fetcher.ts`), the **one
 definition** of that resolution. `selfFetcher` wraps it (adding only the unsaved-
-buffer special case), and the GUI loader (`loadYamlFromUrlAction`) and the quiz
-loader (`lib/quiz-fetch.ts`) import the same function — it is a plain module, not
-`"use server"`, so every server module can reuse it. Validation parity with the
+buffer special case), and the quiz loader (`lib/quiz-fetch.ts`) imports the same
+function — it is a plain module, not `"use server"`, so every server module can
+reuse it. Validation parity with the
 rest of the app:
 
 - **tutor** → `loadAndBuildTutorPrompt(selfUrl, selfFetcher, { validateLibraries: true })`
@@ -182,8 +177,8 @@ and server).
 Every server path that reads activity YAML goes through one shared resolver,
 **`appHostedFetcher`** in `lib/app-hosted-fetcher.ts`: the tutor (the agent, the
 student render, and the `anonymous` read behind attribution and the history gate),
-the quiz / writing / coding loaders (`loadAppHostedYaml`), the save-time validator,
-code creation, and the GUI's `loadYamlFromUrlAction`. A URL starting with
+the quiz / writing / coding loaders (`loadAppHostedYaml`), the save-time validator
+and code creation. A URL starting with
 `<origin>/api/files/` is read straight from the DB (`getActiveFile`) instead of a
 loopback HTTP fetch — `404` when no active file has the name, `503` on a DB error —
 and anything else is fetched for real. The read/serve paths bind the origin
@@ -234,8 +229,7 @@ params, not in memory (see `docs/filtered-lists.md`).
   ordering, structured-error pass-through, the upsert dispatch (create vs
   update, missing kind, loud kind mismatch). `lib/files-actions.unit.test.ts` —
   the shell: the teacher gate, the result → form-state mapping, that the
-  validate-only actions never touch the store, and the GUI loaders
-  (`loadYamlFromUrlAction` URL resolution, `loadFileFromDbAction`).
+  validate-only actions never touch the store.
 - `tests/component/list-filter-bar.browser.test.tsx` — the shared filter bar's
   Apply → URL-search-param behavior (the DB filter is then exercised end-to-end by
   the `@live` `e2e/file-and-tutor-code-crud.spec.ts`, which covers file CRUD).

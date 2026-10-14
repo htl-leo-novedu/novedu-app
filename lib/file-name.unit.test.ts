@@ -8,8 +8,8 @@ import {
   validateFileName,
 } from "@/lib/file-name";
 
-// The pure name/kind helpers are part of the YAML Files API contract (re-exported
-// by `@/lib/yaml-files` for the student GUI), so pin their behavior.
+// The pure name/kind helpers are shared by the file store, the API routes and the
+// image store, so pin their behavior.
 
 describe("validateFileName", () => {
   it("accepts letters, digits, underscore and hyphen (trimming surrounding space)", () => {

@@ -1,7 +1,7 @@
 // Pure name/kind helpers for app-hosted YAML files. Extracted from
 // `lib/file-store.ts` so they can be shared by code that must NOT pull in the
 // database (the store is server-only): the public GET route, the create action,
-// AND the client-safe `@/lib/yaml-files` API the student GUI imports.
+// the image store, and client components.
 //
 // PURE — no imports, no I/O. Safe to import from client components.
 
@@ -25,7 +25,7 @@ export type FileNameValidation = { ok: true; name: string } | { ok: false; messa
 /**
  * Validates and normalizes a raw file-name input (trims surrounding whitespace,
  * then enforces {@link FILE_NAME_PATTERN}). Pure, so the GET route, the create
- * action, and the student GUI share exactly one definition of a legal name.
+ * action, and the image store share exactly one definition of a legal name.
  */
 export function validateFileName(name: unknown): FileNameValidation {
   const trimmed = typeof name === "string" ? name.trim() : "";

@@ -46,7 +46,7 @@ See [`docs/azure-runtime-env.md`](docs/azure-runtime-env.md).
 | **LLM providers** (`lib/llm/`, `app/mastra/scch.ts`, `lib/scch-endpoint.ts`) | Three OpenAI-compatible upstreams behind one server-only seam: a self-hosted vLLM GPU server ("SCCH", the default) plus two optional ones — **Azure Foundry** when `AZURE_FOUNDRY_ENDPOINT` is set (passwordless Entra auth, no API key) and **OpenRouter** when `OPENROUTER_API_KEY` is set. The activity YAML's `llm:` block picks provider + model + an optional reasoning level, and a code can override the whole block; endpoints, keys, and tokens stay server-side. See [`docs/ai-models.md`](docs/ai-models.md). |
 | **Auth** (`auth.ts`, `proxy.ts`, `lib/api-auth.ts`) | **better-auth** with Microsoft Entra ID as the sign-in provider (the gate is `proxy.ts`, Next 16's name for middleware, which checks only for a session cookie). Any signed-in user passes the gate; teacher-only operations are gated by `TEACHER_GROUP_ID` membership (`session.user.isTeacher`), enforced server-side via `requireEffectiveTeacher()` (which honors "view as student" mode). Sessions are database-backed (`novedu_session`, no cookie cache). See [`docs/auth.md`](docs/auth.md). A second, cookie-free channel serves CLI/API clients: the same **session token as a bearer**, obtained by the CLI's own OAuth device flow, validated on every request by `lib/api-auth.ts` (`requireBearerUser` / `requireBearerTeacher`; no student mode on this channel). See [`docs/api.md`](docs/api.md). |
 | **Teacher docs** (`teacher-docs/`) | The teacher-facing guide as a **hand-maintained Markdown corpus** (`teacher-docs/src/content/docs/` — human-owned chapters, kept current from code changes by hand or via the `novedu-teacher-docs` skill) and an **Astro Starlight site** that renders it (the rest of `teacher-docs/`, an npm workspace) — as HTML pages plus an [llms.txt](https://llmstxt.org) surface for AI agents (`/llms.txt`, `/llms-full.txt`, and a `.md` twin of every chapter). Served **publicly at `https://docs.novedu.at`** from an Azure Static Web App, released by `promote.yml` from the promoted image's commit; the app 308-redirects `/docs/*` there. `npm run docs:dev` for local authoring; the corpus-contract test + site build are the consistency checks. See [`docs/teacher-docs.md`](docs/teacher-docs.md). |
-| **API routes** (`app/api/`) | `copilotkit` (chat runtime), `coding/v1/chat/completions` + `coding/v1/models` (**public** OpenAI-compatible endpoints, per-user API key auth), `files/<name>` (**public** GET: serve an app-hosted YAML file as raw text; **bearer** PUT: upsert for `novedu-cli files upload`), `files` + `codes` (**bearer**, teacher-only: list/create/sync for the CLI — see [`docs/api.md`](docs/api.md)), `images` + `images/<name>` (**bearer**, teacher-only: image upload/list for the CLI), `eval/grade` + `eval/judge` + `eval/respond` (**bearer**, teacher-only: stateless one-shot grading / judging / tutor turns for `novedu-cli eval`), `reports` + `reports/<id>` + `reports/resolve` (**bearer**, teacher-only: report triage for the CLI; a chat report's detail embeds the conversation transcript), `auth` (sign-in), `me` (**bearer-token** identity probe backing `novedu-cli whoami`), `version` (public build-identity probe), `health` (teacher-gated probe). |
+| **API routes** (`app/api/`) | `copilotkit` (chat runtime), `coding/v1/chat/completions` + `coding/v1/models` (**public** OpenAI-compatible endpoints, per-user API key auth), `files/<name>` (**bearer**, teacher-only: GET the raw YAML for `novedu-cli`, PUT to upsert for `novedu-cli files upload`), `files` + `codes` (**bearer**, teacher-only: list/create/sync for the CLI — see [`docs/api.md`](docs/api.md)), `codes/<code>/conversations` (**bearer**, the code's creator only: the conversation export behind `novedu-cli codes export`, with no student identity), `images` + `images/<name>` (**bearer**, teacher-only: image upload/list for the CLI), `image-content/<id>` (cookie session: serves an image's bytes to any signed-in user), `eval/grade` + `eval/judge` + `eval/respond` (**bearer**, teacher-only: stateless one-shot grading / judging / tutor turns for `novedu-cli eval`), `reports` + `reports/<id>` + `reports/resolve` (**bearer**, teacher-only: report triage for the CLI; a chat report's detail embeds the conversation transcript), `auth` (sign-in), `me` (**bearer-token** identity probe backing `novedu-cli whoami`), `version` (public build-identity probe), `health` (teacher-gated probe). |
 
 ### Request flow
 
@@ -381,12 +381,12 @@ fake's models once at boot.
 | `npm run typecheck` | All three workspaces: `tsc --noEmit` (app) + `tsc -p cli` + `astro check` (docs site). |
 | `npm run test` | Vitest (unit + component). (`test:unit` / `test:component` for one project.) |
 | `npm run test:e2e` | Playwright end-to-end tests against the fake LLM (all specs except `@live-llm`). |
-| `npm run test:e2e:ci` | Hermetic + `@live-db` (against a Postgres container and the fake LLM); skips `@live-llm`, `@live-storage` and `@live-telemetry`. (`test:e2e:db` / `test:e2e:storage` run one live group.) |
+| `npm run test:e2e:ci` | Hermetic + `@live-db` (against a Postgres container and the fake LLM); skips `@live-llm`, `@live-storage` and `@live-telemetry`. (`test:e2e:db` / `test:e2e:storage` / `test:e2e:telemetry` run one live group.) |
 | `npm run test:e2e:live-llm` | The `@live-llm` specs against the real providers in `.env`. |
 | `npm run db:generate` | Generate a Drizzle migration after editing `lib/db/schema.ts` (commit the result in `drizzle/`). |
 | `npm run qa` | `check` + `typecheck` + `test` + `test:cli` + `build` + `docs:build`. (`qa:e2e` adds the e2e suite.) |
 | `npm run docs:dev` | Serve the teacher guide locally at `:4321/` (Astro Starlight; `docs:build` / `docs:preview` for the static build). |
-| `npm run cli` | Run the `@novedu/cli` companion CLI (workspace under `cli/`): `validate` activity YAML, `prompts` to dump the exact LLM prompts an activity produces, `eval` to run quiz/tutor evals, `login` / `logout` / `whoami` to sign in, and the teacher management commands `codes create/list/sync`, `files upload/list`, `images upload/list`, and `reports list/show/resolve` (JSON in/out) against the app's bearer-protected APIs. |
+| `npm run cli` | Run the `@novedu/cli` companion CLI (workspace under `cli/`): `validate` activity YAML, `prompts` to dump the exact LLM prompts an activity produces, `eval` to run quiz/tutor evals, `login` / `logout` / `whoami` to sign in, and the teacher management commands `codes create/list/sync/export`, `files upload/list`, `images upload/list`, and `reports list/show/resolve` (JSON in/out) against the app's bearer-protected APIs. |
 
 > Use the `dev` / `build` npm scripts rather than invoking `next` or `mastra` directly.
 
@@ -403,7 +403,7 @@ an activity file with the exact checks the app enforces, dumps the prompts an ac
 produces (`prompts`), runs evals against golden answers or scripted conversations
 (`eval`), signs in (`login` / `logout` / `whoami` — `login` prints a link to open and
 approve in the browser), and lets teachers
-manage the app over its bearer-protected APIs — `codes create/list/sync`,
+manage the app over its bearer-protected APIs — `codes create/list/sync/export`,
 `files upload/list`, `images upload/list`, and
 `reports list/show/resolve`, JSON in/out
 (`npm run cli` locally; published as `@novedu/cli` — see [`docs/api.md`](docs/api.md) and
@@ -445,8 +445,7 @@ the chat surface ([`chat.md`](docs/chat.md)), app-hosted [`files.md`](docs/files
 channel ([`api.md`](docs/api.md)), LLM providers ([`ai-models.md`](docs/ai-models.md)),
 [`database.md`](docs/database.md), [`telemetry.md`](docs/telemetry.md),
 [`testing.md`](docs/testing.md), [`filtered-lists.md`](docs/filtered-lists.md),
-[`styling.md`](docs/styling.md), the student YAML GUI module
-([`yaml-gui-student-contribution.md`](docs/yaml-gui-student-contribution.md)),
+[`styling.md`](docs/styling.md),
 CI security ([`ci-security.md`](docs/ci-security.md)), CLI publishing
 ([`cli-publish.md`](docs/cli-publish.md)), and the
 teacher guide corpus + docs site ([`teacher-docs.md`](docs/teacher-docs.md)).
