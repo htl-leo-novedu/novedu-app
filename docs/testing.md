@@ -552,11 +552,11 @@ telemetry code):
    open `/<code>`, send one message, get a reply.
 4. In the dashboard: resource `novedu-chat` is listed; Structured Logs shows
    `app_started`; Traces shows the chat turn as ONE trace with nested SERVER
-   spans (never sibling request spans), `pg.query:*` spans whose `db.statement`
+   spans (never sibling request spans), `pg.query:*` spans whose `db.query.text`
    carries `$1` placeholders and no bound values, and a `fetch POST <LLM
    endpoint>` client span; the resource has no `process.command_args` /
    `process.owner`; HTTP spans carry no header attributes; Metrics shows
-   `nodejs.eventloop.*`, `v8js.memory.*` and `http.server.duration`.
+   `nodejs.eventloop.*`, `v8js.memory.*` and `http.server.request.duration`.
 5. `docker compose -f compose.telemetry.yaml stop`; the app still answers
    `/api/version` and a chat turn.
 6. `docker compose -f compose.telemetry.yaml start`; a further request shows up

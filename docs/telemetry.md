@@ -212,10 +212,8 @@ Both backends run the HTTP and `pg` instrumentations; the standard OTLP path add
 - **Runtime metrics** (OTLP path only). `instrumentation-runtime-node`: `nodejs.eventloop.*`
   (utilization, time, delay percentiles) and `v8js.*` (heap sizes, GC duration).
   The metrics reader alone emits nothing; these instruments are what appears.
-- **HTTP metrics.** Under the default semantic-convention mode the names are
-  `http.server.duration` and `http.client.duration` (milliseconds);
-  `OTEL_SEMCONV_STABILITY_OPT_IN=http` switches to the stable
-  `http.server.request.duration` / `http.client.request.duration` (seconds).
+- **HTTP metrics.** `http.server.request.duration` and
+  `http.client.request.duration` (seconds; the stable semantic conventions).
 - **Exceptions** recorded by `recordError()` (including Next request errors) and
   **application events** emitted through the logs API. Both stay content-free by
   the invariant below: an event carries ids, counts and durations only — e.g.
@@ -235,13 +233,10 @@ backend. What holds this:
 - HTTP instrumentation captures **no bodies and no headers** by default (bodies
   have no capture option at all); never opt into `headersToSpanAttributes`.
 - `instrumentation-pg`'s `enhancedDatabaseReporting` stays `false`, so **bound
-  parameter values are never captured**. Under its default (old semantic
-  conventions) mode it does export `db.user`, a password-masked
-  `db.connection_string`, and the SQL text as `db.statement`
-  (`OTEL_SEMCONV_STABILITY_OPT_IN=database` switches to the stable set with
-  `db.query.text` and no user attribute). This is accepted as-is: `db.user` is
-  the managed identity's name in production and a developer's own identity
-  locally, and every database client in the app (Drizzle, Mastra's Postgres
+  parameter values are never captured**. It exports the stable semantic
+  conventions — database name, server address and port, and the SQL text as
+  `db.query.text` (no user attribute, no connection string). The SQL text is
+  accepted as-is: every database client in the app (Drizzle, Mastra's Postgres
   store, better-auth's adapter) sends parameterized SQL, so the statement text
   carries `$1`-style placeholders, not data. `lib/telemetry-pg-canary.unit.test.ts`
   asserts that a query with a bound string exports no literal.
@@ -336,8 +331,8 @@ production hosting of a non-Azure backend are out of scope.
   appi-novedu-<stage>`, lowercase `requests`/`dependencies`/`exceptions`/
   `customEvents`) reads the same data, scoped to one stage.
 - **Sampling:** `AppRequests` is sampled and holds one row per SERVER span (see
-  above); the `http.server.duration` metric in `AppMetrics` is the unsampled
-  request count.
+  above); the `http.server.request.duration` metric in `AppMetrics` is the
+  unsampled request count.
 - **The read side in the app:** the teacher-only `/diagnostics` page
   (`docs/diagnostics.md`) queries the LLM calls, failed chat turns and chat-turn
   durations of this resource through the App Insights query API, addressed by the

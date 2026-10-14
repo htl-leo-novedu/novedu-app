@@ -5,9 +5,8 @@ import { closedPort, type OtlpReceiver, spansOf, startOtlpReceiver } from "../te
 
 // Privacy canary for the pg instrumentation: a query with a bound string must
 // export the statement with its `$1` placeholder and NEVER the bound value.
-// Under the default (old) semantic conventions `db.statement`, `db.user` and a
-// password-masked `db.connection_string` ARE exported — accepted, and documented
-// in docs/telemetry.md — but bound values are not (`enhancedDatabaseReporting`
+// The SQL text IS exported as `db.query.text` — accepted, and documented in
+// docs/telemetry.md — but bound values are not (`enhancedDatabaseReporting`
 // stays false). Own file: it starts the real NodeSDK (see the delivery test).
 //
 // No database is needed. `pg` is loaded through a hooked `require` AFTER the
@@ -56,7 +55,7 @@ describe("pg instrumentation privacy", () => {
     expect(queryOutcome.status).toBe("rejected");
     const query = spansOf(receiver.requests).find((s) => s.name.startsWith("pg.query"));
     expect(query, "a pg.query span was exported").toBeDefined();
-    expect(query?.attributes["db.statement"]).toContain("$1");
+    expect(query?.attributes["db.query.text"]).toContain("$1");
   });
 
   it("never exports the bound value or the password on any span", () => {

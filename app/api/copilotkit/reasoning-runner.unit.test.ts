@@ -11,7 +11,11 @@ import {
 import { firstValueFrom, type Observable, of, toArray } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 import { HistorySnapshotRunner } from "./history-snapshot-runner";
-import { isReasoningEvent, ReasoningStrippingRunner } from "./reasoning-runner";
+import {
+  isReasoningEvent,
+  LEGACY_THINKING_EVENT_TYPES,
+  ReasoningStrippingRunner,
+} from "./reasoning-runner";
 import { RunErrorReportingRunner } from "./run-error-runner";
 
 // The runner is the ONE place that keeps a thinking model's chain of thought
@@ -117,13 +121,9 @@ describe("ReasoningStrippingRunner.run (the live turn)", () => {
     expect(inner.run).toHaveBeenCalledWith(RUN_REQUEST);
   });
 
-  it("filters the deprecated THINKING_* aliases too", async () => {
+  it("filters the legacy THINKING_* names too", async () => {
     const events = [
-      { type: EventType.THINKING_START },
-      { type: EventType.THINKING_TEXT_MESSAGE_START },
-      { type: EventType.THINKING_TEXT_MESSAGE_CONTENT, delta: "hidden" },
-      { type: EventType.THINKING_TEXT_MESSAGE_END },
-      { type: EventType.THINKING_END },
+      ...LEGACY_THINKING_EVENT_TYPES.map((type) => ({ type, delta: "hidden" })),
       { type: EventType.RUN_FINISHED },
     ] as unknown as BaseEvent[];
     const runner = new ReasoningStrippingRunner(fakeInner(events) as unknown as AgentRunner);
