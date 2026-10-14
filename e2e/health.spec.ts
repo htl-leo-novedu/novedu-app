@@ -83,10 +83,17 @@ test.describe("as a teacher", () => {
     await expect(page.getByTestId("health-scch-host")).toHaveText(hostPattern);
 
     // Azure Foundry is optional: when configured, its probe must pass (Entra
-    // token via `az login` + a model listing); when not, its rows must not exist.
+    // token + a model listing) and name the credential kind the env selects;
+    // when not, its rows must not exist.
     if (process.env.AZURE_FOUNDRY_ENDPOINT) {
+      const credential = process.env.AZURE_FOUNDRY_CLIENT_CERTIFICATE
+        ? "service principal, certificate"
+        : process.env.AZURE_FOUNDRY_CLIENT_SECRET
+          ? "service principal, secret"
+          : "managed identity / az login";
       await expect(page.getByTestId("health-foundry")).toContainText("OK");
       await expect(page.getByTestId("health-foundry")).toContainText("models available");
+      await expect(page.getByTestId("health-foundry")).toContainText(`(${credential})`);
       await expect(page.getByTestId("health-foundry-host")).toHaveText(hostPattern);
     } else {
       await expect(page.getByTestId("health-foundry")).toHaveCount(0);

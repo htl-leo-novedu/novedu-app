@@ -132,9 +132,13 @@ for the `Novedu` subscription in the default profile.
 decides which identity a locally running app uses. Local development reaches
 `novedu_dev`, so the app's `.env` sets `AZURE_CONFIG_DIR` to the **absolute**
 path of the profile (`.env` does not expand `~`) — see `docs/database.md`.
-Every Entra token the local app requests then comes from this tenant, including
-Azure Foundry's, which is why a local `.env` leaves `AZURE_FOUNDRY_ENDPOINT`
-unset.
+Every Entra token the local app requests through `az` then comes from this
+tenant. Azure Foundry is the exception when `.env` configures a Foundry service
+principal (`AZURE_FOUNDRY_TENANT_ID`, `AZURE_FOUNDRY_CLIENT_ID` and a client
+secret or certificate, `docs/ai-models.md`): its tokens come from the Foundry
+resource's own tenant, independent of this profile. Without one, a local
+`.env` leaves `AZURE_FOUNDRY_ENDPOINT` unset — the profile's identity cannot
+reach a Foundry resource outside this tenant.
 
 ### Logging in
 
@@ -513,6 +517,13 @@ versionless, so a new secret version needs no change to the app.
 Apart from the SCCH key no secret is shared between the stages, so
 compromising dev's vault tells nobody anything about prod.
 
+A Foundry service principal's client secret or PEM certificate
+(`AZURE_FOUNDRY_CLIENT_SECRET` / `AZURE_FOUNDRY_CLIENT_CERTIFICATE`,
+`docs/ai-models.md`) belongs in the same place, wired the same way — a Key Vault
+reference, never a plain value on the container app. A certificate is a Key Vault
+certificate created with the PEM content type, so its secret value is the PEM the
+app reads. The stages configure none (*Deliberately not set*).
+
 ### Environment variables
 
 Plain values on the container app, beside the four secret references:
@@ -543,7 +554,8 @@ stage*).
 
 ### Deliberately not set
 
-- **`AZURE_FOUNDRY_ENDPOINT`, `OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL`** —
+- **`AZURE_FOUNDRY_ENDPOINT` (and the `AZURE_FOUNDRY_*` service-principal
+  variables), `OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL`** —
   these stages run on **SCCH only**. A provider's variables are its switch:
   without them the app boots normally, `/health` reports the provider as
   `Not configured (<variable> is missing)`, every default provider is SCCH,

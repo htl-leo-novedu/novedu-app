@@ -25,7 +25,8 @@ import { fetchServedModel, type PiAgentResult, runPiAgent } from "./pi-agent.uti
 //   so the served-model check still proves the proxy forwarded the pinned model.
 //   `@live-db` (it mints the code and the key through e2e/db.ts) — runs in CI.
 // - Azure Foundry: the code's LLM override pair switches the upstream, proving
-//   Managed-Identity/`az login` auth + deployment-as-model on the proxy path.
+//   Entra auth (Managed Identity / `az login` or the Foundry service principal)
+//   + deployment-as-model on the proxy path.
 //   Skipped when AZURE_FOUNDRY_ENDPOINT is not set.
 // - OpenRouter: the same override mechanism against the other auth shape — a
 //   STATIC API key (no token step, no MI) — plus `vendor/model` id resolution.
@@ -78,8 +79,9 @@ test.describe("via Azure Foundry", () => {
   // switching, keeping the environment-specific Foundry deployment name out of
   // the content-stable fixture tree (the tutor-chat-reply.spec.ts reasoning).
 
-  // @live: needs the Foundry endpoint (MI / `az login` with the Cognitive
-  // Services OpenAI User role) + the database — excluded in CI (test:e2e:ci).
+  // @live: needs the Foundry endpoint (an identity with the Cognitive Services
+  // OpenAI User role — MI / `az login`, or the AZURE_FOUNDRY_* service principal)
+  // + the database — excluded in CI (test:e2e:ci).
   test("pi gets a non-empty reply from the overridden Foundry model", {
     tag: ["@live", "@live-llm"],
   }, async () => {

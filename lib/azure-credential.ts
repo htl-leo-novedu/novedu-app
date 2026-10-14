@@ -1,6 +1,8 @@
 import {
   AzureCliCredential,
   ChainedTokenCredential,
+  ClientCertificateCredential,
+  ClientSecretCredential,
   ManagedIdentityCredential,
   type TokenCredential,
 } from "@azure/identity";
@@ -34,15 +36,96 @@ export function buildDataStoreCredential(): TokenCredential {
   );
 }
 
-// The ONE way this app authenticates against Azure Cognitive Services — today the
-// Azure Foundry (Azure OpenAI) endpoint used by `lib/llm/foundry-endpoint.ts`. Same
-// explicit chain as the data-store credential (and the same reason to avoid
-// `DefaultAzureCredential` — see above), but WITHOUT the `STORAGE_TENANT_ID` pin:
-// the Foundry resource lives in the ambient tenant of the `az login` identity.
+// How this app authenticates against Azure Cognitive Services — today the Azure
+// Foundry (Azure OpenAI) endpoint used by `lib/llm/foundry-endpoint.ts`. Decided
+// once, from configuration (`foundryCredentialConfig`):
+//
+// - A Foundry SERVICE PRINCIPAL, when its settings are present: an app
+//   registration in the Foundry resource's tenant holding `Cognitive Services
+//   OpenAI User` on the resource, authenticating with a client secret OR a PEM
+//   certificate (exactly one). This is what reaches a Foundry resource in ANOTHER
+//   tenant — neither the Managed Identity nor the `az` profile (which locally
+//   must point at the database's tenant) can. It is the only place a Foundry
+//   secret or certificate is allowed; on a stage it comes from that stage's Key
+//   Vault. Its settings carry Foundry-specific names for the same reason the
+//   chains avoid `DefaultAzureCredential`: the generic `AZURE_TENANT_ID` /
+//   `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` belong to user sign-in.
+// - Otherwise the same explicit chain as the data-store credential, but WITHOUT
+//   the `STORAGE_TENANT_ID` pin: the Foundry resource lives in the ambient tenant
+//   of the `az login` identity locally and of the Managed Identity on Azure.
+//
+// A partially configured service principal (or one with BOTH a secret and a
+// certificate) throws on first use — it never silently falls back to the chain.
+// The error names variables only, never their values.
 //
 // SERVER-ONLY: handles Azure credentials. Never import from client components.
+
+const FOUNDRY_TENANT_ID = "AZURE_FOUNDRY_TENANT_ID";
+const FOUNDRY_CLIENT_ID = "AZURE_FOUNDRY_CLIENT_ID";
+const FOUNDRY_CLIENT_SECRET = "AZURE_FOUNDRY_CLIENT_SECRET";
+const FOUNDRY_CLIENT_CERTIFICATE = "AZURE_FOUNDRY_CLIENT_CERTIFICATE";
+
+export type FoundryCredentialKind =
+  | "managed-identity"
+  | "service-principal-secret"
+  | "service-principal-certificate";
+
+type FoundryCredentialConfig =
+  | { kind: "managed-identity" }
+  | { kind: "service-principal-secret"; tenantId: string; clientId: string; secret: string }
+  | {
+      kind: "service-principal-certificate";
+      tenantId: string;
+      clientId: string;
+      certificate: string;
+    };
+
+function foundryCredentialConfig(): FoundryCredentialConfig {
+  const tenantId = process.env[FOUNDRY_TENANT_ID] ?? "";
+  const clientId = process.env[FOUNDRY_CLIENT_ID] ?? "";
+  const secret = process.env[FOUNDRY_CLIENT_SECRET] ?? "";
+  const certificate = process.env[FOUNDRY_CLIENT_CERTIFICATE] ?? "";
+  if (!tenantId && !clientId && !secret && !certificate) return { kind: "managed-identity" };
+
+  const problem = "Foundry service principal is misconfigured";
+  if (secret && certificate) {
+    throw new Error(
+      `${problem}: set exactly one of ${FOUNDRY_CLIENT_SECRET} and ${FOUNDRY_CLIENT_CERTIFICATE}, not both`,
+    );
+  }
+  const missing = [
+    ...(tenantId ? [] : [FOUNDRY_TENANT_ID]),
+    ...(clientId ? [] : [FOUNDRY_CLIENT_ID]),
+    ...(secret || certificate ? [] : [`${FOUNDRY_CLIENT_SECRET} or ${FOUNDRY_CLIENT_CERTIFICATE}`]),
+  ];
+  if (missing.length > 0) throw new Error(`${problem}: ${missing.join(", ")} not set`);
+
+  return secret
+    ? { kind: "service-principal-secret", tenantId, clientId, secret }
+    : { kind: "service-principal-certificate", tenantId, clientId, certificate };
+}
+
+/** Which Foundry credential this process uses; throws on a misconfigured service principal. */
+export function foundryCredentialKind(): FoundryCredentialKind {
+  return foundryCredentialConfig().kind;
+}
+
 export function buildCognitiveServicesCredential(): TokenCredential {
-  return new ChainedTokenCredential(new AzureCliCredential({}), new ManagedIdentityCredential());
+  const config = foundryCredentialConfig();
+  switch (config.kind) {
+    case "service-principal-secret":
+      return new ClientSecretCredential(config.tenantId, config.clientId, config.secret);
+    case "service-principal-certificate":
+      // PEM only (certificate + unencrypted private key) — @azure/identity reads no PFX.
+      return new ClientCertificateCredential(config.tenantId, config.clientId, {
+        certificate: config.certificate,
+      });
+    case "managed-identity":
+      return new ChainedTokenCredential(
+        new AzureCliCredential({}),
+        new ManagedIdentityCredential(),
+      );
+  }
 }
 
 // The ONE way this app READS its own telemetry — the Application Insights query

@@ -26,9 +26,9 @@ of any activity schema, and the optional-provider probes in `lib/health.ts`.
 | | SCCH | Azure Foundry | OpenRouter |
 |---|---|---|---|
 | What | Self-hosted vLLM GPU server (free for us, Austria-only network) | Azure OpenAI resource (paid, e.g. `gpt-5.5`, `gpt-5.4-mini`) | Hosted multi-vendor router (paid, e.g. `z-ai/glm-5.3-flash`) |
-| Env | `SCCH_BASE_URL` (includes `/v1`) + `SCCH_API_KEY` | `AZURE_FOUNDRY_ENDPOINT` (bare resource endpoint; trailing slash tolerated) | `OPENROUTER_API_KEY`; optional `OPENROUTER_BASE_URL` override (defaults to `https://openrouter.ai/api/v1`, already includes `/v1`) |
+| Env | `SCCH_BASE_URL` (includes `/v1`) + `SCCH_API_KEY` | `AZURE_FOUNDRY_ENDPOINT` (bare resource endpoint; trailing slash tolerated); optional service principal `AZURE_FOUNDRY_TENANT_ID` + `AZURE_FOUNDRY_CLIENT_ID` + `AZURE_FOUNDRY_CLIENT_SECRET` or `AZURE_FOUNDRY_CLIENT_CERTIFICATE` | `OPENROUTER_API_KEY`; optional `OPENROUTER_BASE_URL` override (defaults to `https://openrouter.ai/api/v1`, already includes `/v1`) |
 | API | OpenAI Chat Completions | OpenAI-compatible **v1** surface — `${endpoint}/openai/v1`, no `api-version`, the **deployment name is the `model`** | OpenAI Chat Completions |
-| Auth | Static `Bearer ${SCCH_API_KEY}` | **Passwordless Entra** — no API key exists (see below) | Static `Bearer ${OPENROUTER_API_KEY}` |
+| Auth | Static `Bearer ${SCCH_API_KEY}` | **Entra** bearer — managed identity / `az login`, or a Foundry service principal; no API key exists (see below) | Static `Bearer ${OPENROUTER_API_KEY}` |
 | `llm.model` | Raw model id (e.g. `RedHatAI/gemma-4-31B-it-FP8-Dynamic`) | Deployment name (e.g. `gpt-5.4-mini`) | Namespaced `<vendor>/<model>` routing key (e.g. `z-ai/glm-5.3-flash`) |
 
 `model` is free text for all three; a wrong name fails at runtime. There is no live
@@ -345,7 +345,7 @@ Consumed by the eval routes `POST /api/eval/grade`, `/api/eval/judge` and
 paths deliberately do NOT use it: a student can neither fix a deployment nor be shown
 infrastructure detail, so `lib/quiz-actions.ts` keeps its single generic sentence.
 
-## Foundry auth — Managed Identity with transparent refresh
+## Foundry auth — Entra bearer with transparent refresh
 
 There is no Foundry API key anywhere. `foundryBearerToken()` holds ONE process-wide
 `getBearerTokenProvider(buildCognitiveServicesCredential(), "https://cognitiveservices.azure.com/.default")`
@@ -354,18 +354,43 @@ expiry, so callers just await a fresh bearer per request and never hold a token.
 (`https://ai.azure.com/.default` also works against `*.openai.azure.com`; the
 Cognitive Services scope is the canonical one.) The acquisition itself is
 **bounded** (`FOUNDRY_TOKEN_TIMEOUT_MS`, 15 s, via `lib/promise-timeout.ts`): a
-stuck `az` subprocess or a black-holed IMDS rejects instead of stalling a request
-indefinitely, for every caller at once — the coding proxy, the agents' custom
-`fetch`, and the health probe.
+stuck `az` subprocess, a black-holed IMDS or an unreachable Entra token endpoint
+rejects instead of stalling a request indefinitely, for every caller at once —
+the coding proxy, the agents' custom `fetch`, and the health probe — whichever
+credential is in use.
 
-`buildCognitiveServicesCredential()` (`lib/azure-credential.ts`) is the same
-explicit chain as the data-store credential — `AzureCliCredential` (local
-`az login`) → `ManagedIdentityCredential` (on Azure) — and **never**
-`DefaultAzureCredential` (same reason: the `AZURE_*` sign-in env vars belong to
-user auth, not resource access). RBAC: the identity needs the
-**`Cognitive Services OpenAI User`** role (`5e0bd9bd-7b93-4f28-af87-19fc36ad61bd`)
-on the Foundry resource — the deployed app's Managed Identity AND each developer's
-own account for local dev.
+`buildCognitiveServicesCredential()` (`lib/azure-credential.ts`) picks the
+credential once, from configuration (`foundryCredentialKind()`; an empty
+variable counts as unset):
+
+| Configured | Credential | Reaches |
+|---|---|---|
+| none of the `AZURE_FOUNDRY_*` service-principal variables | `AzureCliCredential` (local `az login`) → `ManagedIdentityCredential` (on Azure) — the same explicit chain as the data-store credential, without a tenant pin | a Foundry resource in the tenant of that identity |
+| `AZURE_FOUNDRY_TENANT_ID` + `AZURE_FOUNDRY_CLIENT_ID` + `AZURE_FOUNDRY_CLIENT_SECRET` | `ClientSecretCredential` | a Foundry resource in **any** tenant |
+| `AZURE_FOUNDRY_TENANT_ID` + `AZURE_FOUNDRY_CLIENT_ID` + `AZURE_FOUNDRY_CLIENT_CERTIFICATE` | `ClientCertificateCredential` over the PEM **content** (certificate + unencrypted private key; PFX is not read) | a Foundry resource in **any** tenant |
+
+Anything else — some of the service-principal variables, or a secret AND a
+certificate — throws at first use with a message naming the variables (never
+their values); it never falls back to the chain. The error reaches every caller
+like a missing `AZURE_FOUNDRY_ENDPOINT` does: the coding route's config-error
+path, the agent turn's failure, the `/health` row.
+
+The service principal is an app registration in the Foundry resource's tenant.
+Its settings carry Foundry-specific names on purpose: the generic
+`AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` belong to user
+sign-in (`auth.ts`), which is also why the chain is **never**
+`DefaultAzureCredential` (its `EnvironmentCredential` would pick them up). Its
+secret or certificate is the only Foundry credential material the app accepts:
+locally it sits in `.env` (independent of the `AZURE_CONFIG_DIR` profile the
+database needs, `docs/azure-runtime-env.md`); on a stage it comes from that
+stage's Key Vault through a secret reference — for a certificate, a Key Vault
+certificate with the PEM content type, whose secret value is the PEM. It never
+appears in logs, telemetry or `/health`.
+
+RBAC: whichever identity is used needs the **`Cognitive Services OpenAI User`**
+role (`5e0bd9bd-7b93-4f28-af87-19fc36ad61bd`) on the Foundry resource — the
+deployed app's Managed Identity, each developer's own account for local dev, or
+the service principal.
 
 On the agent path, the bearer is injected per request by a custom `fetch` handed to
 `createOpenAI` (streaming-safe); on the coding path, the route **starts**
@@ -375,8 +400,8 @@ the client-body read), awaits it before the upstream fetch, and maps a failure
 
 ## Server-only invariant
 
-Endpoints, the SCCH and OpenRouter keys, and Entra tokens live in server modules
-only and never
+Endpoints, the SCCH and OpenRouter keys, the Foundry service principal's secret or
+certificate, and Entra tokens live in server modules only and never
 reach the browser — for every module, including the coding proxy (which keeps the
 teacher prompt + pinned model server-side, docs/coding.md) and the Jev client
 (whose bearer is the same OpenRouter key). `provider` is part of
@@ -406,8 +431,12 @@ indicator for a provider nobody uses.
 
 - **Foundry**, only when `AZURE_FOUNDRY_ENDPOINT` is set: `checkFoundry()`
   (`lib/health.ts`) is two-stage — it proves token acquisition (the RBAC role) and
-  endpoint reachability (a model listing). Testids `health-foundry` /
-  `health-foundry-host`.
+  endpoint reachability (a model listing). Its detail names the credential kind
+  (`managed identity / az login`, `service principal, secret` or `service
+  principal, certificate`), never an id or a secret: a misconfigured service
+  principal shows the variable names, and a token failure has the configured
+  client id, tenant id and secret masked (Entra errors embed the ids). Testids
+  `health-foundry` / `health-foundry-host`.
 - **OpenRouter**, only when `OPENROUTER_API_KEY` is set: `checkOpenRouter()` is
   two-stage — OpenRouter's model listing is public (it answers 200 for any key or
   none), so the probe first proves the key with the key-info endpoint

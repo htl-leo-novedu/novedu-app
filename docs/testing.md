@@ -50,15 +50,18 @@ Five kinds of e2e, by the external infra they need beyond that baseline:
   grader which `e2e/quiz-image.spec.ts` smokes indirectly. For the **tutor** kind the judge is
   the only check there is, so a regression means a tutor eval reports nothing at all).
   No provider is reachable from CI: the SCCH endpoint is **geo-blocked to
-  Austria** and cannot be containerized, Azure Foundry needs a **Managed
-  Identity / `az login`** with the `Cognitive Services OpenAI User` role
-  (docs/ai-models.md), and OpenRouter needs an `OPENROUTER_API_KEY` that CI does
+  Austria** and cannot be containerized, Azure Foundry needs an Entra identity
+  (a **Managed Identity / `az login`**, or a Foundry service principal) with the
+  `Cognitive Services OpenAI User` role (docs/ai-models.md), and OpenRouter needs an `OPENROUTER_API_KEY` that CI does
   not have and will not get (`qa.yml` stays secret-free, docs/ci-security.md) — so
   these are **excluded from CI** and run locally only.
   Each optional provider's legs additionally self-skip on its own env var. The
   **Foundry** legs (the `tutor-chat-reply` "via Azure Foundry" case, the
   `health-foundry` assertions, the `coding-agent` "via Azure Foundry" override
-  case) key on `AZURE_FOUNDRY_ENDPOINT`; the **OpenRouter** legs
+  case) key on `AZURE_FOUNDRY_ENDPOINT` — locally against a Foundry resource in
+  another tenant through the `AZURE_FOUNDRY_*` service-principal variables in
+  `.env`, since the `az` profile there is the database's (the `health-foundry`
+  assertion also checks the credential kind the env selects); the **OpenRouter** legs
   (`tutor-chat-reply` "via OpenRouter › sending a message gets a non-empty reply
   from an OpenRouter tutor" — the agent path, proving static-key auth and
   `vendor/model` id resolution — `coding-agent` "via OpenRouter › pi gets a
