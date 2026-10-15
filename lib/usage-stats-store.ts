@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import type { ModelTokens } from "@/lib/usage-cost";
 import {
   bucketKeyOf,
   foldTopN,
@@ -211,6 +212,48 @@ export async function getTokensByProvider(opts: {
     return foldTopN(slices, 9);
   } catch (error) {
     console.error("usage-stats-store: tokens by provider failed", error);
+    return undefined;
+  }
+}
+
+/**
+ * SCCH tokens per MODEL over the window, split into new input, cached input and
+ * output — the input of the cost estimate (lib/usage-cost.ts). Filtered on the
+ * app-level provider label the recorder stamps (`'SCCH'`, docs/usage-metering.md);
+ * rows with a NULL provider stay out (negligible, and not attributable). A NULL
+ * model comes back as `null`. Zero-token rows are dropped. Returns `undefined` on
+ * a DB error. Never throws.
+ */
+export async function getScchTokensByModel(opts: {
+  range: UsageRange;
+  now: Date;
+}): Promise<ModelTokens[] | undefined> {
+  const { start } = resolveRange(opts.range, opts.now);
+  try {
+    const res = await getDb().execute<{
+      model: string | null;
+      inputNew: number | string;
+      inputCached: number | string;
+      output: number | string;
+    }>(sql`
+      SELECT u.model AS model,
+             SUM(u.input_tokens_new) AS "inputNew",
+             SUM(u.input_tokens_cached) AS "inputCached",
+             SUM(u.output_tokens) AS output
+      FROM novedu_usage_by_code u
+      WHERE u.hour >= ${start} AND u.provider = 'SCCH'
+      GROUP BY u.model
+    `);
+    return res.rows
+      .map((row) => ({
+        model: row.model,
+        inputNew: Number(row.inputNew),
+        inputCached: Number(row.inputCached),
+        output: Number(row.output),
+      }))
+      .filter((r) => r.inputNew + r.inputCached + r.output > 0);
+  } catch (error) {
+    console.error("usage-stats-store: SCCH tokens by model failed", error);
     return undefined;
   }
 }

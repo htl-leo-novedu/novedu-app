@@ -2,6 +2,8 @@
 
 2026-06-12-findings.md
 docs/superpowers/specs
+# brainstorming visual-companion mockups
+.superpowers/
 .agents/scheduled_tasks.lock
 # impeccable's engine binary: the launcher downloads + verifies it into ~/.impeccable/ on first run
 .agents/skills/impeccable/scripts/bin/

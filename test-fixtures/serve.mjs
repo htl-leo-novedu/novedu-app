@@ -62,6 +62,13 @@
 // answers 403 `{ message }` (someone else's code), anything else 404. Every request's
 // `limit`/`after` is captured on the returned `exportRequests` array.
 
+// `GET /prices/hf/api/models/<owner>/<name>` and `GET /prices/openrouter/models` fake
+// the two public price lookups behind the usage dashboard's cost card
+// (lib/usage-cost-lookup.ts; the e2e app server points its overridable base URLs
+// here). Any `e2e/<name>` model is a quantization of `e2e/base-model`, every other id
+// 404s (so it shows as unmatched); the OpenRouter list prices `e2e/base-model` at
+// fixed rates and also lists a `:free` variant the matcher must skip.
+
 import { readFile } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
@@ -157,6 +164,10 @@ export function startFixturesServer(port = 0, options = {}) {
           decodeURIComponent(exportMatch[1] ?? ""),
           exportRequests,
         );
+        return;
+      }
+      if (url.pathname.startsWith("/prices/")) {
+        handlePrices(res, url);
         return;
       }
       if (url.pathname.startsWith("/api/images/")) {
@@ -284,6 +295,38 @@ function handleConversationExport(req, res, url, code, exportRequests) {
   } else {
     sendJson(res, 400, { message: "after is not a valid cursor." });
   }
+}
+
+/** The fake Hugging Face model API and OpenRouter model list (see the header). */
+function handlePrices(res, url) {
+  const hf = /^\/prices\/hf\/api\/models\/e2e\/([^/]+)$/.exec(url.pathname);
+  if (hf) {
+    sendJson(res, 200, { id: `e2e/${hf[1]}`, cardData: { base_model: "e2e/base-model" } });
+    return;
+  }
+  if (url.pathname === "/prices/openrouter/models") {
+    sendJson(res, 200, {
+      data: [
+        {
+          id: "e2e/base-model",
+          hugging_face_id: "e2e/base-model",
+          pricing: {
+            // USD per token, as OpenRouter lists them (strings): $1 / $2 / $0.50 per 1M.
+            prompt: "0.000001",
+            completion: "0.000002",
+            input_cache_read: "0.0000005",
+          },
+        },
+        {
+          id: "e2e/base-model:free",
+          hugging_face_id: "e2e/base-model",
+          pricing: { prompt: "0", completion: "0" },
+        },
+      ],
+    });
+    return;
+  }
+  sendJson(res, 404, { error: "not found" });
 }
 
 /** JSON reply helper for the fake API. */

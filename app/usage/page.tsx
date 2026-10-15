@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import {
   BreakdownSkeleton,
   ChartSkeleton,
+  CostSkeleton,
   KpiSkeleton,
   ModelsSkeleton,
 } from "@/components/dashboard-skeletons";
@@ -9,6 +10,7 @@ import { Main, PageBody } from "@/components/page-main";
 import { requireTeacherPage } from "@/components/require-teacher-page";
 import { parseRange } from "@/lib/usage-range";
 import { BreakdownSection } from "./breakdown-section";
+import { CostSection } from "./cost-section";
 import { KpiSection } from "./kpi-section";
 import { ModelsSection } from "./models-section";
 import { RangeTabs } from "./range-tabs";
@@ -53,6 +55,9 @@ export default async function UsagePage({
         </Suspense>
         <Suspense key={`models-${range}`} fallback={<ModelsSkeleton />}>
           <ModelsSection range={range} now={now} />
+        </Suspense>
+        <Suspense key={`cost-${range}`} fallback={<CostSkeleton />}>
+          <CostSection range={range} now={now} />
         </Suspense>
       </PageBody>
     </Main>

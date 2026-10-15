@@ -431,8 +431,9 @@ parameters (user ids, counts), so `reportStoreFailure` logs and records a fixed
   shell: `app/page.unit.test.tsx` (student, teacher, view-as-student, signed out;
   the shared strip and Badges given the teacher audience only on the teacher shell).
 - Browser: `app/_home/*.browser.test.tsx` (calendar keyboard/tooltip/phone layout,
-  the seen marker, the disclosures, the attention counters, the school-hours
-  tooltip, every badge family's disc colour and glyph contrast), `app/[code]/_quiz/save-result.browser.test.tsx`
+  the seen marker, the disclosures, the attention counters, every badge family's
+  disc colour and glyph contrast), `tests/component/help-tip.browser.test.tsx` (the
+  shared `HelpTip` behind the school-hours info button), `app/[code]/_quiz/save-result.browser.test.tsx`
   (the three choices, the automatic save), `app/settings/*.browser.test.tsx`.
 - E2E: `e2e/home.spec.ts` (hermetic smoke per visitor kind — the teacher gets the
   dashboard, view-as-student the student page — including a fresh student's and a

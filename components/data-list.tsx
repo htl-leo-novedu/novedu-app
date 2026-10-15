@@ -32,6 +32,20 @@ const TABLE_CLASSES = "w-full border-collapse text-sm";
 const TH_CLASSES =
   "border-foreground/25 border-b-2 bg-foreground/5 px-3 py-2 text-left font-semibold text-foreground/70 text-xs uppercase tracking-wide";
 const TD_CLASSES = "border-foreground/15 border-b px-3 py-2 align-middle";
+// The footer row (a totals line): the header's weight and tint, a heavy rule above.
+const TF_CLASSES = "border-foreground/25 border-t-2 bg-foreground/5 px-3 py-2 font-semibold";
+
+// Sticky mode pins the header and the footer while the body scrolls inside the
+// table card (its height capped by the caller). Two things change for it:
+//   - The separate border model: under `border-collapse` the table, not the cell,
+//     paints the borders, so a pinned cell would leave its rule behind. Only the
+//     bottom/top rules are set, so nothing doubles (the last body row drops its
+//     hairline, see the card below).
+//   - An opaque cell background: the `foreground/5` tint would let the scrolling
+//     rows show through, so it is painted as a flat gradient layer over the card
+//     colour, which looks the same and hides what is beneath.
+const STICKY_TABLE_CLASSES = "border-separate border-spacing-0";
+const STICKY_CELL_CLASSES = "z-1 bg-card bg-linear-to-r from-foreground/5 to-foreground/5";
 
 // Built-in cell recipes so pages don't repeat alignment classes per column:
 // numeric = right-aligned and snug (header right-aligned too), time = no wrap,
@@ -59,6 +73,11 @@ export interface ListColumn<T, K extends string = string> {
   className?: string;
   /** Optional extra classes on the <th>, cn-merged after the kind recipe. */
   headerClassName?: string;
+  /**
+   * Footer cell content (e.g. a column total). The table renders a footer row when
+   * any column sets one; a column without it gets an empty cell there.
+   */
+  footer?: ReactNode;
   /** Visually hide the header label (e.g. the trailing Actions column). */
   srOnlyHeader?: boolean;
   /**
@@ -184,6 +203,8 @@ export function ListTable<T, K extends string = string>({
   columns,
   rowClassName,
   sorting,
+  sticky,
+  className,
 }: {
   rows: T[];
   getRowKey: (row: T) => string;
@@ -195,6 +216,14 @@ export function ListTable<T, K extends string = string>({
    * header renders plain, even for a column that carries a `sortKey`.
    */
   sorting?: ListSorting;
+  /**
+   * Pin the header (and the footer row, if any) while the body scrolls. Only
+   * meaningful with a height cap on the card, passed as `className` (e.g.
+   * `max-h-80`): the card is the scroll container the cells stick to.
+   */
+  sticky?: boolean;
+  /** Extra classes on the table card (the scroll container), cn-merged. */
+  className?: string;
 }) {
   // Cell classes vary only by COLUMN, so merge them once per column here
   // instead of once per cell inside the row loop. `aria-sort` is per-column too,
@@ -203,6 +232,7 @@ export function ListTable<T, K extends string = string>({
     scope: "col" as const,
     className: cn(
       TH_CLASSES,
+      sticky && cn(STICKY_CELL_CLASSES, "sticky top-0"),
       column.kind && HEADER_KIND_CLASSES[column.kind],
       column.srOnlyHeader && "w-[1%]",
       column.headerClassName,
@@ -211,6 +241,15 @@ export function ListTable<T, K extends string = string>({
   }));
   const cellClasses = columns.map((column) =>
     cn(TD_CLASSES, column.kind && CELL_KIND_CLASSES[column.kind], column.className),
+  );
+  const hasFooter = columns.some((column) => column.footer !== undefined);
+  const footerClasses = columns.map((column) =>
+    cn(
+      TF_CLASSES,
+      sticky && cn(STICKY_CELL_CLASSES, "sticky bottom-0"),
+      column.kind && CELL_KIND_CLASSES[column.kind],
+      column.className,
+    ),
   );
 
   return (
@@ -221,8 +260,13 @@ export function ListTable<T, K extends string = string>({
     // instead of being cut off; the scrollbar renders on the card's bottom edge
     // only when it overflows. This is the universal fallback for every table,
     // embedded ones included, at any window size.
-    <div className="overflow-x-auto rounded-xl border border-foreground/10 bg-card shadow-xs [&_tbody_tr:last-child>td]:border-b-0">
-      <table className={TABLE_CLASSES}>
+    <div
+      className={cn(
+        "overflow-x-auto rounded-xl border border-foreground/10 bg-card shadow-xs [&_tbody_tr:last-child>td]:border-b-0",
+        className,
+      )}
+    >
+      <table className={cn(TABLE_CLASSES, sticky && STICKY_TABLE_CLASSES)}>
         <thead>
           <tr>
             {columns.map((column, index) => (
@@ -255,6 +299,18 @@ export function ListTable<T, K extends string = string>({
             </tr>
           ))}
         </tbody>
+        {hasFooter ? (
+          <tfoot>
+            <tr>
+              {columns.map((column, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: columns are static per render — the index is a stable identity
+                <td key={index} className={footerClasses[index]}>
+                  {column.footer}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        ) : null}
       </table>
     </div>
   );

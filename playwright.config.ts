@@ -100,8 +100,14 @@ const ENTRA_SERVERS = [
   // to a real model, so a fake-mode run fails with port-in-use instead of
   // silently hitting it. Only SCCH is redirected; Foundry and OpenRouter keep
   // whatever `.env` sets.
+  // The cost card's price lookups go to the fixtures server too (no outside network).
   appServer({
-    env: { SCCH_BASE_URL: FAKE_LLM_BASE, SCCH_API_KEY: "fake-llm" },
+    env: {
+      SCCH_BASE_URL: FAKE_LLM_BASE,
+      SCCH_API_KEY: "fake-llm",
+      USAGE_COST_HF_API_BASE: `${FIXTURES_BASE}/prices/hf/api`,
+      USAGE_COST_OPENROUTER_MODELS_URL: `${FIXTURES_BASE}/prices/openrouter/models`,
+    },
     reuse: false,
   }),
   fixturesServer,

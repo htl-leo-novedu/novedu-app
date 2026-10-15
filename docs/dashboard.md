@@ -6,6 +6,7 @@ has no read surface) and the seed of a subsystem that grows: the token-over-time
 chart is built to be reused on future single-code stats pages.
 
 Read before touching: `app/usage/**`, `lib/usage-stats-store.ts`, `lib/usage-range.ts`,
+`lib/usage-cost.ts` + `lib/usage-cost-lookup.ts` (the cost estimate),
 the shared chart building blocks in `components/charts/**` and
 `components/dashboard-{ui,skeletons}.tsx` (also used by the LLM diagnostics page,
 `docs/diagnostics.md`), the `--chart-*` tokens in `app/globals.css`, and the
@@ -14,7 +15,10 @@ the shared chart building blocks in `components/charts/**` and
 ## What it shows
 
 - A **stacked bar chart** of token usage over time — cached input, new input, output
-  — with a **data table** of the same buckets beneath it.
+  — with a **data table** of the same buckets beneath it. The table ends in a
+  **Total** row (each column summed over the range's buckets, from the same read);
+  its header and Total row stay in place while only the bucket rows scroll
+  (`ListTable`'s `footer` + `sticky`, docs/filtered-lists.md).
 - Four **donut pies**: total tokens per **module** (tutor/quiz/writing/coding), per
   **code** (top 9 + "Other"), per **model** (top 9 + "Other"; a NULL model —
   metered before models were recorded — shows as "(unknown)"), and per **LLM
@@ -22,6 +26,9 @@ the shared chart building blocks in `components/charts/**` and
   provider pie is the **cost split** — model ids are not provider-disjoint (the
   same id can be served by more than one provider), so the model pie cannot stand
   in for it. The two LLM pies sit side by side beneath the module/code pair.
+- A **cost estimate** card, last on the page and the size of one pie card: what the
+  **SCCH** tokens of the range would cost at **OpenRouter's** list prices for the
+  same models (see "Cost estimate" below).
 - Two **KPIs**: **Chats** (distinct Mastra threads with a user message) and **Quiz
   answers graded** (`SUM(quiz_answers)`).
 - The quiz pre-check hint (`docs/codes.md`, "Immediate feedback") is **not** in any
@@ -85,6 +92,10 @@ crosses the wire, and **read once where the shape allows**:
   count is far below that). Its own read, not a fold of the model query, so a slow
   or failed one degrades only its own card; `ModelsSection` issues the two in
   parallel.
+- `getScchTokensByModel({ range, now })` — `WHERE provider = 'SCCH'` (the app-level
+  label the recorder stamps), `GROUP BY model`, the three token sums per model; a
+  NULL model comes back as `null`. Feeds the cost card. Rows with a NULL provider
+  are not attributable and stay out.
 - `getDashboardKpis({ range, now })` — one round trip, two windowed subselects, feeds
   **both KPI tiles**.
 
@@ -104,6 +115,56 @@ shared `SEGMENTED_NAV` / `segmentedItemVariants` recipe (`components/ui/segmente
 boundaries are **keyed by range**, so switching shows the skeletons again while the
 new window streams. `page.tsx` snaps one `now` and passes it to every section, so the
 KPI, chart, and pies all describe the same window.
+
+## Cost estimate
+
+SCCH gives Novedu its tokens for free. The cost card answers the stakeholders'
+question "what are these tokens worth on the open market?" with a ballpark: the
+SCCH tokens of the range, priced at OpenRouter's list prices for **the same
+models**. It is an indication of market value, never a bill — the card says so in
+its subtitle and in the `?` tooltip in its corner (`HelpTip`). Non-SCCH usage
+(Azure Foundry, OpenRouter) was billed for real and is not part of it.
+
+**Matching, two steps, one per public API** (the pure rules are
+`lib/usage-cost.ts`, the fetches `lib/usage-cost-lookup.ts`):
+
+1. **SCCH model → original model.** SCCH's model ids are Hugging Face repo ids:
+   `GET https://huggingface.co/api/models/<id>` (redirects followed — the API
+   redirects a different-case id) and read `cardData.base_model`, a string or an
+   array. Exactly one base is a match; an empty or longer list is not. A model
+   without `base_model` is itself the original. One step only: a quantization of a
+   quantization lands on a model OpenRouter does not list. Ids that are not
+   `owner/name` are never requested.
+2. **Original model → price.** `GET https://openrouter.ai/api/v1/models` (public, no
+   key): the entry whose `hugging_face_id` equals the base, case-insensitively,
+   `:free` variants skipped. Several paid matches, or no usable price, = no match.
+   `pricing.prompt` prices new input, `pricing.input_cache_read` cached input (the
+   `prompt` price when the model lists none), `pricing.completion` output — USD per
+   token.
+
+A model that does not match is **never priced by a guess** (similar names can
+differ several-fold in price): it is left out and named, with its tokens, in a
+warning in the `warning` colour (a NULL model as "(unknown model)"). The card
+shows a donut of new input / cached input / output with the total in USD in the
+centre and a legend with each category's $ and share (`cost-donut-chart.tsx`,
+the token bar chart's hues), and a caption with the date OpenRouter's list was
+fetched (its cached response's `Date` header). There is no override list for a
+model the lookup cannot resolve.
+
+**Speed and failure.** The card is its own Suspense section, so nothing else on
+the page waits for the lookups. The store read and OpenRouter's list run in
+parallel, then one Hugging Face lookup per model. Every response is kept in Next's
+data cache for a day (`fetch(url, { next: { revalidate: 86400 } })`, which the
+page's `force-dynamic` does not override), so only the first view per day pays the
+latency; each fetch times out after 5 s. OpenRouter unreachable → the card shows
+"unavailable"; a failed Hugging Face lookup → that model is unmatched. These are
+plain public GETs carrying model ids only — no key, no user data, nothing through
+`lib/llm/`. The stages need outbound HTTPS to `huggingface.co` and `openrouter.ai`
+for the card; without it only the card degrades.
+
+`USAGE_COST_HF_API_BASE` (default `https://huggingface.co/api`) and
+`USAGE_COST_OPENROUTER_MODELS_URL` (default `https://openrouter.ai/api/v1/models`)
+override the two endpoints; the e2e suite points them at the fixtures server.
 
 ## Charts & palette
 
@@ -142,22 +203,31 @@ the rank palette + the "Other" gray is exactly the assignment they need.
 Unchanged from docs/usage-metering.md: `novedu_usage_by_code` carries **no user id**,
 so nothing the dashboard reads can link a student to an activity. The per-code pie
 labels slices with the teacher's note; the "Chats" KPI counts threads, never
-students. No message/prompt content or PII is read.
+students. No message/prompt content or PII is read. The cost card sends only model
+ids to Hugging Face and OpenRouter.
 
 ## Testing
 
 - **Unit** — `lib/usage-range.unit.test.ts` (pure windowing/labels/zero-fill/foldTopN
   with an injected `now`); `lib/usage-stats-store.unit.test.ts` (the
   `code-stats-store.unit.test.ts` template — mock `getDb().execute` with a canned
-  `{ rows }` result, assert the shaping + never-throws); `app/usage/page.unit.test.tsx` (the
-  teacher gate) and the section server components via `renderToStaticMarkup`.
+  `{ rows }` result, assert the shaping + never-throws); `lib/usage-cost.unit.test.ts`
+  (both matching steps over canned JSON, the price math) and
+  `lib/usage-cost-lookup.unit.test.ts` (stubbed `fetch`: URLs, cache option,
+  failures); `app/usage/page.unit.test.tsx` (the teacher gate) and the section
+  server components via `renderToStaticMarkup` (incl. the token table's Total row
+  and every cost-card state).
 - **Component** — the bar + pie charts render props-driven in the `vitest-browser`
   project (real Chromium), through the shared `renderChart` harness
   (`tests/render-chart.tsx`: stylesheet, fixed-width frame, pointer parked off the
-  chart so no tooltip duplicates a legend label).
+  chart so no tooltip duplicates a legend label); the cost donut likewise. The
+  table's sticky header/footer is `tests/component/list-table-sticky.browser.test.tsx`,
+  the `?` tooltip `tests/component/help-tip.browser.test.tsx`.
 - **E2E** — `e2e/usage-dashboard.live.spec.ts` (`@live-db`, seeds
   `novedu_usage_by_code` via the plain `pg` driver through `e2e/db.ts`, runs in
-  CI) and a hermetic access-denied spec (default student session). See
+  CI; also asserts the Total row and the cost card's exact figures against the
+  fixtures server's fake price lookups, and no page errors) and a hermetic
+  access-denied spec (default student session). See
   docs/testing.md.
 
 ## Extending it
