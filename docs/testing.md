@@ -199,7 +199,10 @@ GitHub); the dev server fetches the URLs server-side, so `127.0.0.1` resolves.
 The fixed port lives in ONE place, `e2e/fixtures.constants.ts`: the Playwright
 config health-checks it and passes it to the server's env, and `e2e/code.utils.ts`
 builds its URLs from the same constant. The CLI integration test imports
-`startFixturesServer` (ephemeral port) for its served-URL cases.
+`startFixturesServer` (ephemeral port) for its served-URL cases. The same server
+also fakes the two public price lookups behind the usage dashboard's cost card
+(`/prices/…`; the e2e app server's `USAGE_COST_*` overrides point there), so no
+spec reaches Hugging Face or OpenRouter (`docs/dashboard.md`, "Cost estimate").
 
 Hermetic fixtures pin a fake **`model: test-model`** (nothing calls an LLM). The
 LLM-backed fixtures — `tutors/live-tutor.yaml`, `tutors/vision-tutor.yaml`,

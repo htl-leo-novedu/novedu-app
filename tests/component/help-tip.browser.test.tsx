@@ -2,31 +2,34 @@ import { expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 
-// The "Outside school hours" explanation (WCAG 1.4.13): shown on hover and on
-// keyboard focus, hoverable (the pointer may move onto it), dismissible with
-// Escape. Needs the real stylesheet: the tooltip is positioned absolutely.
+// The shared explanation tooltip (WCAG 1.4.13): shown on hover and on keyboard
+// focus, hoverable (the pointer may move onto it), dismissible with Escape. Needs
+// the real stylesheet: the tooltip is positioned absolutely.
 import "@/app/globals.css";
-import { SchoolHoursTip } from "./school-hours-tip";
+import { HelpTip } from "@/components/help-tip";
 
 const tooltip = () => document.querySelector<HTMLElement>('[role="tooltip"]');
 
-async function renderTip() {
+async function renderTip(icon?: "info" | "help") {
   const screen = await render(
     <div style={{ padding: "8px 300px 120px 8px" }}>
-      Outside school hours <SchoolHoursTip />
+      Estimated cost{" "}
+      <HelpTip label="About this estimate" icon={icon}>
+        These are not real costs.
+      </HelpTip>
     </div>,
   );
-  return screen.getByRole("button", { name: "What counts as outside school hours" });
+  return screen.getByRole("button", { name: "About this estimate" });
 }
 
 test("describes the button and stays hidden until asked", async () => {
   const button = await renderTip();
-  await expect.element(button).toHaveAccessibleDescription(/before 8:00 or from 17:00/);
+  await expect.element(button).toHaveAccessibleDescription("These are not real costs.");
   expect(tooltip()?.hidden).toBe(true);
 });
 
 test("hover shows it; moving onto it keeps it open; leaving hides it", async () => {
-  const button = await renderTip();
+  const button = await renderTip("help");
   await button.hover();
   expect(tooltip()?.hidden).toBe(false);
   await page.elementLocator(tooltip() as Element).hover();
@@ -37,7 +40,7 @@ test("hover shows it; moving onto it keeps it open; leaving hides it", async () 
 });
 
 test("Escape dismisses it, from a hover and from keyboard focus", async () => {
-  const button = await renderTip();
+  const button = await renderTip("help");
   await button.hover();
   expect(tooltip()?.hidden).toBe(false);
   await userEvent.keyboard("{Escape}");

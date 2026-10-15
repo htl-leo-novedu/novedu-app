@@ -45,6 +45,14 @@ export function ModelsSkeleton() {
   );
 }
 
+export function CostSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <ChartSkeleton title="Estimated cost at OpenRouter prices" />
+    </div>
+  );
+}
+
 export function KpiSkeleton() {
   return (
     <div className="flex flex-wrap gap-4" role="status" aria-live="polite">

@@ -47,6 +47,21 @@ it("renders the bar chart and a table row with the summed total", async () => {
   expect(html).toContain("4,000"); // total = 1000 + 2500 + 500
 });
 
+it("ends the table in a Total row summed over the buckets", async () => {
+  getTokenTimeSeries.mockResolvedValue([
+    bucket("13:00", 1000, 2500, 500),
+    bucket("14:00", 2000, 0, 250),
+  ]);
+  const html = await render();
+  const footer = html.slice(html.indexOf("<tfoot>"), html.indexOf("</tfoot>"));
+  expect(footer).toContain(">Total<");
+  expect(footer).toContain("3,000"); // new input
+  expect(footer).toContain("2,500"); // cached input
+  expect(footer).toContain("750"); // output
+  expect(footer).toContain("6,250"); // total
+  expect(footer).toContain("sticky"); // pinned while the rows scroll
+});
+
 describe("degraded", () => {
   it("shows the unavailable copy when the read fails", async () => {
     getTokenTimeSeries.mockResolvedValue(undefined);

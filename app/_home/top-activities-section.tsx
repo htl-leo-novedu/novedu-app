@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatCount } from "@/components/charts/format";
 import { DataUnavailable } from "@/components/dashboard-ui";
+import { HelpTip } from "@/components/help-tip";
 import { ModuleBadge } from "@/components/module-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { getTeacherHome } from "@/lib/home-data";
@@ -14,7 +15,6 @@ import {
   HOME_SECTION_TITLE,
 } from "./home-ui";
 import { Meter } from "./meter";
-import { SchoolHoursTip } from "./school-hours-tip";
 
 // Top activities: the teacher's five codes with the most interactions in the
 // last 30 days, with the share outside school hours. A table from `sm` up; on
@@ -55,7 +55,11 @@ export async function TopActivitiesSection({ userId }: { userId: string }) {
             <th scope="col" className={cn(TH, "text-right")}>
               <span className="inline-flex items-center gap-1">
                 Outside school hours
-                <SchoolHoursTip />
+                <HelpTip label="What counts as outside school hours">
+                  The share of this activity's interactions on weekends, or Monday to Friday before
+                  8:00 or from 17:00 (Vienna time). Counted by whole hours; school holidays are not
+                  taken into account.
+                </HelpTip>
               </span>
             </th>
           </tr>

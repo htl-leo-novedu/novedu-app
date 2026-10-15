@@ -60,6 +60,15 @@ module's savers list, the per-code conversation stats, the usage dashboard) do
 scroll alone. `tests/component/list-overflow.browser.test.tsx` is the guard for
 both the scroll fallback and the three clamp regimes.
 
+**Footer row and sticky mode.** A column may set `footer` (e.g. a column total);
+`ListTable` then renders a footer row in the header's weight and tint, an empty
+cell for every column without one. `sticky` pins the header and that footer row
+while the body scrolls inside the card, whose height the caller caps through
+`className` (the usage dashboard's token table: `max-h-80`). In sticky mode the
+table uses the separate border model and the pinned cells get an opaque
+background, so their rules travel with them and the scrolling rows never show
+through (`tests/component/list-table-sticky.browser.test.tsx`).
+
 ### Store: dynamic query, the Drizzle way
 
 Build an `SQL[]` of optional conditions and apply them with `.where(and(...conditions))`

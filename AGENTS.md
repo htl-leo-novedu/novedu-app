@@ -179,7 +179,7 @@ Read before touching: `lib/usage-store.ts`, `app/mastra/usage-exporter.ts`, `lib
 
 ### Usage dashboard → `docs/dashboard.md`
 
-Read before touching: `app/usage/**`, `lib/usage-stats-store.ts`, `lib/usage-range.ts`, the shared chart building blocks `components/charts/**` + `components/dashboard-{ui,skeletons}.tsx`.
+Read before touching: `app/usage/**`, `lib/usage-stats-store.ts`, `lib/usage-range.ts`, `lib/usage-cost*.ts`, the shared chart building blocks `components/charts/**` + `components/dashboard-{ui,skeletons}.tsx`.
 
 - Teacher-only, server-first read surface over `usage_by_code` — no `/api/usage/*` route; all windows UTC.
 

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { TEACHER_STORAGE_STATE } from "./auth.constants";
 import { mintCode } from "./code.utils";
 import { query } from "./db";
+import { watchErrors } from "./page.utils";
 
 // A REAL end-to-end check that the dashboard's aggregate queries run against the
 // live schema and render. It seeds `novedu_usage_by_code` rows for the current UTC
@@ -11,6 +12,11 @@ import { query } from "./db";
 // charts/table/KPIs reflect the seed. Needs the DB but NOT the LLM, so it is
 // `@live-db` and runs in CI against the ephemeral container. Cleans up its own
 // rows in `finally`. See docs/dashboard.md + docs/testing.md.
+//
+// The cost card's price lookups are answered by the fixtures server
+// (test-fixtures/serve.mjs, wired in playwright.config.ts): every `e2e/<name>` model
+// is priced at $1 / $0.50 / $2 per 1M new / cached / output tokens, any other model
+// stays unmatched — so the seeded model's dollars are exact even on a busy local DB.
 
 test.use({ storageState: TEACHER_STORAGE_STATE });
 
@@ -34,8 +40,9 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
   const tutorCode = await mintCode({ module: "tutor", note: `${note} tutor` });
 
   // A unique model id so the model-pie legend can be asserted unambiguously; the
-  // provider/model columns are seeded like the LLM recorder writes them.
-  const model = `e2e-model-${Date.now()}`;
+  // provider/model columns are seeded like the LLM recorder writes them. The
+  // `e2e/` owner makes the fixtures' price lookup match it.
+  const model = `e2e/model-${Date.now()}`;
   const seedUsage = (code: string, module: string, quizAnswers: number) =>
     query(
       `INSERT INTO novedu_usage_by_code
@@ -46,6 +53,7 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
       [code, module, model, TOKENS_NEW, TOKENS_CACHED, TOKENS_OUTPUT, quizAnswers],
     );
 
+  const errors = watchErrors(page);
   try {
     await seedUsage(quizCode, "quiz", QUIZ_ANSWERS);
     await seedUsage(tutorCode, "tutor", 0);
@@ -73,6 +81,25 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
     const maxCell = Math.max(0, ...cellTexts.map((t) => Number(t.replace(/[^0-9]/g, "")) || 0));
     expect(maxCell).toBeGreaterThanOrEqual(combinedSeed);
 
+    // The table ends in a Total row whose Total column holds at least the seed.
+    const footer = page.locator("tfoot");
+    await expect(footer.getByRole("cell", { name: "Total", exact: true })).toBeVisible();
+    const footerTotal = Number(
+      (await footer.getByRole("cell").last().innerText()).replace(/[^0-9]/g, ""),
+    );
+    expect(footerTotal).toBeGreaterThanOrEqual(combinedSeed);
+
+    // The cost card priced the seeded model: 2 rows × (9M new, 3M cached, 2M out)
+    // = $18 new input + $3 cached input + $8 output = $29.
+    const cost = page.getByTestId("usage-cost");
+    await expect(
+      cost.getByRole("heading", { name: "Estimated cost at OpenRouter prices" }),
+    ).toBeVisible();
+    await expect(cost.getByRole("row", { name: /New input/ })).toContainText("$18.00");
+    await expect(cost.getByRole("row", { name: /Cached input/ })).toContainText("$3.00");
+    await expect(cost.getByRole("row", { name: /Output/ })).toContainText("$8.00");
+    await expect(cost.getByText("Prices from OpenRouter", { exact: false })).toBeVisible();
+
     // The breakdown query ran: the seeded code shows in the code-pie legend.
     await expect(page.getByText(note, { exact: true })).toBeVisible();
 
@@ -87,6 +114,8 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
     expect(quizValue).toBeGreaterThanOrEqual(QUIZ_ANSWERS);
 
     await expect(page.getByTestId("usage-kpi-chats")).toBeVisible();
+
+    expect(errors).toEqual([]);
   } finally {
     await query(`DELETE FROM novedu_usage_by_code WHERE code = ANY($1)`, [
       [quizCode, tutorCode],

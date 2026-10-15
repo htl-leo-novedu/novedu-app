@@ -11,15 +11,24 @@ export const DASHBOARD_CARD = "rounded-lg border border-foreground/15 bg-card p-
 export function DashboardCard({
   title,
   subtitle,
+  action,
   className,
   children,
   ...props
-}: { title: ReactNode; subtitle?: ReactNode } & ComponentProps<"section">) {
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  /** Top-right corner of the header, e.g. a `HelpTip`. */
+  action?: ReactNode;
+} & ComponentProps<"section">) {
   return (
     <section className={cn(DASHBOARD_CARD, className)} {...props}>
-      <header className="mb-3">
-        <h2 className="font-semibold text-sm">{title}</h2>
-        {subtitle ? <p className="text-foreground/60 text-xs">{subtitle}</p> : null}
+      <header className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="font-semibold text-sm">{title}</h2>
+          {subtitle ? <p className="text-foreground/60 text-xs">{subtitle}</p> : null}
+        </div>
+        {action}
       </header>
       {children}
     </section>
