@@ -164,14 +164,6 @@ prose carries everything an editor needs.
   that just happens, never as a step anyone configures. HEIC is the one format
   worth naming: it is an iPhone default and the only common case that can fail
   outright.
-- The live hint while typing is **never the grade**, and the chapter must never let
-  it read as one: it is one icon plus a tooltip, it produces no written feedback,
-  nothing about it is stored, and the verdict still comes from `evaluation` on
-  Submit. It also reads only the typed text, so it says nothing about a photo.
-- Never name the classifier behind the hint, the AI service it runs on, or the
-  server setting that enables it. A teacher's whole view of the switch is "your
-  school's server has this turned on, or it doesn't"; `immediate_feedback` only
-  ever turns it off for one quiz, it can never turn it on.
 
 ## 20-building-activities/07-fragments
 

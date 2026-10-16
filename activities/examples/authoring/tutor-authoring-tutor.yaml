@@ -75,11 +75,13 @@ prompt:
         question: "The full question text placed into the chat input on click."
     anonymous: false            # optional; default true (chats NOT linked to students)
     llm:
-      model: RedHatAI/gemma-4-31B-it-FP8-Dynamic   # required
-      provider: SCCH            # optional; one of "SCCH" (default), "Azure Foundry",
+      model: openai/gpt-6-luna  # required
+      provider: OpenRouter      # optional; one of "SCCH" (default), "Azure Foundry",
                                 # "OpenRouter". Azure Foundry serves an Azure OpenAI
                                 # deployment (model = the deployment name); OpenRouter
-                                # takes a namespaced id like z-ai/glm-5.3-flash
+                                # takes a namespaced id like openai/gpt-6-luna
+      reasoning: medium         # optional; none, minimal, low, medium, high or xhigh;
+                                # omit to leave the effort to the model
       imageInput: false         # optional; default true, set false to disable image uploads
     tools:                      # optional; default [] (no tools) — built-in server-side
       - random_number           # tools the model may call during the chat

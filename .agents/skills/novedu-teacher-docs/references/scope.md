@@ -16,11 +16,6 @@ mechanism out.
 - Write "You can run an activity on the school's AI server or on Azure, chosen per
   code", not how either one connects.
 - Write "Deleting a code also deletes its statistics", not how they are stored.
-- The quiz's live hint belongs in the quizzes chapter as what a teacher sets
-  (`immediate_feedback`) and what a student sees (the coloured label and its tooltip, a hint
-  rather than the grade). The server setting that enables it, the classifier
-  behind it and OpenRouter never appear in teacher docs — a teacher only ever sees
-  "your school's Novedu server has this turned on or it doesn't".
 
 If a piece of the source has no teacher-facing effect, it is not documentation. If a
 chapter seems to need one, the outline is reaching past the teacher's world: cut it or

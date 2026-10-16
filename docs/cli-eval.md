@@ -386,7 +386,8 @@ when it matches.
 
 ```bash
 novedu-cli eval ./my-quiz.eval.yaml \
-  --judge-llm-provider "Azure Foundry" --judge-llm-model gpt-5.6-terra
+  --judge-llm-provider OpenRouter --judge-llm-model openai/gpt-6.1-sol \
+  --judge-llm-reasoning high
 ```
 
 ### Report-only, and how it degrades
@@ -725,7 +726,7 @@ novedu-cli eval "./**/*.eval.yaml"                 # quoted: the CLI expands it
 ```bash
 novedu-cli eval ./welcome-quiz.eval.yaml                                   # baseline
 novedu-cli eval ./welcome-quiz.eval.yaml \
-  --llm-provider "Azure Foundry" --llm-model gpt-5-mini                    # comparison
+  --llm-provider OpenRouter --llm-model openai/gpt-6-luna                   # comparison
 ```
 
 `--llm-provider` / `--llm-model` is **strictly both-or-nothing** (mirroring the

@@ -3,7 +3,6 @@ import { Main, PageBody } from "@/components/page-main";
 import type { CodeEntry } from "@/lib/code-store";
 import { resolveImageRef } from "@/lib/image-resolve";
 import { loadQuiz } from "@/lib/quiz-fetch";
-import { immediateFeedbackConfigured } from "@/lib/quiz-immediate-feedback";
 import type { ResolvedQuiz, ResolvedQuizQuestion } from "@/lib/quiz-types";
 import { toPublicQuiz } from "@/lib/quiz-yaml";
 import { getUserSettings } from "@/lib/user-settings-store";
@@ -39,11 +38,7 @@ export async function RenderQuiz({
   // Resolve each question's optional content image to a usable URL here, at page
   // render: a hosted image becomes the app's own byte URL for its active version,
   // so the client runner only ever sees ready-to-render URLs.
-  // The live pre-check hint is server-derived: the server's feature gate AND the
-  // quiz's own `immediate_feedback`. `precheckAnswer` re-derives it on every call,
-  // so this copy is a display hint, never the authorization.
-  const immediateFeedback = immediateFeedbackConfigured() && loaded.quiz.immediateFeedback;
-  const publicQuiz = toPublicQuiz(loaded.quiz, { immediateFeedback });
+  const publicQuiz = toPublicQuiz(loaded.quiz);
   const questions: ResolvedQuizQuestion[] = await Promise.all(
     publicQuiz.questions.map(async ({ image, ...rest }) => {
       const resolved = await resolveImageRef(image, entry.fileUrl);

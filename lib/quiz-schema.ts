@@ -123,14 +123,6 @@ export const QuizYamlSchema = z.strictObject({
     description:
       "Present questions in a random order per attempt. Set to false to keep the authored order.",
   }),
-  // The live pre-check hint shown beside the answer box while a student types,
-  // default true. Only ever visible when the SERVER also enables the feature —
-  // the effective flag is `server gate AND this field` (see docs/codes.md).
-  immediate_feedback: z.boolean().optional().meta({
-    default: true,
-    description:
-      "Live hint (icon + label) while a student types an answer (looks correct / partly there / not yet / unsure) — a quick check, not the graded verdict. Only shown when the school's server has the feature enabled; set false to switch it off for this quiz (e.g. exams).",
-  }),
   // Attempt length: how many questions one attempt asks. Purely a runner-side
   // sequence bound — grading stays per-question and stateless; there is no
   // server-side attempt enforcement.
@@ -145,7 +137,7 @@ export const QuizYamlSchema = z.strictObject({
   // namespaced "<alias>/<id>"; each imported question travels with its source
   // quiz's rendered `instructions` preamble so it grades identically in both
   // places. Everything else of an included quiz (llm, anonymous, shuffle,
-  // immediate_feedback, discussion, title, description, question_count) is ignored.
+  // discussion, title, description, question_count) is ignored.
   quiz_files: z.array(QuizFileRefSchema).default([]).meta({
     description:
       "Other quiz files whose questions are ALL included live into this quiz (a compound/final quiz). One level deep — an included quiz may not itself declare quiz_files.",

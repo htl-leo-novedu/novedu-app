@@ -72,7 +72,7 @@ Every module's `llm:` block takes the same three fields: a required `model`, an
 optional `provider` (`SCCH` when omitted — the school's Austrian LLM hosting
 partner; `Azure Foundry` serves the activity from an Azure OpenAI deployment,
 with `model` naming the deployment; `OpenRouter` serves it through OpenRouter,
-with `model` a namespaced id like `z-ai/glm-5.3-flash`) and an optional
+with `model` a namespaced id like `openai/gpt-6-luna`) and an optional
 `reasoning` effort (`none`,
 `minimal`, `low`, `medium`, `high` or `xhigh`; omitted, the model's own default
 applies, and `none` switches thinking off). Which of those levels a model
@@ -85,7 +85,7 @@ npx cache).
 The `llm:` block is the activity's **default**: when a teacher mints a code for
 it, the code's create/edit form can **override the whole block per code**
 (provider + model always together, with an optional reasoning level on top and
-one-click presets), so the same YAML file can be handed out once on SCCH and once
+a quick-pick list to fill all three), so the same YAML file can be handed out once on SCCH and once
 on another provider without duplicating it.
 
 These files are content only — they are not bundled into the runtime image.

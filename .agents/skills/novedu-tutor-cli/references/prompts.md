@@ -39,9 +39,6 @@ an override may add, change or drop the reasoning level too.
   - For a **compound quiz** the questions are the RESOLVED pool: namespaced
     `"<alias>/<id>"` ids, each carrying its source quiz's preamble. Use those
     ids when writing an eval for a compound quiz.
-  - The live hint a student sees while typing (`immediate_feedback`) is **not**
-    in the dump: it is a classifier request, not a prompt, and it is graded by
-    nothing — `grading` remains the only judgment `prompts` shows.
 - **tutor** and **writing** give `system`.
 - **coding** gives `system` plus `upstreamSystemMessage` — what the proxy puts
   on the wire, appended to the calling agent's last system message so the

@@ -46,7 +46,9 @@ id: my-coding
 name: "Beginner TypeScript Coding Buddy"
 title: "TypeScript Coding Buddy (Beginners)"
 llm:
-  model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
+  model: openai/gpt-6-luna
+  provider: OpenRouter
+  reasoning: medium
 instructions: |
   You are a friendly TypeScript coding buddy for a BEGINNER. Keep every explanation
   and every line of code within what the student has learned:
@@ -135,8 +137,10 @@ partner), `Azure Foundry` or `OpenRouter`. With `provider: Azure Foundry` the
 answers come from an Azure OpenAI deployment and `llm.model` is the **deployment
 name** (e.g. `gpt-5.4-mini`); with `provider: OpenRouter` they come through
 OpenRouter and `llm.model` is its namespaced routing key (e.g.
-`z-ai/glm-5.3-flash`). Both are only usable if the server is configured for them
-— otherwise the activity is rejected with a readable reason. Like the
+`openai/gpt-6-luna`). Both are only usable if the server is configured for them
+— otherwise the activity is rejected with a readable reason.
+A server may also accept only some OpenRouter models: any other one fails when a
+student uses the activity, just like a wrong model name. Like the
 model, the provider never reaches the student.
 
 The `llm:` values are the **default**: when a teacher mints a code for this

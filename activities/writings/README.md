@@ -49,7 +49,9 @@ description: |
   coach on the right for feedback. Press **Save** when you are happy with it.
 anonymous: false # writing defaults to false (attributed) — see Privacy below
 llm:
-  model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
+  model: openai/gpt-6-luna
+  provider: OpenRouter
+  reasoning: medium
 instructions: |
   You are an encouraging writing coach. Help the student improve THEIR essay —
   never write it for them. Read the current draft with the `getCurrentText` tool
@@ -142,8 +144,10 @@ partner), `Azure Foundry` or `OpenRouter`. With `provider: Azure Foundry` the
 feedback chat runs on an Azure OpenAI deployment and `llm.model` is the
 **deployment name** (e.g. `gpt-5.4-mini`); with `provider: OpenRouter` it runs
 through OpenRouter and `llm.model` is its namespaced routing key (e.g.
-`z-ai/glm-5.3-flash`). Both are only usable if the server is configured for them
+`openai/gpt-6-luna`). Both are only usable if the server is configured for them
 — otherwise the activity is rejected with a readable reason.
+A server may also accept only some OpenRouter models: any other one fails when a
+student uses the activity, just like a wrong model name.
 
 The `llm:` values are the **default**: when a teacher mints a code for this
 activity, the code's create/edit form can **override the whole `llm:` block per

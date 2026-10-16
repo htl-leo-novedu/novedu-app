@@ -149,31 +149,6 @@ export const HistoryIcon = (props: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
-/** Circled check — the quiz pre-check hint "looks correct". */
-export const CircleCheckIcon = (props: SVGProps<SVGSVGElement>) => (
-  <Icon {...props}>
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-    <polyline points="22 4 12 14.01 9 11.01" />
-  </Icon>
-);
-
-/** Circled minus — the quiz pre-check hint "partly there". */
-export const CircleMinusIcon = (props: SVGProps<SVGSVGElement>) => (
-  <Icon {...props}>
-    <circle cx="12" cy="12" r="10" />
-    <line x1="8" y1="12" x2="16" y2="12" />
-  </Icon>
-);
-
-/** Circled cross — the quiz pre-check hint "not yet". */
-export const CircleXIcon = (props: SVGProps<SVGSVGElement>) => (
-  <Icon {...props}>
-    <circle cx="12" cy="12" r="10" />
-    <line x1="15" y1="9" x2="9" y2="15" />
-    <line x1="9" y1="9" x2="15" y2="15" />
-  </Icon>
-);
-
 /** Flame — the weekly streak and its badges (start page). */
 export const FlameIcon = (props: SVGProps<SVGSVGElement>) => (
   <Icon {...props}>

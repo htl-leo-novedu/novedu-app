@@ -81,21 +81,6 @@ questions:
     expect(result.ok).toBe(true);
   });
 
-  it("accepts the immediate_feedback opt-out (the live pre-check hint)", async () => {
-    const optedOut = `
-id: q
-immediate_feedback: false
-llm:
-  model: m
-questions:
-  - id: a
-    question: "Q?"
-    evaluation: "grade"
-`;
-    const result = await loadAndCheckQuiz(URL_, fetcherFor(optedOut));
-    expect(result.ok).toBe(true);
-  });
-
   it("defaults anonymous to TRUE and title to null when omitted", async () => {
     const minimal = `
 id: q

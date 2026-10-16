@@ -87,7 +87,6 @@ keeps its first-seen value — negligible for a cost aggregate).
 | user messages | CopilotKit route (`run`) | `after()` → `recordUserMessage` |
 | quiz answers | `submitAnswer` (`lib/quiz-actions.ts`) | `after()` → `recordQuizAnswer` on a successful grade |
 | writing saves | `saveWriting` (`lib/writing-actions.ts`) | `after()` → `recordWritingSave` after a successful save |
-| quiz pre-checks | `precheckAnswer` (`lib/quiz-actions.ts`) | **not metered** (experimental; the `(code, hour)` buckets cannot separate classifier tokens from grader tokens without new columns — a content-free `quiz.precheck` event carries the experiment's use and latency instead, `docs/telemetry.md`) |
 
 Agent attribution rides three RequestContext keys — `usageCode`, `usageUserId`,
 `usageModule` (`lib/usage-context-keys.ts`) — set on the per-request RequestContext:

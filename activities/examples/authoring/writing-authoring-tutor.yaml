@@ -55,11 +55,13 @@ prompt:
       The assignment.           # this is where the actual TASK belongs
     anonymous: false            # optional; writing DEFAULTS TO FALSE (attributed)!
     llm:
-      model: RedHatAI/gemma-4-31B-it-FP8-Dynamic   # required; drives the feedback chat
-      provider: SCCH            # optional; one of "SCCH" (default), "Azure Foundry",
+      model: openai/gpt-6-luna  # required; drives the feedback chat
+      provider: OpenRouter      # optional; one of "SCCH" (default), "Azure Foundry",
                                 # "OpenRouter". Azure Foundry serves an Azure OpenAI
                                 # deployment (model = the deployment name); OpenRouter
-                                # takes a namespaced id like z-ai/glm-5.3-flash
+                                # takes a namespaced id like openai/gpt-6-luna
+      reasoning: medium         # optional; none, minimal, low, medium, high or xhigh;
+                                # omit to leave the effort to the model
     instructions: |             # required; the coach's system prompt. SERVER-ONLY —
       ...                       # may freely contain the assessment criteria
     placeholder: |              # optional; starter text prefilled into the editor

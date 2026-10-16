@@ -166,16 +166,18 @@ export function classifyUpstreamLlmError(
   }
 
   // A bare 404 is ambiguous: the same status comes from a model that does not exist
-  // (vLLM omits the code) and from a misconfigured endpoint path on OUR side. Say
-  // both, so a teacher whose model name is correct escalates instead of hunting a
-  // typo that isn't there.
+  // (vLLM omits the code), from a model the server's account may not use (OpenRouter
+  // answers a guardrail's model allowlist with a 404) and from a misconfigured
+  // endpoint path on OUR side. Say all three, so a teacher whose model name is
+  // correct escalates instead of hunting a typo that isn't there.
   if (status === 404) {
     return {
       terminal: true,
       message:
         `${provider} answered 404 for model "${model}": either no model of that name ` +
-        `exists there, or the server's ${provider} endpoint is misconfigured. Check ` +
-        "the model name; if it is correct, contact the operator.",
+        "exists there, this server is not allowed to use it, or the server's " +
+        `${provider} endpoint is misconfigured. Check the model name; if it is ` +
+        "correct, contact the operator.",
       telemetry,
     };
   }

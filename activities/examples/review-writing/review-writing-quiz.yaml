@@ -18,10 +18,6 @@ description: |
   English; there are no multiple-choice options. You can stop at any time and
   see your summary.
 
-# No live hint icon while typing here: these questions ask for the student's own
-# wording, and a running "looks correct" would steer it before they commit.
-immediate_feedback: false
-
 llm:
   model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
 

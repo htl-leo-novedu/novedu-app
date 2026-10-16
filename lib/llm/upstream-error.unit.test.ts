@@ -73,7 +73,7 @@ describe("classifyUpstreamLlmError", () => {
     });
   });
 
-  it("keeps a bare 404 ambiguous: wrong model OR misconfigured endpoint", () => {
+  it("keeps a bare 404 ambiguous: wrong model, disallowed model OR misconfigured endpoint", () => {
     // Without a proving code (vLLM omits it), the same 404 also comes from a wrong
     // endpoint base path on OUR side — the wording must not assert a missing
     // deployment, or a teacher with a correct model name hunts a typo that isn't there.
@@ -91,6 +91,7 @@ describe("classifyUpstreamLlmError", () => {
     expect(failure.message).toContain('"ghost-model"');
     expect(failure.message).toContain("SCCH");
     expect(failure.message).toContain("misconfigured");
+    expect(failure.message).toContain("not allowed to use it");
     expect(failure.message).not.toContain("no deployment");
     expect(failure.telemetry).not.toHaveProperty("novedu.llm.upstream_code");
   });
