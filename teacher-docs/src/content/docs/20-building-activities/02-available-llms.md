@@ -99,10 +99,10 @@ At the school's hosting partner some models come as two separate entries instead
 
 ## Which model names can I use?
 
-There is no fixed list to print here: the available models are set up by your school and change over time. Two reliable places to look:
+There is no fixed list to print here: the available models are set up by your school and change over time. Two good places to look:
 
 - **The sample activities** your school shares (for example the ones under `activities/examples/` in the Novedu repository). They always name a model that works.
-- **The quick picks on the create-code form.** When you create a code, the form offers a dropdown of quick picks, each a known-good provider and model, plus a level for the picks that name a reasoning model. Choose one and select **Apply** to see exactly how a working provider and model id are written.
+- **The quick picks on the create-code form.** When you create a code, the form offers a dropdown of quick picks, each a common provider and model, plus a level for the picks that name a reasoning model. Choose one and select **Apply** to see exactly how a provider and model id are written; a pick only works if your school's server has that provider set up and accepts that model.
 
 For OpenRouter there is a third place: OpenRouter publishes its whole catalogue on its own website, and the id shown there is exactly what goes into `model`.
 

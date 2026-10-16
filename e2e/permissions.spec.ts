@@ -84,8 +84,8 @@ test.describe("as a teacher", () => {
 
     await expect(page.getByLabel("Activity YAML URL")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create code" })).toBeVisible();
-    await expect(page.getByLabel("LLM quick pick")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
+    await expect(page.getByLabel("LLM quick pick", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply LLM quick pick" })).toBeDisabled();
     expect(errors).toEqual([]);
   });
 

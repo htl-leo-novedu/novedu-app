@@ -92,7 +92,8 @@ export function CodeForm({
   // default" (the parameter is then not sent at all).
   const [llmReasoning, setLlmReasoning] = useState(initialLlmReasoning);
   // The quick pick chosen in the dropdown (its label; "" = none). Choosing one
-  // changes nothing until Apply.
+  // changes nothing until Apply; Apply and Clear reset it, so the dropdown never
+  // claims a pick the fields no longer hold.
   const [quickPick, setQuickPick] = useState("");
   const chosenPreset = LLM_OVERRIDE_PRESETS.find((preset) => preset.label === quickPick);
 
@@ -264,9 +265,11 @@ export function CodeForm({
                 // A quick pick fills the WHOLE override — one without a level
                 // clears one the teacher had picked.
                 setLlmReasoning(chosenPreset.reasoning ?? "");
+                setQuickPick("");
               }}
               disabled={pending || !chosenPreset}
               title="Fill the override fields with the chosen quick pick"
+              aria-label="Apply LLM quick pick"
             >
               Apply
             </Button>
@@ -276,6 +279,7 @@ export function CodeForm({
                 setLlmProvider("");
                 setLlmModel("");
                 setLlmReasoning("");
+                setQuickPick("");
               }}
               disabled={pending || (!llmProvider && !llmModel && !llmReasoning)}
               title="Use the activity's LLM settings"

@@ -114,8 +114,8 @@ test("CRUD on a hosted file and a tutor link, with DB-side filtering", {
   await page.getByLabel(/Available from/).fill(unixSecondsToDatetimeLocal(now - 3600));
   await page.getByLabel(/Available until/).fill(unixSecondsToDatetimeLocal(now + 3600));
   // The LLM override: a quick pick + Apply fills both free-text fields at once.
-  await page.getByLabel("LLM quick pick").selectOption("SCCH · Gemma 4");
-  await page.getByRole("button", { name: "Apply" }).click();
+  await page.getByLabel("LLM quick pick", { exact: true }).selectOption("SCCH · Gemma 4");
+  await page.getByRole("button", { name: "Apply LLM quick pick" }).click();
   await expect(page.getByLabel(/LLM provider override/)).toHaveValue("SCCH");
   await page.getByRole("button", { name: "Create code" }).click();
 

@@ -189,11 +189,12 @@ test("override: choosing a quick pick fills nothing until Apply, which fills all
   const provider = screen.getByLabelText(/LLM provider override/);
   const model = screen.getByLabelText(/LLM model override/);
   const reasoning = screen.getByLabelText(/Reasoning/);
-  const apply = screen.getByRole("button", { name: "Apply" });
+  const quickPick = screen.getByLabelText("LLM quick pick", { exact: true });
+  const apply = screen.getByRole("button", { name: "Apply LLM quick pick" });
 
   await expect.element(apply).toBeDisabled();
 
-  await screen.getByLabelText("LLM quick pick").selectOptions("OpenRouter · GPT-6 Luna (medium)");
+  await quickPick.selectOptions("OpenRouter · GPT-6 Luna (medium)");
   expect(inputValue(provider)).toBe("");
   expect(inputValue(model)).toBe("");
   expect(inputValue(reasoning)).toBe("");
@@ -202,6 +203,9 @@ test("override: choosing a quick pick fills nothing until Apply, which fills all
   expect(inputValue(provider)).toBe("OpenRouter");
   expect(inputValue(model)).toBe("openai/gpt-6-luna");
   expect(inputValue(reasoning)).toBe("medium");
+  // Apply resets the dropdown: it never claims a pick the fields may no longer hold.
+  expect(inputValue(quickPick)).toBe("");
+  await expect.element(apply).toBeDisabled();
 
   // The fields stay free text after Apply.
   await model.fill("openai/gpt-6.1-sol");
@@ -211,8 +215,8 @@ test("override: choosing a quick pick fills nothing until Apply, which fills all
 test("override: an SCCH quick pick resets reasoning to Provider default; Clear empties all three", async () => {
   created.length = 0;
   const screen = await render(<CodeForm mode="create" />);
-  const quickPick = screen.getByLabelText("LLM quick pick");
-  const apply = screen.getByRole("button", { name: "Apply" });
+  const quickPick = screen.getByLabelText("LLM quick pick", { exact: true });
+  const apply = screen.getByRole("button", { name: "Apply LLM quick pick" });
   const reasoning = screen.getByLabelText(/Reasoning/);
 
   await quickPick.selectOptions("OpenRouter · GPT-5.6 Terra (medium)");
@@ -238,7 +242,10 @@ test("override: an SCCH quick pick resets reasoning to Provider default; Clear e
   expect(formData.get("llmReasoning")).toBe("");
   expect([...formData.values()]).not.toContain("SCCH · Gemma 4");
 
+  // Clear also resets a chosen but not yet applied pick.
+  await quickPick.selectOptions("SCCH · Qwen 3.8 27B");
   await screen.getByRole("button", { name: "Clear LLM override" }).click();
+  expect(inputValue(quickPick)).toBe("");
   expect(inputValue(screen.getByLabelText(/LLM provider override/))).toBe("");
   expect(inputValue(screen.getByLabelText(/LLM model override/))).toBe("");
   expect(inputValue(reasoning)).toBe("");

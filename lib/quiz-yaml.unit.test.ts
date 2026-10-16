@@ -59,6 +59,23 @@ questions:
     expect(result.quiz.shuffle).toBe(true);
   });
 
+  // Lenient by design: a stored quiz with a key the strict authoring schema rejects
+  // (lib/quiz-validate.ts) keeps running for the codes already handed out.
+  it("ignores a key it does not know, so a stored quiz keeps running", () => {
+    const result = parseQuiz(`
+immediate_feedback: false
+llm:
+  model: m
+questions:
+  - id: a
+    question: Q
+    evaluation: E
+`);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.quiz).not.toHaveProperty("immediateFeedback");
+  });
+
   it("defaults a missing llm.provider to SCCH and carries an explicit one", () => {
     const defaulted = parseQuiz(VALID);
     expect(defaulted.ok && defaulted.quiz.provider).toBe("SCCH");

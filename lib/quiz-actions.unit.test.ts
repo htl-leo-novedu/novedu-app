@@ -19,7 +19,6 @@ const generate = vi.hoisted(() => vi.fn());
 const createThread = vi.hoisted(() => vi.fn());
 const saveMessages = vi.hoisted(() => vi.fn());
 const emitEvent = vi.hoisted(() => vi.fn());
-const recordError = vi.hoisted(() => vi.fn());
 // The result-save seams: the store and the start page's cache invalidation.
 const storeQuizResult = vi.hoisted(() => vi.fn());
 const invalidateHome = vi.hoisted(() => vi.fn());
@@ -41,8 +40,8 @@ vi.mock("@/lib/quiz-result-store", () => ({ saveQuizResult: storeQuizResult }));
 vi.mock("@/lib/home-data", () => ({ invalidateHome }));
 const revalidatePath = vi.hoisted(() => vi.fn());
 vi.mock("next/cache", () => ({ revalidatePath }));
-// Reached by lib/quiz-truncation-retry.ts (emitEvent); both exports stay mocked.
-vi.mock("@/lib/telemetry", () => ({ emitEvent, recordError }));
+// Reached by lib/quiz-truncation-retry.ts.
+vi.mock("@/lib/telemetry", () => ({ emitEvent }));
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
 
 import {
