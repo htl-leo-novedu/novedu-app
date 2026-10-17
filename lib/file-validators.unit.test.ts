@@ -34,6 +34,7 @@ vi.mock("@/lib/writing-fetch", () => ({ loadWriting: mocks.loadWriting }));
 vi.mock("@/lib/writing-validate", () => ({ loadAndCheckWriting: mocks.loadAndCheckWriting }));
 vi.mock("@/lib/coding-validate", () => ({ loadAndCheckCoding: mocks.loadAndCheckCoding }));
 
+import type { FileKind } from "@/lib/file-name";
 import { fileValidators, readAnonymousFlag } from "@/lib/file-validators";
 
 const URL_ = "https://example.com/file.yaml";
@@ -231,6 +232,13 @@ describe("readAnonymousFlag (runtime-light, by FileKind)", () => {
     // Coding is anonymous by construction — no loader is consulted.
     expect(mocks.loadQuiz).not.toHaveBeenCalled();
     expect(mocks.loadWriting).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the privacy-safe default for a kind it does not know", async () => {
+    expect(await readAnonymousFlag("bogus" as FileKind, URL_)).toEqual({
+      anonymous: true,
+      definitive: false,
+    });
   });
 
   it("returns the non-definitive default for a kind with no anonymity flag (fragment)", async () => {

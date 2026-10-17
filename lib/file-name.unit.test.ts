@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extensionForImageMime,
+  FILE_KINDS,
   FILE_NAME_PATTERN,
   imageMimeFromExtension,
   isFileKind,
@@ -34,12 +35,13 @@ describe("validateFileName", () => {
 });
 
 describe("isFileKind", () => {
-  it("is true only for 'tutor', 'fragment' or 'quiz'", () => {
-    expect(isFileKind("tutor")).toBe(true);
-    expect(isFileKind("fragment")).toBe(true);
-    expect(isFileKind("quiz")).toBe(true);
+  it("is true exactly for the listed kinds", () => {
+    expect(FILE_KINDS).toEqual(["tutor", "fragment", "quiz", "writing", "coding"]);
+    for (const kind of FILE_KINDS) expect(isFileKind(kind)).toBe(true);
     expect(isFileKind("other")).toBe(false);
+    expect(isFileKind("Tutor")).toBe(false);
     expect(isFileKind(undefined)).toBe(false);
+    expect(isFileKind(["tutor"])).toBe(false);
   });
 });
 

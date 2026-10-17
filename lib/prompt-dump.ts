@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { buildUpstreamChatBody } from "@/lib/coding-proxy";
 import { loadCodingFrom } from "@/lib/coding-resolve";
-import type { FileKind } from "@/lib/file-name";
+import { FILE_KINDS, type FileKind } from "@/lib/file-name";
 import type { LlmProvider, ReasoningLevel } from "@/lib/llm/provider";
 import {
   error,
@@ -55,7 +55,9 @@ import { loadWritingFrom } from "@/lib/writing-resolve";
  */
 export type PromptKind = Exclude<FileKind, "fragment">;
 
-export const PROMPT_KINDS: readonly PromptKind[] = ["tutor", "quiz", "writing", "coding"];
+export const PROMPT_KINDS: readonly PromptKind[] = FILE_KINDS.filter(
+  (kind): kind is PromptKind => kind !== "fragment",
+);
 
 /** The activity's own model + provider (per-code overrides are out of scope). */
 export interface PromptDumpLlm {

@@ -139,23 +139,37 @@ export async function readAnonymousFlag(
   fileUrl: string,
 ): Promise<{ anonymous: boolean; definitive: boolean }> {
   try {
-    if (kind === "quiz") {
-      const loaded = await loadQuiz(fileUrl);
-      if (loaded.ok) return { anonymous: loaded.quiz.anonymous, definitive: true };
-    } else if (kind === "tutor") {
-      const tutor = await loadAndBuildTutorPrompt(fileUrl, await serverYamlFetcher());
-      if (tutor.ok) return { anonymous: tutor.anonymous, definitive: true };
-    } else if (kind === "writing") {
-      // Writing DEFAULTS `anonymous: false` (the writing divergence). When the YAML
-      // could not be read we fall through to the privacy-safe `true` default below
-      // (non-definitive, so it is not cached); a successful read carries the file's
-      // own flag, which `parseWriting` already defaults to `false` when absent.
-      const loaded = await loadWriting(fileUrl);
-      if (loaded.ok) return { anonymous: loaded.writing.anonymous, definitive: true };
-    } else if (kind === "coding") {
-      // Coding is ALWAYS anonymous (no in-app conversations to attribute), so
-      // this is definitive without reading the YAML.
-      return { anonymous: true, definitive: true };
+    switch (kind) {
+      case "quiz": {
+        const loaded = await loadQuiz(fileUrl);
+        if (loaded.ok) return { anonymous: loaded.quiz.anonymous, definitive: true };
+        break;
+      }
+      case "tutor": {
+        const tutor = await loadAndBuildTutorPrompt(fileUrl, await serverYamlFetcher());
+        if (tutor.ok) return { anonymous: tutor.anonymous, definitive: true };
+        break;
+      }
+      case "writing": {
+        // Writing DEFAULTS `anonymous: false` (the writing divergence). When the YAML
+        // could not be read we fall through to the privacy-safe `true` default below
+        // (non-definitive, so it is not cached); a successful read carries the file's
+        // own flag, which `parseWriting` already defaults to `false` when absent.
+        const loaded = await loadWriting(fileUrl);
+        if (loaded.ok) return { anonymous: loaded.writing.anonymous, definitive: true };
+        break;
+      }
+      case "coding":
+        // Coding is ALWAYS anonymous (no in-app conversations to attribute), so
+        // this is definitive without reading the YAML.
+        return { anonymous: true, definitive: true };
+      case "fragment":
+        // A library is never a code: nothing to attribute, privacy-safe default.
+        break;
+      default:
+        // Compile-time exhaustiveness only: at runtime an unknown kind falls through
+        // to the privacy-safe default below.
+        kind satisfies never;
     }
   } catch (error) {
     console.error("file-validators: reading the activity YAML's anonymous flag failed", error);

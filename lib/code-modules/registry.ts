@@ -22,15 +22,11 @@ import { writingModule } from "./writing";
 // component. Descriptors keep React/JSX out of this server-only registry by calling
 // server components as plain functions (returning ReactNode), never as JSX.
 //
-// Adding a module touches a small, fixed set of seams: a descriptor file + one
-// line in this registry, a client label (lib/code-modules/types.ts), a student
-// render case (the thin switch in app/[code]/page.tsx), a teacher `renderDetail`,
-// and — for a NEW file kind — that kind's validator + anonymous-read in the
-// FileKind layer (lib/file-validators.ts). Create validation and the share-link result
-// come for free from `fileKind`/the shared default. The GENERIC flow never changes:
-// the code store, the runtime route, and attribution all dispatch by `module`/
-// `fileKind` and stay untouched. A pure library kind (e.g. `fragment`) adds only a
-// Layer-2 validator and no entry here — the asymmetry the `fragment` kind proves.
+// Adding a module: the full seam list is the "adding a module" checklist in
+// docs/codes.md. Create validation and the share-link result come for free from
+// `fileKind`/the shared default; the GENERIC flow (the code store, the runtime route,
+// attribution) dispatches by `module`/`fileKind` and stays untouched. A pure library
+// kind (e.g. `fragment`) adds only a Layer-2 validator and no entry here.
 //
 // SERVER-ONLY. Never import from client components (use lib/code-modules/types
 // for the client-safe module union + labels).

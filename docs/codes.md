@@ -149,15 +149,60 @@ in `app/[code]/page.tsx` delegating to each module's own server component
 (The *teacher* detail body IS a registry seam — `renderDetail` above — but
 descriptors keep JSX out by calling components as plain functions.)
 
-**Adding a module** touches a small, fixed set of seams: a descriptor file (with its
-`renderDetail`) + one `codeModules` line, a client label (`lib/code-modules/types.ts`),
-a student render case (the thin `switch` in `app/[code]/page.tsx`) with its own render
-component + agent, and — for a **new file kind** — that kind's validator and
-`readAnonymousFlag` branch in the FileKind layer (`lib/file-validators.ts`). Create
-validation (from `fileKind`) and the share-link result (the default) come for free. The
-**generic flow** never changes: the code store, the runtime route, and attribution all
-dispatch by `module`/`fileKind`. **Adding a pure library kind** = one Layer-2
-validator entry, no module; the `fragment` kind proves the asymmetry is real.
+**Adding a module** (an activity kind) never changes the **generic flow** — the code
+store, the runtime route and attribution all dispatch by `module`/`fileKind` — and
+create validation (from `fileKind`) and the share-link result (the default) come for
+free. A kind is built from the shared steps, not from a copy of another kind: its loader
+on `loadActivity`/`loadActivityFrom` and `parseActivityYaml` (+ `resolveInstructions` /
+`checkInstructions` for a single `instructions` host text, `lib/activity-load.ts`), its
+authoring check on `loadAndValidate`, its server actions behind `verifyStudentActivity`
+(`lib/activity-gate.ts`), a context-configured agent on `lib/llm-context.ts` +
+`app/mastra/agent-context.ts`. The full seam list (✱ = an exhaustive `Record`/`switch`,
+so the compiler names it; the rest are lists to extend by hand):
+
+- **Kind and module:** `FILE_KINDS` (`lib/file-name.ts`); `CODE_MODULES` +
+  `codeModuleLabels` ✱ (`lib/code-modules/types.ts`; a new badge tone also in
+  `components/ui/badge.tsx`); `MODULE_ICONS` ✱ (`components/module-badge.tsx`),
+  `MODULE_ROW_ACCENT` ✱ (`app/codes/page.tsx`), `KIND_TONES` ✱ (`app/files/page.tsx`)
+  and the `/files/new` kind options (`app/files/new/create-file-form.tsx`).
+- **Descriptor and render:** `lib/code-modules/<kind>.ts` + its `codeModules` line ✱
+  (`renderDetail`, and `runtime` when it has an in-app chat); the student render case
+  ✱ in `app/[code]/page.tsx` + its `render-<kind>.tsx`.
+- **Loading and validation:** the Zod schema + its `schemaRegistry` entry
+  (`lib/schema-gen/index.ts`, which emits `activities/<dir>/<kind>-yaml.schema.json`);
+  the lenient parser, resolver and app loader (`lib/<kind>-{yaml,resolve,fetch}.ts`);
+  the authoring check (`lib/<kind>-validate.ts`); its `fileValidators` entry ✱ (via
+  `activityValidator`) and `readAnonymousFlag` case ✱ (`lib/file-validators.ts`).
+- **Prompts and agents:** the dumper ✱ (`promptDumpers`) + its dump type in the
+  `PromptDump` union (`lib/prompt-dump.ts`, plus a `promptSections` case when it has
+  more than one `system` prompt); an agent is
+  registered in `app/mastra/index.ts`, and a memory-backed one takes `chatMemory()` +
+  `reasoningStrippingProcessor`.
+- **Per-code data:** a kind that stores its own rows per code joins the code delete
+  (`deleteCodeRows` in `lib/code-stats-store.ts`); one without Mastra threads needs its
+  own count in `getInteractionCounts` (same file) for the `/codes` list.
+- **Metering and achievements:** the per-module counters (`lib/usage-store.ts` + their
+  columns in `lib/db/schema.ts`) and their readers — the activity-day predicates and
+  sums in `lib/student-facts-store.ts` / `lib/teacher-facts-store.ts`, the `UsageDay`
+  fields in `lib/achievements/derive.ts`; the student achievement families
+  (`lib/achievements/catalog.ts`, a family's colours in `app/_home/badge-disc.tsx` +
+  the `--fam-*` tokens in `app/globals.css`). `KIND_COUNT`
+  (`lib/achievements/teacher.ts`) follows `CODE_MODULES`, so a new module raises the
+  "Full Toolkit" bar.
+- **CLI and registry:** a `runValidate` case ✱ + its `formatOutcome` case and a
+  `format<Kind>Result` (`cli/src/commands/validate.ts`, `cli/src/format.ts`);
+  `GROUP_MODULES` (`lib/registry-schema.ts`); the kind lists in the CLI help texts
+  (`validate`, `prompts`, `codes create --module`, `files upload --kind`),
+  `cli/package.json`'s description and `cli/README.md`. Evals only if the kind gets
+  them: `EVAL_KINDS` (`lib/eval-schema.ts`) + `evalRunners` (`cli/src/eval-run.ts`).
+- **Tests:** fixtures under `test-fixtures/activities/<dir>/`; the kind table in
+  `lib/file-validators.unit.test.ts`; `PURE_MODULES` in `lib/prompt-dump.unit.test.ts`
+  for a new CLI-bundled module.
+- **Docs:** `docs/<kind>.md` + its AGENTS.md subsystem-map entry; the teacher-guide
+  chapter (`teacher-docs/CHAPTERS.md`).
+
+**Adding a pure library kind** = one `FILE_KINDS` entry + one Layer-2 validator, no
+module; the `fragment` kind proves the asymmetry is real.
 
 ## Student entry & runtime dispatch
 
@@ -171,7 +216,8 @@ validator entry, no module; the `fragment` kind proves the asymmetry is real.
    userId, threadId)`.
 4. `switch (entry.module)` → delegate to the module's render component, which
    loads the activity YAML (uncached, so edits show immediately) and renders the
-   surface (`<TutorChat>` / `<QuizRunner>`).
+   surface (`render-tutor.tsx`, `render-quiz.tsx`, `render-writing.tsx`,
+   `render-coding.tsx`).
 
 The chat **runtime route** (`app/api/copilotkit/[[...slug]]/route.ts`) uses ONE
 header scheme: **`x-code`** (+ `x-thread-token`; headers, not a query string,

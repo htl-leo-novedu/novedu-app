@@ -5,8 +5,8 @@
 //
 // A `CodeModule` is a shareable activity reachable at `/<code>`. It is a SUBSET
 // of `FileKind` (lib/file-name.ts): `fragment` is a file kind with a validator
-// and NO module, and a future `writing` module is added here together with its
-// descriptor (lib/code-modules/registry.ts) and its own student/agent code.
+// and NO module. A new module is added here together with the rest of the
+// "adding a module" checklist in docs/codes.md.
 
 /** The shareable-activity modules a code can dispatch to. */
 export const CODE_MODULES = ["tutor", "quiz", "writing", "coding"] as const;
