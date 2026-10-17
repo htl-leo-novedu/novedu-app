@@ -21,13 +21,16 @@ import { CodeBlock } from "./code-block";
 // The `prose` wrapper (@tailwindcss/typography) owns the markdown text styling:
 // Tailwind's preflight strips the UA heading/list/paragraph defaults, so prose
 // puts real ones back. Colors are re-mapped to the app foreground in globals.css;
-// the `content-none` modifiers drop the plugin's backticks around inline code;
+// the `content-none` modifiers drop the plugin's backticks around inline code —
+// `!important`, because CopilotKit's chat wraps every message in its own
+// `cpk:prose`, whose backtick rule sits in the same `utilities` layer with the
+// same specificity and loads later (tests/component/markdown-renderer.browser.test.tsx);
 // fenced code opts out entirely via `not-prose` (CodeBlock owns its chrome).
 export function MarkdownRenderer({ content, className }: { content: string; className?: string }) {
   return (
     <div
       className={cn(
-        "prose max-w-none prose-code:before:content-none prose-code:after:content-none",
+        "prose max-w-none prose-code:before:content-none! prose-code:after:content-none!",
         className,
       )}
     >

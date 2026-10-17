@@ -55,7 +55,7 @@ The core rule: **formatting for a repeated construct is written once.**
 
 ## Markdown and third-party surfaces
 
-- **Markdown always renders through `MarkdownRenderer`** (`app/markdown-renderer.tsx`), which wraps output in typography's `prose` (preflight strips UA heading/list defaults; prose restores real ones). Prose colors are re-mapped to `foreground` in `globals.css`; inline-code backticks are suppressed; `CodeBlock` opts out via `not-prose` and owns its chrome (the `react-syntax-highlighter` `oneLight` theme object).
+- **Markdown always renders through `MarkdownRenderer`** (`app/markdown-renderer.tsx`), which wraps output in typography's `prose` (preflight strips UA heading/list defaults; prose restores real ones). Prose colors are re-mapped to `foreground` in `globals.css`; inline-code backticks are suppressed (with `!important`, since CopilotKit's own `cpk:prose` around each chat message adds them in the same layer); `CodeBlock` opts out via `not-prose` and owns its chrome (the `react-syntax-highlighter` `oneLight` theme object).
 - KaTeX ships its own unlayered CSS, imported in `app/layout.tsx` before `globals.css`; it beats layered rules by design. Never restyle `.katex*` internals.
 - CodeMirror is styled from the outside: wrapper utilities plus arbitrary-variant reaches like `[&_.cm-editor]:h-full`. `.cm-*` class internals are e2e-test hooks — leave them alone.
 
