@@ -1,11 +1,10 @@
-import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 import { Notice } from "@/components/notice";
 import { Main } from "@/components/page-main";
 import { checkCode } from "@/lib/code-store";
 import { recordRecentCode, removeRecentCode } from "@/lib/recent-code-store";
 import { getSession } from "@/lib/session";
-import { getThreadTokenSecret, signThreadToken } from "@/lib/thread-token";
+import { newThread } from "@/lib/thread-token";
 import { CodeError } from "../code-error";
 import { RenderCoding } from "./render-coding";
 import { RenderQuiz } from "./render-quiz";
@@ -68,8 +67,7 @@ export default async function CodePage({ params }: { params: Promise<{ code: str
   // (see lib/thread-token.ts). A page load always mints one; a tutor tab that
   // resumes its stored conversation after a reload simply leaves it unused
   // (app/tutor-chat.tsx).
-  const threadId = randomUUID();
-  const threadToken = signThreadToken({ code, userId, threadId }, getThreadTokenSecret());
+  const { threadId, threadToken } = newThread(code, userId);
 
   // Dispatch by module. The registry holds the non-rendering seams; rendering is
   // a thin switch so no React/JSX lives in the server-only registry.

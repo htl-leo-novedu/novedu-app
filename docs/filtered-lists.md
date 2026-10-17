@@ -351,10 +351,10 @@ Four things are load-bearing:
 - **The count repeats the joins.** `listReports` filters on `users`/`codes` columns, so
   it passes both LEFT JOINs to `countRows` (join on primary keys only — a join that
   could multiply rows would inflate the count).
-- **Filters that used to run after the query must move into the WHERE.** `listCodes`
-  used to drop unknown-`module` rows post-query; that would make a page short and
-  disagree with its total, so it is now an `inArray(codes.module, CODE_MODULES)`
-  condition (the post-filter stays as unreachable belt-and-braces).
+- **No filter may drop rows after the query.** A post-query filter
+  would make a page short and disagree with its total, so `listCodes` restricts
+  `module` with an `inArray(codes.module, CODE_MODULES)` condition (its post-filter
+  of unknown modules stays as unreachable belt-and-braces).
 
 `paginate` runs the COUNT and the row query **in parallel** (one round-trip of
 latency) and re-issues the row query **once** if the requested page over-shot the

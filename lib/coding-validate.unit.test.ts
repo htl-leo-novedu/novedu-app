@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parse as parseYamlText } from "yaml";
 import { checkCodingValue, loadAndCheckCoding } from "@/lib/coding-validate";
 import type { Fetcher } from "@/lib/prompt-fragments";
+import { fixtureResponse, fragmentFetcher, LIB_A_URL } from "@/lib/prompt-fragments/test-fixtures";
 
 // The coding AUTHORING validator: the strict schema gate. Pure, no network — a
 // fixture Fetcher returns YAML text in-process. Coding is ALWAYS anonymous (its
@@ -59,26 +60,6 @@ instructions: "Help the student code."
       expect(result.codingId).toBe("c");
       expect(result.title).toBeNull();
     }
-  });
-});
-
-describe("loadAndCheckCoding — negative", () => {
-  it("rejects a fetch failure as FETCH_FAILED (no throw)", async () => {
-    const result = await loadAndCheckCoding(URL_, fetcherFor("", false));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]?.code).toBe("FETCH_FAILED");
-  });
-
-  it("rejects invalid YAML as YAML_PARSE_ERROR", async () => {
-    const result = await loadAndCheckCoding(URL_, fetcherFor("id: c\n  bad: : :"));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]?.code).toBe("YAML_PARSE_ERROR");
-  });
-
-  it("rejects a disallowed URL scheme as INVALID_URL", async () => {
-    const result = await loadAndCheckCoding("file:///etc/passwd", fetcherFor(VALID));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]?.code).toBe("INVALID_URL");
   });
 });
 
@@ -143,127 +124,34 @@ instructions: "Help."
   });
 });
 
-// --- document-level prompt fragments (identical machinery to quiz/writing) ---------
+// --- wiring of the shared steps -----------------------------------------------------
+// The fetch / YAML / scheme failures (`loadAndValidate`, lib/prompt-fragments) and the
+// fragment + text-file gate over `instructions` (`checkInstructions`,
+// lib/activity-load.ts) are covered once by their own tests; these prove the wiring.
 
-const LIB_URL = "https://example.com/lib.yaml";
-const LIB_YAML = `id: lib
-fragments:
-  - id: safety
-    version: 1
-    content: |
-      Always be safe and kind.
-  - id: lang
-    version: 1
-    input_schema:
-      type: object
-      required: [language]
-      properties:
-        language:
-          type: string
-    content: |
-      Respond in {{language}}.
-`;
+describe("loadAndCheckCoding — shared steps", () => {
+  it("reports a schema error of the file with its own code", async () => {
+    const result = await loadAndCheckCoding(URL_, fetcherFor("id: x\n"));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors[0]?.code).toBe("CODING_SCHEMA_ERROR");
+  });
 
-const fetcherMap =
-  (bodies: Record<string, string>): Fetcher =>
-  async (url) => {
-    const text = bodies[url];
-    return text === undefined
-      ? { ok: false, status: 404, text: async () => "" }
-      : { ok: true, status: 200, text: async () => text };
-  };
-
-describe("loadAndCheckCoding — fragments", () => {
-  it("accepts an activity that pulls in valid fragments", async () => {
+  it("runs the fragment gate over instructions", async () => {
     const coding = `
 id: buddy
 llm:
   model: m
 fragment_files:
-  - id: lib
-    url: ${LIB_URL}
+  - id: lib_a
+    url: ${LIB_A_URL}
 instructions: |
-  {{fragment "lib.safety"}}
-
-  Help beginners.
+  {{fragment "lib_a.str_frag"}}
 `;
     const result = await loadAndCheckCoding(
       URL_,
-      fetcherMap({ [URL_]: coding, [LIB_URL]: LIB_YAML }),
-    );
-    expect(result.ok).toBe(true);
-  });
-
-  it("a plain activity (no fragments) is still valid", async () => {
-    const result = await loadAndCheckCoding(URL_, fetcherMap({ [URL_]: VALID }));
-    expect(result.ok).toBe(true);
-  });
-
-  it("surfaces a fragment consistency error (missing required variable)", async () => {
-    const coding = `
-id: buddy
-llm:
-  model: m
-fragment_files:
-  - id: lib
-    url: ${LIB_URL}
-instructions: |
-  {{fragment "lib.lang"}}
-
-  Help beginners.
-`;
-    const result = await loadAndCheckCoding(
-      URL_,
-      fetcherMap({ [URL_]: coding, [LIB_URL]: LIB_YAML }),
+      fragmentFetcher(new Map([[URL_, fixtureResponse(coding)]])),
     );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.map((e) => e.code)).toContain("MISSING_REQUIRED_VARIABLE");
-  });
-});
-
-// --- document-level text files ({{file "alias"}}) — authoring gate (validateLibraries: true)
-const TEXT_URL = "https://example.com/solution.ts";
-const SOLUTION_BODY =
-  "export const first = 1;\nexport const second = 2;\nexport const third = 3;\n";
-
-describe("loadAndCheckCoding — text files", () => {
-  it("accepts an activity that embeds a sample-solution file with an in-bounds {{file}} marker", async () => {
-    const coding = `
-id: buddy
-llm:
-  model: m
-text_files:
-  - id: solution
-    url: ${TEXT_URL}
-instructions: |
-  Sample solution:
-  {{file "solution" from=1 to=2}}
-`;
-    const result = await loadAndCheckCoding(
-      URL_,
-      fetcherMap({ [URL_]: coding, [TEXT_URL]: SOLUTION_BODY }),
-    );
-    expect(result.ok).toBe(true);
-  });
-
-  it("TEXT_FILE_RANGE_OUT_OF_BOUNDS for a `from` past end-of-file", async () => {
-    const coding = `
-id: buddy
-llm:
-  model: m
-text_files:
-  - id: solution
-    url: ${TEXT_URL}
-instructions: |
-  {{file "solution" from=99}}
-`;
-    const result = await loadAndCheckCoding(
-      URL_,
-      fetcherMap({ [URL_]: coding, [TEXT_URL]: SOLUTION_BODY }),
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors.map((e) => e.code)).toContain("TEXT_FILE_RANGE_OUT_OF_BOUNDS");
-    }
   });
 });

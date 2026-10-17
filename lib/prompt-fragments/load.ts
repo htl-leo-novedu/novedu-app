@@ -11,6 +11,7 @@
 // renders two (`instructions` + `discussion.instructions`) in one pass; none of them
 // touch Handlebars or `COMPILE_OPTIONS` themselves.
 
+import type { z } from "zod";
 import { resolveRelativeUrl } from "@/lib/relative-url";
 import { renderFragmentContent } from "./assemble";
 import { checkPlacements, resolveAndMerge } from "./consistency";
@@ -23,7 +24,7 @@ import {
 import type { Fetcher } from "./fetcher";
 import { checkFragmentFileValue, checkFragmentTemplates } from "./fragment";
 import { parseHostPlacements, renderHostTemplate } from "./host-template";
-import { parseYaml, validate } from "./parse";
+import { parseYaml, type SchemaErrorCode, validate } from "./parse";
 import { type FragmentBlock, type FragmentFile, FragmentFileSchema } from "./schemas";
 import { sliceLines } from "./text-files";
 
@@ -89,22 +90,28 @@ export interface LoadOptions {
   validateLibraries?: boolean;
 }
 
-const DEFAULT_ALLOWED_SCHEMES = ["http:", "https:"];
+/** The production URL schemes (http(s)); the CLI adds `file:` for on-disk activities. */
+export const DEFAULT_ALLOWED_SCHEMES = ["http:", "https:"];
 
 /**
- * The SSRF scheme gate shared by the top-level activity load (`loadYaml`) and every
- * fragment-file fetch (`assembleFragmentPrompt`): a URL is allowed only if its scheme
- * is in `allowedSchemes` (default http(s); the CLI adds `file:` for on-disk validation).
- * Returns the structured error to surface, or `null` when the scheme is allowed.
+ * The SSRF scheme check every activity and fragment fetch shares: is `url`'s scheme in
+ * `allowedSchemes`? An unparseable URL is never allowed.
+ */
+export function schemeAllowed(url: string, allowedSchemes: string[]): boolean {
+  try {
+    return allowedSchemes.includes(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The structured form of `schemeAllowed` for the top-level activity load (`loadYaml`)
+ * and every fragment-file fetch (`assembleFragmentPrompt`). Returns the error to
+ * surface, or `null` when the scheme is allowed.
  */
 function schemeGate(url: string, allowedSchemes: string[]): ValidationError | null {
-  let scheme: string;
-  try {
-    scheme = new URL(url).protocol;
-  } catch {
-    scheme = "";
-  }
-  if (allowedSchemes.includes(scheme)) return null;
+  if (schemeAllowed(url, allowedSchemes)) return null;
   const allowed = allowedSchemes.map((s) => s.replace(/:$/, "")).join("/");
   return error("INVALID_URL", `Provide a valid ${allowed} URL`, { url });
 }
@@ -131,6 +138,23 @@ export async function loadYaml(
   if (!parsed.ok) return { ok: false, error: parsed.error };
 
   return { ok: true, value: parsed.value };
+}
+
+/**
+ * `loadYaml` + the document's schema in one step — the front of every activity's
+ * authoring check (tutor, quiz and its includes, writing, coding). Returns the typed
+ * document or the first structured error.
+ */
+export async function loadAndValidate<T>(
+  url: string,
+  fetchImpl: Fetcher,
+  opts: LoadOptions,
+  schema: z.ZodType<T>,
+  code: SchemaErrorCode,
+): Promise<{ ok: true; data: T } | { ok: false; error: ValidationError }> {
+  const yaml = await loadYaml(url, fetchImpl, opts);
+  if (!yaml.ok) return yaml;
+  return validate<T>(yaml.value, schema, code, url);
 }
 
 /** The result of resolving one document-level fragment block into prompt text. */

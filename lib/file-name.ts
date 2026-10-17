@@ -8,16 +8,13 @@
 /** Allowed file-name shape: letters, digits, underscore, hyphen — no spaces, max 100. */
 export const FILE_NAME_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
 
-export type FileKind = "tutor" | "fragment" | "quiz" | "writing" | "coding";
+/** Every kind of app-hosted YAML: the activity kinds plus the `fragment` library. */
+export const FILE_KINDS = ["tutor", "fragment", "quiz", "writing", "coding"] as const;
+
+export type FileKind = (typeof FILE_KINDS)[number];
 
 export function isFileKind(value: unknown): value is FileKind {
-  return (
-    value === "tutor" ||
-    value === "fragment" ||
-    value === "quiz" ||
-    value === "writing" ||
-    value === "coding"
-  );
+  return typeof value === "string" && (FILE_KINDS as readonly string[]).includes(value);
 }
 
 export type FileNameValidation = { ok: true; name: string } | { ok: false; message: string };

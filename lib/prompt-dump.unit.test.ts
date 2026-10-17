@@ -28,6 +28,8 @@ const PURE_MODULES = [
   "lib/quiz-resolve.ts",
   "lib/writing-resolve.ts",
   "lib/coding-resolve.ts",
+  // The shared activity load every lenient kind's resolver calls.
+  "lib/activity-load.ts",
   // The eval format layer (docs/cli-eval.md) is bundled into the CLI too and calls
   // straight into the dump seam, so it lives under the identical purity rule.
   "lib/eval-schema.ts",

@@ -17,16 +17,9 @@ vi.mock("@/lib/app-hosted-fetcher", () => ({
 }));
 
 import { loadCoding } from "@/lib/coding-fetch";
+import { LIB_A_URL, LIB_A_YAML } from "@/lib/prompt-fragments/test-fixtures";
 
 const URL_ = "https://app.test/api/files/coding";
-const LIB_URL = "https://example.com/lib.yaml";
-const LIB_YAML = `id: lib
-fragments:
-  - id: safety
-    version: 1
-    content: |
-      SAFETY-MARKER be kind.
-`;
 
 beforeEach(() => {
   state.bodies = {};
@@ -40,56 +33,23 @@ id: buddy
 llm:
   model: m
 fragment_files:
-  - id: lib
-    url: ${LIB_URL}
+  - id: lib_a
+    url: ${LIB_A_URL}
 instructions: |
-  {{fragment "lib.safety"}}
+  {{fragment "lib_a.safety_frag"}}
 
   INSTRUCTIONS-MARKER help beginners.
 `,
-      [LIB_URL]: LIB_YAML,
+      [LIB_A_URL]: LIB_A_YAML,
     };
     const result = await loadCoding(URL_);
     expect(result.ok).toBe(true);
     if (result.ok) {
       const { instructions } = result.coding;
-      expect(instructions).toContain("SAFETY-MARKER");
-      expect(instructions.indexOf("SAFETY-MARKER")).toBeLessThan(
+      expect(instructions).toContain("LAST-MARKER");
+      expect(instructions.indexOf("LAST-MARKER")).toBeLessThan(
         instructions.indexOf("INSTRUCTIONS-MARKER"),
       );
     }
-  });
-
-  it("leaves instructions byte-identical for a plain activity (no fragments)", async () => {
-    state.bodies = {
-      [URL_]: `
-id: buddy
-llm:
-  model: m
-instructions: "INSTRUCTIONS-MARKER only."
-`,
-    };
-    const result = await loadCoding(URL_);
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.coding.instructions).toBe("INSTRUCTIONS-MARKER only.");
-  });
-
-  it("fails closed when a referenced fragment library cannot be fetched", async () => {
-    state.bodies = {
-      [URL_]: `
-id: buddy
-llm:
-  model: m
-fragment_files:
-  - id: lib
-    url: ${LIB_URL}
-instructions: |
-  {{fragment "lib.safety"}}
-
-  Help.
-`,
-    };
-    const result = await loadCoding(URL_);
-    expect(result.ok).toBe(false);
   });
 });

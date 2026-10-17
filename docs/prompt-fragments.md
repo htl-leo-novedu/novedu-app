@@ -159,6 +159,8 @@ and never re-implement any of it.
 - **`loadYaml` / `LoadOptions`** — the shared front of every load: enforce the URL
   scheme allow-list (SSRF guard: http(s) on the server; the CLI adds `file:`), fetch,
   parse YAML. `LoadOptions` carries `allowedSchemes` and `validateLibraries`.
+  **`loadAndValidate`** adds the document's Zod schema on top — the front of every
+  activity's authoring check (tutor, quiz and its includes, writing, coding).
 - **`loadAndCheckFragmentFile`** — the standalone fragment-library validator (a real
   validator with **no** module; the `fragment` FileKind in `docs/codes.md`).
 - **`resolveFragmentUrl`, the fragment schemas** (`FragmentFileRefSchema`,
@@ -297,10 +299,11 @@ would silently clamp.
   default `validateLibraries: true` — so a broken fragment in a referenced library is
   caught at save / share time, not when the first student opens.
 
-Fragment fetches go through the existing loopback-avoiding `appHostedFetcher` via an
-optional async post-parse `resolve` hook on `loadAppHostedYaml`
-(`lib/app-hosted-yaml.ts`): an app-hosted fragment ref resolves from the database,
-never a loopback fetch — preserving the `docs/files.md` invariant.
+Fragment fetches go through the existing loopback-avoiding `appHostedFetcher`: the
+post-parse `resolve` step of the shared load (`loadActivity`, `lib/activity-load.ts`,
+called by `loadAppHostedYaml` in `lib/app-hosted-yaml.ts`) receives the same fetcher
+the activity was read through, so an app-hosted fragment ref resolves from the
+database, never a loopback fetch — preserving the `docs/files.md` invariant.
 
 ## Security posture
 

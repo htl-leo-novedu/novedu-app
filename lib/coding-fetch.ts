@@ -6,7 +6,7 @@ import {
   DEFAULT_CODING_MODEL_NAME,
 } from "@/lib/coding-connection";
 import { type LoadCodingResult, resolveCoding } from "@/lib/coding-resolve";
-import { parseCoding } from "@/lib/coding-yaml";
+import { CODING_NOUN, parseCoding } from "@/lib/coding-yaml";
 
 // Loads + leniently parses the coding YAML behind a (verified) code's file_url, via the
 // shared `loadAppHostedYaml`, hands the parsed document to the PURE `resolveCoding`
@@ -22,7 +22,7 @@ import { parseCoding } from "@/lib/coding-yaml";
 export type { LoadCodingResult } from "@/lib/coding-resolve";
 
 export function loadCoding(url: string): Promise<LoadCodingResult> {
-  return loadAppHostedYaml(url, parseCoding, "coding activity", (parsed, { url, fetcher }) =>
+  return loadAppHostedYaml(url, CODING_NOUN, parseCoding, (parsed, { url, fetcher }) =>
     resolveCoding(parsed.coding, url, fetcher),
   );
 }

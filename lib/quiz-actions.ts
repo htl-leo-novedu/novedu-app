@@ -5,15 +5,10 @@ import { RequestContext } from "@mastra/core/request-context";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { mastra } from "@/app/mastra";
-import {
-  QUIZ_EVAL_INSTRUCTIONS,
-  QUIZ_EVAL_MODEL,
-  QUIZ_EVAL_PROVIDER,
-  QUIZ_EVAL_REASONING,
-  QUIZ_VERDICT_SCHEMA,
-} from "@/app/mastra/quiz-agents";
+import { QUIZ_VERDICT_SCHEMA } from "@/app/mastra/quiz-agents";
 import { validateAnswerImages } from "@/lib/answer-images";
 import { invalidateHome } from "@/lib/home-data";
+import { QUIZ_EVAL_CONTEXT, setLlmContext } from "@/lib/llm-context";
 import { buildQuestionSeed, buildVerdictSeed } from "@/lib/quiz-discussion-prompt";
 import { buildAnswerMessage, buildGradingPrompt } from "@/lib/quiz-grading-prompt";
 import { type SaveMode, saveQuizResult as storeQuizResult } from "@/lib/quiz-result-store";
@@ -26,8 +21,8 @@ import {
   verifyAndLoadQuestion,
   verifyAndLoadQuiz,
 } from "@/lib/quiz-verify";
-import { getThreadTokenSecret, signThreadToken } from "@/lib/thread-token";
-import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { newThread } from "@/lib/thread-token";
+import { setUsageContext } from "@/lib/usage-context-keys";
 import { recordQuizAnswer } from "@/lib/usage-store";
 
 // The student-facing quiz server actions. The whole app sits behind the Entra
@@ -100,21 +95,17 @@ export async function submitAnswer(
   if (!checked.ok) return checked;
   const images = checked.images;
 
+  // The effective llm: the quiz YAML's, or the code's override.
   const requestContext = new RequestContext();
-  requestContext.set(
-    QUIZ_EVAL_INSTRUCTIONS,
+  setLlmContext(
+    requestContext,
+    QUIZ_EVAL_CONTEXT,
     buildGradingPrompt(ctx.question, ctx.quiz.instructionsPreamble),
+    ctx.llm,
   );
-  requestContext.set(QUIZ_EVAL_MODEL, ctx.llm.model);
-  requestContext.set(QUIZ_EVAL_PROVIDER, ctx.llm.provider);
-  // Only when the effective llm (quiz YAML or the code's override) carries one —
-  // an absent key grades at the model's own default effort.
-  if (ctx.llm.reasoning) requestContext.set(QUIZ_EVAL_REASONING, ctx.llm.reasoning);
   // Attribute the server-only grader's token usage exactly like a runtime-route
   // agent — the observability exporter reads these off its MODEL_GENERATION span.
-  requestContext.set(USAGE_CODE, ctx.code);
-  requestContext.set(USAGE_USER_ID, ctx.userId);
-  requestContext.set(USAGE_MODULE, "quiz");
+  setUsageContext(requestContext, { code: ctx.code, userId: ctx.userId, module: "quiz" });
 
   // Text-only answers keep the plain-string call; an answer with photos becomes
   // ONE multimodal user message (text part + one image part per photo — the
@@ -193,12 +184,8 @@ export async function startDiscussion(
   if (!checked.ok) return checked;
   const images = checked.images;
 
-  const threadId = randomUUID();
   const resourceId = ctx.code;
-  const threadToken = signThreadToken(
-    { code: resourceId, userId: ctx.userId, threadId },
-    getThreadTokenSecret(),
-  );
+  const { threadId, threadToken } = newThread(resourceId, ctx.userId);
 
   // The three seed messages. The question text is the SERVER's (authoritative);
   // the answer/verdict/feedback are the student's own graded turn — faking them

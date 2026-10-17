@@ -179,8 +179,9 @@ export interface Cursor {
 }
 
 const CURSOR_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/;
-// Thread ids are server-generated UUIDs — the same guard as
-// lib/code-stats-store.ts's THREAD_ID_PATTERN.
+// Thread ids are server-generated UUIDs — the same guard as THREAD_ID_PATTERN in
+// lib/thread-token.ts, copied because this module is CLI-bundled and must not pull
+// in the server-only token module.
 const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 const BASE64URL = /^[A-Za-z0-9_-]{1,200}$/;
 

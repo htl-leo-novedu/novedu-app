@@ -10,32 +10,19 @@ import { HistorySnapshotRunner } from "@/app/api/copilotkit/history-snapshot-run
 import { ReasoningStrippingRunner } from "@/app/api/copilotkit/reasoning-runner";
 import { RunErrorReportingRunner } from "@/app/api/copilotkit/run-error-runner";
 import { mastra } from "@/app/mastra";
+import { CODE_REJECTION_MESSAGES } from "@/lib/activity-gate";
 import { codeModules } from "@/lib/code-modules/registry";
-import { type CodeRejection, checkCode } from "@/lib/code-store";
+import { checkCode } from "@/lib/code-store";
 import { RUNTIME_CODE_HEADER, RUNTIME_THREAD_TOKEN_HEADER } from "@/lib/runtime-headers";
 import { getSession } from "@/lib/session";
 import { effectiveTeacherForSession } from "@/lib/student-mode";
-import { getThreadTokenSecret, verifyThreadToken } from "@/lib/thread-token";
-import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { getThreadTokenSecret, THREAD_ID_PATTERN, verifyThreadToken } from "@/lib/thread-token";
+import { setUsageContext } from "@/lib/usage-context-keys";
 import { recordUserMessage } from "@/lib/usage-store";
 import { recordUserChat } from "@/lib/user-chat-store";
 
-// Human-readable rejection texts: a 403 can surface mid-session in the chat's
-// error UI (e.g. when the window closes while the student is typing), so the
-// message should explain, not just name a reason code.
-const REJECTION_MESSAGES: Record<CodeRejection, string> = {
-  "unknown-code": "This activity requires a valid code.",
-  "not-started": "This activity's availability window has not started yet.",
-  expired: "This activity's availability window has ended.",
-  "lookup-failed": "Codes cannot be checked right now — try again in a moment.",
-};
-
 const THREAD_REJECTION_MESSAGE =
   "This chat does not belong to your session — reload the page to start a new chat.";
-
-// Belt-and-braces shape check before the HMAC; the page issues UUIDs but the
-// token (not this pattern) is what actually proves ownership.
-const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 
 // Ceiling on a run/connect body. The client caps what it SENDS (a normalized
 // photo is at most `MAX_IMAGE_BYTES`, lib/answer-images.ts), but the client is
@@ -262,7 +249,7 @@ async function handler(req: Request): Promise<Response> {
   const code = req.headers.get(RUNTIME_CODE_HEADER) ?? "";
   const verification = await checkCode(code);
   if (!verification.ok) {
-    return Response.json({ error: REJECTION_MESSAGES[verification.reason] }, { status: 403 });
+    return Response.json({ error: CODE_REJECTION_MESSAGES[verification.reason] }, { status: 403 });
   }
   const { entry } = verification;
   const def = codeModules[entry.module];
@@ -305,9 +292,7 @@ async function handler(req: Request): Promise<Response> {
   // reads these three keys off every span. `usageUserId` is set for ALL codes,
   // including anonymous ones — it is only ever stored against an hour bucket in
   // `usage_by_user`, never linked to the code (see lib/usage-store.ts).
-  built.context.set(USAGE_CODE, code);
-  built.context.set(USAGE_USER_ID, userId);
-  built.context.set(USAGE_MODULE, entry.module);
+  setUsageContext(built.context, { code, userId, module: entry.module });
 
   // The library's own runner, innermost. A TUTOR's is wrapped in the snapshot
   // runner, which answers a `connect` with the thread's stored messages so a

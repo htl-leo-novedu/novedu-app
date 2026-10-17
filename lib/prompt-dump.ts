@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { buildUpstreamChatBody } from "@/lib/coding-proxy";
 import { loadCodingFrom } from "@/lib/coding-resolve";
-import type { FileKind } from "@/lib/file-name";
+import { FILE_KINDS, type FileKind } from "@/lib/file-name";
 import type { LlmProvider, ReasoningLevel } from "@/lib/llm/provider";
 import {
   error,
@@ -55,7 +55,9 @@ import { loadWritingFrom } from "@/lib/writing-resolve";
  */
 export type PromptKind = Exclude<FileKind, "fragment">;
 
-export const PROMPT_KINDS: readonly PromptKind[] = ["tutor", "quiz", "writing", "coding"];
+export const PROMPT_KINDS: readonly PromptKind[] = FILE_KINDS.filter(
+  (kind): kind is PromptKind => kind !== "fragment",
+);
 
 /** The activity's own model + provider (per-code overrides are out of scope). */
 export interface PromptDumpLlm {
@@ -158,6 +160,15 @@ export interface PromptDumper {
   dump(url: string, fetcher: Fetcher, opts?: LoadOptions): Promise<PromptDumpResult>;
 }
 
+/** The `llm` block of a dump: provider + model, plus the reasoning level only when pinned. */
+function dumpLlm(activity: PromptDumpLlm): PromptDumpLlm {
+  return {
+    provider: activity.provider,
+    model: activity.model,
+    ...(activity.reasoning ? { reasoning: activity.reasoning } : {}),
+  };
+}
+
 /** Wrap a runtime loader's friendly message as the structured failure shape. */
 function loadFailed(message: string, url: string): PromptDumpResult {
   return { ok: false, errors: [error("ACTIVITY_LOAD_FAILED", message, { url })] };
@@ -186,11 +197,7 @@ const tutorDumper: PromptDumper = {
       dump: {
         kind: "tutor",
         id: result.id,
-        llm: {
-          provider: result.provider,
-          model: result.model,
-          ...(result.reasoning ? { reasoning: result.reasoning } : {}),
-        },
+        llm: dumpLlm(result),
         system: result.prompt,
         tools: result.tools,
       },
@@ -211,11 +218,7 @@ const quizDumper: PromptDumper = {
       dump: {
         kind: "quiz",
         id: quiz.id,
-        llm: {
-          provider: quiz.provider,
-          model: quiz.model,
-          ...(quiz.reasoning ? { reasoning: quiz.reasoning } : {}),
-        },
+        llm: dumpLlm(quiz),
         grading: {
           userMessageTemplate: QUIZ_ANSWER_MESSAGE_TEMPLATE,
           userMessagePhotosOnly: QUIZ_ANSWER_PHOTOS_ONLY_MESSAGE,
@@ -258,11 +261,7 @@ const writingDumper: PromptDumper = {
       dump: {
         kind: "writing",
         id: writing.id,
-        llm: {
-          provider: writing.provider,
-          model: writing.model,
-          ...(writing.reasoning ? { reasoning: writing.reasoning } : {}),
-        },
+        llm: dumpLlm(writing),
         system: writing.instructions,
       },
     };
@@ -290,11 +289,7 @@ const codingDumper: PromptDumper = {
       dump: {
         kind: "coding",
         id: coding.id,
-        llm: {
-          provider: coding.provider,
-          model: coding.model,
-          ...(coding.reasoning ? { reasoning: coding.reasoning } : {}),
-        },
+        llm: dumpLlm(coding),
         system: coding.instructions,
         upstreamSystemMessage: typeof system?.content === "string" ? system.content : "",
       },

@@ -1,8 +1,7 @@
 "use server";
 
 import { after } from "next/server";
-import { type CodeRejection, checkCode } from "@/lib/code-store";
-import { getSession } from "@/lib/session";
+import { verifyStudentActivity } from "@/lib/activity-gate";
 import { recordWritingSave } from "@/lib/usage-store";
 import { loadWriting } from "@/lib/writing-fetch";
 import { saveSubmission } from "@/lib/writing-store";
@@ -27,34 +26,19 @@ export interface SaveWritingInput {
 
 export type SaveWritingResult = { ok: true } | { ok: false; message: string };
 
-const CODE_REJECTION_MESSAGES: Record<CodeRejection, string> = {
-  "unknown-code": "This writing code is not valid.",
-  "not-started": "This writing activity's availability window has not started yet.",
-  expired: "This writing activity's availability window has ended.",
-  "lookup-failed": "Writing codes cannot be checked right now — try again in a moment.",
-};
-
 /**
- * Saves a student's writing text for a code. Re-verifies the code is valid and in
- * its window, resolves the authenticated session user id as the row owner, re-reads
- * the activity's `anonymous` flag LIVE (rejecting an anonymous activity), then
- * upserts the student's single row. Nothing is graded or echoed back.
+ * Saves a student's writing text for a code. Resolves the authenticated session user
+ * id as the row owner and re-verifies the code is valid, in its window and a writing
+ * code (the shared student gate), re-reads the activity's `anonymous` flag LIVE
+ * (rejecting an anonymous activity), then upserts the student's single row. Nothing
+ * is graded or echoed back.
  */
 export async function saveWriting(input: SaveWritingInput): Promise<SaveWritingResult> {
   const text = typeof input.text === "string" ? input.text.trim() : "";
 
-  const verification = await checkCode(input.code);
-  if (!verification.ok) {
-    return { ok: false, message: CODE_REJECTION_MESSAGES[verification.reason] };
-  }
-  const { entry } = verification;
-  if (entry.module !== "writing") {
-    return { ok: false, message: "This code is not a writing activity." };
-  }
-
-  const session = await getSession();
-  const userId = session?.user?.id;
-  if (!userId) return { ok: false, message: "Please sign in to continue." };
+  const gate = await verifyStudentActivity(input.code, "writing");
+  if (!gate.ok) return gate;
+  const { userId, entry } = gate;
 
   // Re-read the privacy flag LIVE from the YAML (defense in depth): an anonymous
   // writing activity never stores attributed text, so saving is disabled for it.

@@ -148,6 +148,8 @@ Only `GET /api/codes/<code>/conversations` pages, with an opaque **cursor**:
 - Order is stable (thread `createdAt`, then id), so a walk never repeats or skips
   a thread that existed when it started.
 
+### Auth channels and routes
+
 **Cookie-session routes.** This namespace is bearer-only with exactly THREE
 deliberate exceptions, none of them list routes above: `/api/copilotkit` (the
 chat runtime, `docs/chat.md`), the teacher-only `/api/health` probe
@@ -158,6 +160,12 @@ instead. `/api/image-content` in particular carries **no proxy-matcher
 exclusion at all** (unlike every bearer route below, which needs one to reach
 callers with no session cookie) — it sits behind the default cookie gate like
 any page, and its handler re-validates the session itself on top of that.
+
+**API-key routes.** The public coding routes `POST /api/coding/v1/chat/completions`
+and `GET /api/coding/v1/models` take neither a session token nor a cookie: a
+per-user coding API key authenticates them, under one gate that re-verifies the key
+row and the code row on every request (`docs/coding.md`). They are the only public
+API surface besides `GET /api/version` and better-auth's own endpoints.
 
 - **`GET /api/version`** (`app/api/version/route.ts`) — the ONE route in this list
   that is **public and unauthenticated** (proxy-excluded, no bearer gate): the

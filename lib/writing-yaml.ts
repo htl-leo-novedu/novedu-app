@@ -1,12 +1,5 @@
-import { parse as parseYamlText } from "yaml";
-import {
-  DEFAULT_PROVIDER,
-  type LlmProvider,
-  parseLenientProvider,
-  parseLenientReasoningLevel,
-  REASONING_LEVELS,
-  type ReasoningLevel,
-} from "./llm/provider";
+import { asBool, asString, parseActivityYaml } from "./activity-load";
+import type { LlmProvider, ReasoningLevel } from "./llm/provider";
 import type { FragmentBlock } from "./prompt-fragments";
 import { readFragmentBlock } from "./prompt-fragments/block";
 import type { WritingPublic } from "./writing-types";
@@ -63,21 +56,10 @@ export interface Writing {
   placeholder?: string;
 }
 
+/** How this kind names itself in its student-facing load messages. */
+export const WRITING_NOUN = "writing activity";
+
 export type WritingParseResult = { ok: true; writing: Writing } | { ok: false; message: string };
-
-function asString(value: unknown): string | undefined {
-  if (typeof value === "string") return value.trim() !== "" ? value : undefined;
-  // YAML types unquoted scalars by value, so `id: 1` arrives as a number and
-  // `id: true` as a boolean. Coerce a finite number / boolean to its string form
-  // rather than silently dropping the field. NaN/Infinity stay rejected.
-  if (typeof value === "number") return Number.isFinite(value) ? String(value) : undefined;
-  if (typeof value === "boolean") return String(value);
-  return undefined;
-}
-
-function asBool(value: unknown, fallback: boolean): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
 
 /**
  * Parses and lightly validates a writing YAML. Returns a friendly error message
@@ -85,48 +67,9 @@ function asBool(value: unknown, fallback: boolean): boolean {
  * shows it as a notice. `anonymous` DEFAULTS to `false` (the writing divergence).
  */
 export function parseWriting(content: string): WritingParseResult {
-  let doc: unknown;
-  try {
-    doc = parseYamlText(content);
-  } catch {
-    return {
-      ok: false,
-      message: "This writing activity could not be read — its YAML is not valid.",
-    };
-  }
-  if (typeof doc !== "object" || doc === null || Array.isArray(doc)) {
-    return { ok: false, message: "This writing activity is empty or malformed." };
-  }
-  const root = doc as Record<string, unknown>;
-
-  const llm = root.llm as Record<string, unknown> | undefined;
-  const model = asString(llm?.model);
-  if (!model) {
-    return { ok: false, message: "This writing activity does not specify a model (llm.model)." };
-  }
-
-  // Missing ⇒ SCCH; present-but-invalid is rejected so a Foundry-intended
-  // activity never silently runs against SCCH.
-  const provider =
-    llm?.provider === undefined ? DEFAULT_PROVIDER : parseLenientProvider(llm.provider);
-  if (!provider) {
-    return {
-      ok: false,
-      message:
-        'This writing activity uses an unsupported llm.provider (use "SCCH", "Azure Foundry" or "OpenRouter").',
-    };
-  }
-
-  // Absent ⇒ no reasoning effort is sent; present-but-invalid is rejected so an
-  // activity never silently runs at the model's default effort.
-  const reasoning =
-    llm?.reasoning === undefined ? undefined : parseLenientReasoningLevel(llm.reasoning);
-  if (llm?.reasoning !== undefined && !reasoning) {
-    return {
-      ok: false,
-      message: `This writing activity uses an unsupported llm.reasoning (one of ${REASONING_LEVELS.join(", ")}).`,
-    };
-  }
+  const parsed = parseActivityYaml(content, WRITING_NOUN);
+  if (!parsed.ok) return parsed;
+  const { root, llm } = parsed;
 
   const instructions = asString(root.instructions);
   if (!instructions) {
@@ -141,9 +84,7 @@ export function parseWriting(content: string): WritingParseResult {
       title: asString(root.title),
       description: asString(root.description),
       anonymous: asBool(root.anonymous, false),
-      model,
-      provider,
-      reasoning,
+      ...llm,
       instructions,
       // Carried through for `loadWriting` to resolve + prepend to `instructions`.
       fragmentBlock: readFragmentBlock(root),

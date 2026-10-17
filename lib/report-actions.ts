@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { CODE_REJECTION_MESSAGES } from "@/lib/activity-gate";
 import { checkCode } from "@/lib/code-store";
 import { invalidateHome } from "@/lib/home-data";
 import type { QuizVerdict } from "@/lib/quiz-types";
-import { CODE_REJECTION_MESSAGES, verifyAndLoadQuestion } from "@/lib/quiz-verify";
+import { verifyAndLoadQuestion } from "@/lib/quiz-verify";
 import {
   countChatReports,
   countQuizReports,
@@ -21,7 +22,7 @@ import {
 import { getSession } from "@/lib/session";
 import { requireTeacherUserId } from "@/lib/student-mode";
 import { emitEvent } from "@/lib/telemetry";
-import { getThreadTokenSecret, verifyThreadToken } from "@/lib/thread-token";
+import { getThreadTokenSecret, THREAD_ID_PATTERN, verifyThreadToken } from "@/lib/thread-token";
 
 // The report server actions (GH issue #24). Two student-facing submit actions —
 // one per reportable surface — and three teacher-only bulk actions for the
@@ -39,9 +40,6 @@ import { getThreadTokenSecret, verifyThreadToken } from "@/lib/thread-token";
 //
 // Telemetry is metadata-only — `emitEvent` NEVER carries the description or any
 // snapshot content (docs/telemetry.md).
-
-// Server-generated Mastra thread ids are UUID-shaped; guard before the HMAC check.
-const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 
 // A canonical UUID (what `randomUUID` mints for a report id) — the shape the bulk
 // actions accept, so a malformed id list is rejected before any DB round-trip.

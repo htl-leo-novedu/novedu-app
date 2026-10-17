@@ -4,16 +4,16 @@
 // the validator seam (`lib/file-validators.ts`) and the `@novedu/cli validate
 // --kind writing` command.
 //
-// PURE / CLI-safe: imports only `lib/tutors` helpers (the shared scheme-gated YAML
-// load, the Zod-validate wrapper, the error model) and the Zod schema — never
+// PURE / CLI-safe: imports only the shared load/check steps (`lib/prompt-fragments`,
+// `lib/activity-load`) and the Zod schema — never
 // `lib/writing-fetch` (DB-backed) or any server-only module. The lenient runtime
 // `parseWriting` (`lib/writing-yaml.ts`) is unchanged and separate.
 
+import { checkInstructions } from "@/lib/activity-load";
 import {
-  assembleFragmentPrompt,
   type Fetcher,
   type LoadOptions,
-  loadYaml,
+  loadAndValidate,
   type ValidationError,
   type ValidationWarning,
   validate,
@@ -48,7 +48,7 @@ const DEFAULT_ANONYMOUS = false;
  * `checkWritingValue` so `loadAndCheckWriting` can reuse the single `validate` it already
  * ran (no second parse of the same document against the same schema).
  */
-function checkWritingParsed(writing: WritingYaml): WritingCheckResult {
+function checkWritingParsed(writing: WritingYaml): Extract<WritingCheckResult, { ok: true }> {
   return {
     ok: true,
     writingId: writing.id,
@@ -72,36 +72,25 @@ export function checkWritingValue(parsed: unknown, url?: string): WritingCheckRe
 }
 
 /**
- * Validate a writing FILE: scheme-gate + fetch + parse (shared `loadYaml`), then the
- * pure `checkWritingValue`. The web app passes the default http(s)-only schemes; the
- * CLI adds `file:` so a local writing YAML on disk validates too.
+ * Validate a writing FILE: scheme-gate + fetch + parse + schema (shared
+ * `loadAndValidate`), metadata, then the fragment block's authoring gate over
+ * `instructions` (shared `checkInstructions`). The web app passes the default
+ * http(s)-only schemes; the CLI adds `file:` so a local writing YAML on disk validates too.
  */
 export async function loadAndCheckWriting(
   url: string,
   fetchImpl: Fetcher,
   opts: LoadOptions = {},
 ): Promise<WritingCheckResult> {
-  const yaml = await loadYaml(url, fetchImpl, opts);
-  if (!yaml.ok) return { ok: false, errors: [yaml.error], warnings: [] };
-
-  // Validate the schema ONCE, then reuse the typed value for both metadata and the
-  // fragment block below (no second parse of the same document).
-  const valid = validate<WritingYaml>(yaml.value, WritingYamlSchema, "WRITING_SCHEMA_ERROR", url);
-  if (!valid.ok) return { ok: false, errors: [valid.error], warnings: [] };
-
-  const checked = checkWritingParsed(valid.data);
-  if (!checked.ok) return checked;
-
-  // The fragment block's authoring gate: fetch + placement checks + a host-template
-  // render dry-run over `instructions` (authoring default: `validateLibraries: true`).
-  const assembled = await assembleFragmentPrompt(
-    { fragment_files: valid.data.fragment_files, text_files: valid.data.text_files },
+  const valid = await loadAndValidate(
     url,
     fetchImpl,
-    { allowedSchemes: opts.allowedSchemes, validateLibraries: opts.validateLibraries ?? true },
-    valid.data.instructions,
+    opts,
+    WritingYamlSchema,
+    "WRITING_SCHEMA_ERROR",
   );
-  const warnings = [...checked.warnings, ...assembled.warnings];
-  if (!assembled.ok) return { ok: false, errors: assembled.errors, warnings };
-  return { ...checked, warnings };
+  if (!valid.ok) return { ok: false, errors: [valid.error], warnings: [] };
+  const checked = await checkInstructions(valid.data, url, fetchImpl, opts);
+  if (!checked.ok) return checked;
+  return { ...checkWritingParsed(valid.data), warnings: checked.warnings };
 }

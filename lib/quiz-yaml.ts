@@ -1,13 +1,6 @@
-import { parse as parseYamlText } from "yaml";
+import { asBool, asString, parseActivityYaml } from "./activity-load";
 import type { ImageRef } from "./image-ref";
-import {
-  DEFAULT_PROVIDER,
-  type LlmProvider,
-  parseLenientProvider,
-  parseLenientReasoningLevel,
-  REASONING_LEVELS,
-  type ReasoningLevel,
-} from "./llm/provider";
+import type { LlmProvider, ReasoningLevel } from "./llm/provider";
 import type { FragmentBlock } from "./prompt-fragments";
 import { readFragmentBlock } from "./prompt-fragments/block";
 import type { QuizPublic, QuizQuestionPublic } from "./quiz-types";
@@ -131,24 +124,10 @@ export interface Quiz {
   questions: QuizQuestion[];
 }
 
+/** How this kind names itself in its student-facing load messages. */
+export const QUIZ_NOUN = "quiz";
+
 export type QuizParseResult = { ok: true; quiz: Quiz } | { ok: false; message: string };
-
-function asString(value: unknown): string | undefined {
-  if (typeof value === "string") return value.trim() !== "" ? value : undefined;
-  // YAML types unquoted scalars by value, so `id: 1` arrives as a number and
-  // `id: true` as a boolean. Coerce a finite number / boolean to its string form
-  // rather than silently dropping the field — a teacher writing the natural
-  // `- id: 1` must not lose the whole question (nor a numeric title/name vanish).
-  // NaN/Infinity stay rejected: they make no sense as an id and `String()` them
-  // would only produce a confusing "NaN"/"Infinity" value.
-  if (typeof value === "number") return Number.isFinite(value) ? String(value) : undefined;
-  if (typeof value === "boolean") return String(value);
-  return undefined;
-}
-
-function asBool(value: unknown, fallback: boolean): boolean {
-  return typeof value === "boolean" ? value : fallback;
-}
 
 // LENIENT read of an optional content image. Only a non-null object with a
 // trimmed non-empty string `src` yields a ref; anything malformed is dropped so
@@ -176,45 +155,9 @@ function asImageRef(value: unknown): ImageRef | undefined {
  * shows it as a notice. `anonymous` and `shuffle` default to `true`.
  */
 export function parseQuiz(content: string): QuizParseResult {
-  let doc: unknown;
-  try {
-    doc = parseYamlText(content);
-  } catch {
-    return { ok: false, message: "This quiz could not be read — its YAML is not valid." };
-  }
-  if (typeof doc !== "object" || doc === null || Array.isArray(doc)) {
-    return { ok: false, message: "This quiz is empty or malformed." };
-  }
-  const root = doc as Record<string, unknown>;
-
-  const llm = root.llm as Record<string, unknown> | undefined;
-  const model = asString(llm?.model);
-  if (!model) {
-    return { ok: false, message: "This quiz does not specify a model (llm.model)." };
-  }
-
-  // Missing ⇒ SCCH; present-but-invalid is rejected so a Foundry-intended quiz
-  // never silently runs against SCCH.
-  const provider =
-    llm?.provider === undefined ? DEFAULT_PROVIDER : parseLenientProvider(llm.provider);
-  if (!provider) {
-    return {
-      ok: false,
-      message:
-        'This quiz uses an unsupported llm.provider (use "SCCH", "Azure Foundry" or "OpenRouter").',
-    };
-  }
-
-  // Absent ⇒ no reasoning effort is sent; present-but-invalid is rejected so a
-  // quiz never silently grades at the model's default effort.
-  const reasoning =
-    llm?.reasoning === undefined ? undefined : parseLenientReasoningLevel(llm.reasoning);
-  if (llm?.reasoning !== undefined && !reasoning) {
-    return {
-      ok: false,
-      message: `This quiz uses an unsupported llm.reasoning (one of ${REASONING_LEVELS.join(", ")}).`,
-    };
-  }
+  const parsed = parseActivityYaml(content, QUIZ_NOUN);
+  if (!parsed.ok) return parsed;
+  const { root, llm } = parsed;
 
   // Lifted leniently like the fragment block: the declared array passes through as-is
   // for `loadQuiz` to resolve fail-closed (a malformed entry errors the LOAD rather
@@ -274,11 +217,9 @@ export function parseQuiz(content: string): QuizParseResult {
       description: asString(root.description),
       anonymous: asBool(root.anonymous, true),
       shuffle: asBool(root.shuffle, true),
-      model,
-      provider,
-      reasoning,
+      ...llm,
       questionCount,
-      imageInput: asBool(llm?.imageInput, false),
+      imageInput: asBool((root.llm as Record<string, unknown> | undefined)?.imageInput, false),
       discussionInstructions: asString(
         (root.discussion as Record<string, unknown> | undefined)?.instructions,
       ),

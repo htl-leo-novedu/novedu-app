@@ -89,9 +89,11 @@ Each runtime loader is split in two:
 | `lib/writing-resolve.ts` | `lib/writing-fetch.ts` |
 | `lib/coding-resolve.ts` | `lib/coding-fetch.ts` |
 
-The `*-fetch.ts` modules keep owning `loadAppHostedYaml` + `appHostedFetcher`
-(the loopback-avoiding app-hosted resolution — `docs/files.md`); the `*-resolve.ts`
-modules own the resolution itself and are what the CLI imports, with
+Both columns run the same fetch → parse → resolve load, `loadActivity` in the pure
+`lib/activity-load.ts`: the app side through `loadAppHostedYaml` +
+`appHostedFetcher` (the loopback-avoiding app-hosted resolution — `docs/files.md`),
+the CLI side through `loadActivityFrom`, which first gates the URL scheme. The
+`*-resolve.ts` modules own each kind's resolution and are what the CLI imports, with
 `allowedSchemes` extended by `file:` so on-disk activities resolve their siblings.
 
 ## Output

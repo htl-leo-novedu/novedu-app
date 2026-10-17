@@ -64,9 +64,9 @@ Read before touching: `lib/registry-schema.ts`, `cli/src/registry.ts`, `cli/src/
 
 ### Codes → `docs/codes.md`
 
-Read before touching: `app/[code]/**`, `app/codes/**`, `app/api/copilotkit/**`, `lib/code-*.ts`, `lib/code-modules/**`, `lib/file-validators.ts`, `lib/quiz-*.ts`, `lib/thread-token.ts`.
+Read before touching: `app/[code]/**`, `app/codes/**`, `app/api/copilotkit/**`, `lib/activity-gate.ts`, `lib/code-*.ts`, `lib/code-modules/**`, `lib/file-validators.ts`, `lib/quiz-*.ts`, `lib/thread-token.ts`.
 
-- `checkCode()` gates EVERY student-facing server touch and must be re-run on each: the `/[code]` dispatcher, the CopilotKit route, both public coding routes (`chat/completions` + `models`), and the student server actions (`lib/{tutor,writing,report}-actions.ts`, `lib/quiz-verify.ts`). The conversation export `GET /api/codes/<code>/conversations` is NOT one of them — a **creator-only** bearer read (`created_by` = the bearer user) whose store never joins `novedu_user_chats`/`novedu_user`, so it carries no student identity for any code (`docs/api.md`).
+- `checkCode()` gates EVERY student-facing server touch and must be re-run on each: the `/[code]` dispatcher, the CopilotKit route, both public coding routes (`chat/completions` + `models`), and the student server actions (`lib/{tutor,writing,report}-actions.ts`, `lib/quiz-verify.ts` — all but the report action through the shared gate `lib/activity-gate.ts`). The conversation export `GET /api/codes/<code>/conversations` is NOT one of them — a **creator-only** bearer read (`created_by` = the bearer user) whose store never joins `novedu_user_chats`/`novedu_user`, so it carries no student identity for any code (`docs/api.md`).
 - Fixed layering: **FileKind** → validator (`lib/file-validators.ts`) → **CodeModule** descriptor; adding a module touches only the documented seams.
 - Editing a code changes only note + window + the LLM override pair — never the module, `file_url`, or the frozen `anonymous`.
 - `novedu_user_chats` is the only user↔chat link, written only for non-anonymous activities. THREE sanctioned exceptions: `novedu_reports` stores the reporter's user id even on anonymous codes behind an explicit on-form notice (`docs/reports.md`), `novedu_coding_keys` stores the requester's user id behind an explicit on-page notice (`docs/coding.md`), and `novedu_quiz_results` stores a student's saved quiz counts only on their explicit Finish-page choice behind an on-page notice (`docs/home.md`). The quiz-result store has NO teacher reader — `lib/quiz-result-store.ts` is its only access and its importers are guard-tested.
@@ -77,7 +77,7 @@ Read before touching: `app/[code]/**`, `app/codes/**`, `app/api/copilotkit/**`, 
 Read before touching: `lib/report-*.ts`, `lib/quiz-verify.ts`, `components/report-button.tsx` + its mounts, `app/reports/**`, `app/api/reports/**`, `cli/src/commands/reports.ts`, `novedu_reports`.
 
 - Reports are ALWAYS attributed to the reporter's user id (the sanctioned exception above); the store never joins `novedu_user_chats`; telemetry stays content-free.
-- **`lib/quiz-verify.ts` must never gain `"use server"`** — it would mint an endpoint leaking the quiz `evaluation` prompts.
+- **`lib/quiz-verify.ts` and the student gate `lib/activity-gate.ts` must never gain `"use server"`** — it would mint endpoints leaking the quiz `evaluation` prompts and any code row (both guard-tested).
 
 ### Prompt fragments → `docs/prompt-fragments.md`
 
@@ -109,7 +109,7 @@ Read before touching: `app/api/coding/**`, `app/[code]/_coding/**`, `lib/coding-
 
 ### AI models & LLM providers → `docs/ai-models.md`
 
-Read before touching: `lib/llm/**`, `app/mastra/scch.ts`, `app/mastra/model-entry.ts`, `lib/scch-endpoint.ts`, the `llm:` block of any activity schema.
+Read before touching: `lib/llm/**`, `lib/llm-context.ts`, `app/mastra/scch.ts`, `app/mastra/model-entry.ts`, `app/mastra/agent-context.ts`, `lib/scch-endpoint.ts`, the `llm:` block of any activity schema.
 
 - Adding a provider = one branch in each of the THREE functions (security block) + a name constant + the schema enum literal + its `providerOptions` key in `reasoningOptionsKey` (beside `resolveLanguageModel` in `lib/llm/model.ts`).
 - The ai-sdk provider names (`scch`/`azure-foundry`/`openrouter`) are the metering contract — renaming breaks usage attribution.
@@ -122,7 +122,7 @@ Read before touching: `app/module-chat.tsx`, the per-module chat components, the
 - `ModuleChat` is the single live-chat primitive; the read-only `ConversationView` is NOT a `ModuleChat` — no agent ever runs there.
 - Reasoning is stripped server-side for non-teachers (security block). The runner delegates to a 4-method abstract `AgentRunner` — a guard test reads that method list off the installed package's type declaration, so **wrap any new method before a CopilotKit bump** (in all three decorators: reasoning stripping, failure reporting, and the tutor's `HistorySnapshotRunner`).
 - A tutor `connect` is answered by `HistorySnapshotRunner` (innermost, around `InMemoryAgentRunner`) with a framed `MESSAGES_SNAPSHOT` from the database (within the idle limit, or a per-user tutor's thread the student owns), the in-process replay filtered by stored message ids and a historic `RUN_ERROR` closed as `RUN_FINISHED`. It rests on undocumented CopilotKit / AG-UI / Mastra behaviour, guarded in CI against the fake LLM by the reload round-trip `e2e/tutor-reload-roundtrip.spec.ts` (and reasoning visibility by `e2e/reasoning-visibility.spec.ts`); **before any `@copilotkit/*`, `@ag-ui/*` or `@mastra/*` bump, also run `npm run test:e2e:live-llm` locally** — a real thinking model's reasoning stream and the provider smoke tests, which the fake cannot cover. The global `messageView.cursor` note ("Generating…") shows for the whole run, for everyone.
-- Reasoning is **live-only**: `reasoningStrippingProcessor` (`app/mastra/reasoning-processor.ts`) is on the `outputProcessors` of every agent with `memory:`, so `mastra_messages` never stores a reasoning part. Adding a memory-backed agent means adding it there too.
+- Reasoning is **live-only**: `reasoningStrippingProcessor` (`app/mastra/reasoning-processor.ts`) is on the `outputProcessors` of every agent with `memory:`, so `mastra_messages` never stores a reasoning part. Adding a memory-backed agent (`memory: chatMemory()`, `app/mastra/agent-context.ts`) means adding it there too.
 - EVERY student photo (tutor + quiz) goes through `normalizeStudentImage` in the browser before it is inlined. Two DIFFERENT limits: `MAX_RAW_IMAGE_BYTES` (30 MB) bounds what may be PICKED, `MAX_IMAGE_BYTES` (5 MB) what may be SENT — CopilotKit checks `maxSize` against the ORIGINAL file, so it carries the RAW one. Canvas code never enters `lib/answer-images.ts` (a `"use server"` module imports it).
 - A failed turn is in-band on an already-200 stream, so it is reported by the `RunErrorReportingRunner` decorator, which wraps BOTH runner variants; the `RUN_ERROR` message itself never reaches telemetry.
 
@@ -223,10 +223,11 @@ Read before adding a test or tagging one `@live`, or touching `fake-llm/**` (inc
 
 - Prefer fast, secret-free tests; `@live` only when the real DB/LLM/storage is genuinely needed, always with exactly one of `@live-db`/`@live-llm`/`@live-storage`/`@live-telemetry`. CI runs hermetic + `@live-db` only — LLM-backed specs among them run against the fake LLM (`fake-llm/`); `@live-llm` is only for a specific provider or real model behaviour (`npm run test:e2e:live-llm`, local). `@demo` specs run only against a demo build — the Playwright config picks the suite by `NOVEDU_AUTH_MODE` (CI: the `e2e-demo` job).
 - Mock the I/O seams, but keep security-critical pure modules (e.g. `lib/thread-token.ts`) real.
+- `tests/unit/docs-references.test.ts` checks every repo path, file name, Markdown link and `/api/…` path in `AGENTS.md`, `README.md` and `docs/*.md` against the tree (and that `docs/api.md` names every route), and flags change-history wording — fix the doc, never loosen a rule.
 
 ### CLI prompt dumps → `docs/cli-prompts.md`
 
-Read before touching: `lib/prompt-dump.ts`, `lib/{quiz,writing,coding}-resolve.ts`, the prompt builders, `cli/src/commands/prompts.ts`.
+Read before touching: `lib/prompt-dump.ts`, `lib/activity-load.ts`, `lib/{quiz,writing,coding}-resolve.ts`, the prompt builders, `cli/src/commands/prompts.ts`.
 
 - Every dumper CALLS the production builders/loaders — never a copy (grep-guarded in `lib/prompt-dump.unit.test.ts`).
 - CLI-bundled `lib/**` must import **nothing** from `app/**`, the DB, or `lib/llm/model.ts`, and carry no `"use server"` — the grep-guard walks the whole transitive closure.

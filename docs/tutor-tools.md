@@ -10,10 +10,6 @@ tools:
   - random_number
 ```
 
-Design doc: `docs/superpowers/specs/2026-08-09-tutor-tools-design.md` (includes
-the experiment that rejected a radix-conversion tool and validated vLLM
-tool-calling support on SCCH gemma-4).
-
 ## Architecture: pure catalog vs Mastra binding
 
 The implementation is deliberately split across the CLI-bundling boundary:

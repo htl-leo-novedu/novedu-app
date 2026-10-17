@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { userChats } from "@/lib/db/schema";
 import type { FileKind } from "@/lib/file-name";
 import { readAnonymousFlag } from "@/lib/file-validators";
+import { THREAD_ID_PATTERN } from "@/lib/thread-token";
 
 // Records which signed-in user owns which chat (Mastra thread) in
 // `novedu_user_chats` — the ONLY place tying users to chats. Attribution is
@@ -18,11 +19,6 @@ import { readAnonymousFlag } from "@/lib/file-validators";
 // cache miss pays the YAML fetch + insert.
 //
 // SERVER-ONLY: uses the database. Never import from client components.
-
-// Thread ids are server-generated UUIDs (app/[code]/page.tsx) and the runtime
-// route only forwards token-verified ones — this pattern is defense in depth
-// against anything else slipping through.
-const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 
 // Insertion-ordered Map as a bounded dedupe cache (~one entry per chat opened
 // since the server started). `true` = row written, `false` = decided not to

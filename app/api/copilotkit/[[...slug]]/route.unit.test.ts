@@ -209,7 +209,7 @@ describe("code gate (re-checked on every data request)", () => {
     checkCode.mockResolvedValue({ ok: false, reason: "unknown-code" });
     const res = await POST(agentRequest({ threadId: crypto.randomUUID() }));
     expect(res.status).toBe(403);
-    expect((await res.json()).error).toMatch(/requires a valid code/i);
+    expect((await res.json()).error).toBe("This code is not valid.");
   });
 
   it("403s an expired code — the per-request window re-check (mid-session close)", async () => {

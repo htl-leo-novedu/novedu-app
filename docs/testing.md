@@ -172,6 +172,22 @@ non-secret dummy — see `docs/ci-security.md`.
 - **e2e specs leave their rows behind.** Codes and files a spec creates stay in
   the database; the `setup` project (`e2e/auth.setup.ts`) sweeps the `e2e-…` codes
   and files older than an hour, with everything keyed by them. Images are not swept.
+- **Some unit tests check the source tree itself** instead of running it, e.g.
+  `tests/unit/rsc-boundaries.test.ts` — boundaries Next enforces late or not at all:
+  a server-capable module imports no non-component value from a `"use client"`
+  module; every `"use server"` / `"use client"` directive is its module's first
+  statement (one displaced below an import is a plain string, which biome rewrites
+  to `("use server");`); and a `"use server"` module exports only
+  `async function`s and type declarations — no re-export, no `export const`, no
+  default export. `tests/unit/docs-references.test.ts` keeps the developer docs
+  (`AGENTS.md`, `README.md`, `docs/*.md`) in step with the tree: every backticked
+  repo path (a `dir/**` glob: its directory) and source-file name exists, every
+  relative link and `.md#anchor` resolves, every `/api/…` path a doc names has a
+  route file (`GET /api/files` exactly that route; a bare path may name a namespace)
+  and `docs/api.md` names every route, and no doc uses change-history wording
+  (`used to be`, `was renamed`, `formerly`, `since v…`). A failure lists one `file:line: problem`
+  per line; fix the doc, and put a path that is untracked by design (build output,
+  local-only files) on the test's short allowlist.
 
 ## Test fixtures
 

@@ -89,8 +89,8 @@ samples (the coding YAML under `activities/examples/`).
   page is never listed. Coding conversations themselves are still never stored —
   there is no in-app chat to attribute, and `novedu_user_chats` stays untouched.
   The `anonymous` flag stays frozen `true` and keeps its narrower meaning (no
-  conversation to attribute); `readAnonymousFlag("coding")` still returns
-  `{ anonymous: true, definitive: true }` and the validator still freezes
+  conversation to attribute); `readAnonymousFlag("coding")` returns
+  `{ anonymous: true, definitive: true }` and the validator freezes
   `anonymous: true` onto the row.
 - **Metering**: because the key resolves a real `userId`, the usage tap records
   `recordLlmUsage({ code, module: "coding", userId, provider, model, codingRequests: 1, … })`, which
@@ -144,15 +144,17 @@ instructions: |
 - **`parseCoding`** (`lib/coding-yaml.ts`) is the lenient runtime read: it requires
   only `llm.model` + `instructions` and returns `{ title?, model, provider, instructions }`
   (`provider` defaults to SCCH when missing; a present-but-invalid value is
-  rejected). `model`, `provider` and `instructions` are **server-only**.
+  rejected — the `parseActivityYaml` prefix shared with quiz and writing,
+  `lib/activity-load.ts`). `model`, `provider` and `instructions` are **server-only**.
 - **Fragments**: a coding YAML may declare **`fragment_files:`** and/or **`text_files:`**
   (the shared prompt-fragment core — `docs/prompt-fragments.md`) and place fragments
   inline in `instructions` with `{{fragment "alias.id" …}}` markers, embedding plain-text
   files (e.g. a sample solution) with `{{file "alias"}}` (spliced verbatim, never
   compiled). `loadCoding` (`lib/coding-fetch.ts`) hands the parsed YAML to the pure
-  `resolveCoding` (`lib/coding-resolve.ts`), which renders the block through
-  `assembleFragmentPrompt(block, url, fetcher, { validateLibraries: false, allowedSchemes }, instructions)`
-  and stores the rendered host text back as `instructions`, identical to writing; a
+  `resolveCoding` (`lib/coding-resolve.ts`), which renders the block through the
+  `resolveInstructions` step it shares with writing (`lib/activity-load.ts`):
+  `assembleFragmentPrompt(block, url, fetcher, { validateLibraries: false, allowedSchemes }, instructions)`,
+  storing the rendered host text back as `instructions`; a
   YAML with **neither** `fragment_files` nor `text_files` returns `instructions`
   byte-verbatim (never compiled), and a fetch / consistency / assembly failure fails the
   load closed. TWO coding-specific constraints hold. **(1)** Assembly happens

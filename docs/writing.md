@@ -22,8 +22,8 @@ through exactly that fixed set of seams; nothing in the generic flow changes.
 
 - **FileKind** — `writing` joins the `FileKind` union (`lib/file-name.ts`), so the
   `/files` kind selector and `novedu_files.kind` carry it.
-- **Validator** — `writingValidator` in `fileValidators` (`lib/file-validators.ts`)
-  is a strict authoring gate exactly like `quizValidator`: it delegates to
+- **Validator** — the `writing` entry of `fileValidators` (`lib/file-validators.ts`)
+  is the same `activityValidator` as every activity kind: it delegates to
   `loadAndCheckWriting` (`lib/writing-validate.ts`), which runs the `WritingYamlSchema`
   Zod check and **blocks** an invalid save, surfacing `title` and `anonymous` on
   success. Writing defaults `anonymous: false` (below). The `readAnonymousFlag`
@@ -87,7 +87,9 @@ placeholder: ""                          # optional starter text for the editor
 
 `parseWriting` returns a friendly message (not structured errors) when an essential
 field is missing — `llm.model` and `instructions` are required; the student page
-shows that as a notice. **`instructions` (the teacher's system prompt) and `model`
+shows that as a notice. The YAML / `llm` part of that read (`llm.model`,
+`llm.provider`, `llm.reasoning`) is the `parseActivityYaml` prefix every lenient
+parser shares (`lib/activity-load.ts`). **`instructions` (the teacher's system prompt) and `model`
 are SERVER-ONLY.** The client-safe projection — `toPublicWriting` →
 `WritingPublic` (`lib/writing-types.ts`) — carries only `title`, `description`, and
 `placeholder`; the render component MUST call it before sending anything to the
@@ -97,7 +99,8 @@ A writing YAML may also declare **`fragment_files:`** and/or **`text_files:`** (
 shared prompt-fragment core — `docs/prompt-fragments.md`) and place fragments inline in
 the still-required `instructions` with `{{fragment "alias.id" …}}` markers and embed
 plain-text files with `{{file "alias"}}` (spliced verbatim, never compiled). `loadWriting`
-renders the block through `assembleFragmentPrompt(block, baseUrl, fetch, { validateLibraries: false }, instructions)`
+renders the block through the shared `resolveInstructions` (`lib/activity-load.ts`, the
+same step coding uses), i.e. `assembleFragmentPrompt(block, baseUrl, fetch, { validateLibraries: false }, instructions)`
 — the hot path — and stores the rendered host text back as `instructions`; a fetch /
 consistency / assembly failure fails the load closed. A YAML with **neither**
 `fragment_files` nor `text_files` declared returns `instructions` byte-verbatim (never
@@ -189,13 +192,14 @@ code outside its window stops accepting saves mid-session. A student may write
 **only their own** `(code, user_id)` row — the row key is the session user id, never
 client-supplied. The action:
 
-1. trims the text and `checkCode`s the code (rejection → a human-readable message);
-2. confirms `entry.module === "writing"`;
-3. resolves the session user id (no session → "Please sign in");
-4. **re-reads the `anonymous` flag LIVE from the YAML** (`loadWriting`) and
+1. trims the text;
+2. runs the shared student gate `verifyStudentActivity(code, "writing")`
+   (`lib/activity-gate.ts`): the session user id (no session → "Please sign in"),
+   `checkCode`, and `entry.module === "writing"`, each refusal a human-readable message;
+3. **re-reads the `anonymous` flag LIVE from the YAML** (`loadWriting`) and
    **rejects** the save when the activity is anonymous — defense in depth, so an
    anonymous writing code never accumulates attributed rows even if a client tries;
-5. `saveSubmission(...)`.
+4. `saveSubmission(...)`.
 
 Nothing is graded or echoed back — the result is just `{ ok }` or `{ ok: false,
 message }`.
@@ -297,13 +301,16 @@ structural.
 ## The writing agent — `app/mastra/writing-agents.ts`
 
 The `writing` agent is configured **entirely per request** from the
-`RequestContext`: the descriptor's `buildRequestContext` loads the YAML and sets
-`WRITING_INSTRUCTIONS` (the teacher's system prompt) and `WRITING_MODEL` (resolved
-against the shared `scchProvider`). The keys are distinct from the other agents' so
-a request for one can never satisfy another (defense in depth on top of the runtime
-route's agent gating). It is **memory-backed** exactly like `tutorAgent` and the
-quiz discussion agent — `lastMessages` window (40), **no** semantic recall — so a
-thread persists and earlier turns reach the model through the recalled window.
+`RequestContext`: the descriptor's `buildRequestContext` loads the YAML and sets the
+teacher's system prompt and the effective provider/model (+ reasoning) under
+`WRITING_CONTEXT` — `llmRequestContext` in `lib/llm-context.ts`, the same step the
+quiz discussion uses; the agent reads them back through `contextInstructions` /
+`contextModel` (`app/mastra/agent-context.ts`). The keys are distinct from the other
+agents' so a request for one can never satisfy another (defense in depth on top of
+the runtime route's agent gating). It is **memory-backed** exactly like `tutorAgent`
+and the quiz discussion agent — the shared `chatMemory()`: `lastMessages` window
+(40), **no** semantic recall — so a thread persists and earlier turns reach the
+model through the recalled window.
 `resourceId = the code`, set by the runtime route.
 
 Because `getCurrentText` is the only tool and it cannot mutate, and because the

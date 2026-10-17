@@ -1,6 +1,5 @@
 import { Agent } from "@mastra/core/agent";
 import type { RequestContext } from "@mastra/core/request-context";
-import { Memory } from "@mastra/memory";
 import { serverYamlFetcher } from "@/lib/app-hosted-fetcher";
 import { providerUnavailableReason } from "@/lib/llm/availability";
 import {
@@ -10,6 +9,7 @@ import {
   type ReasoningLevel,
 } from "@/lib/llm/provider";
 import { loadAndBuildTutorPrompt } from "@/lib/tutors";
+import { chatMemory } from "./agent-context";
 import { modelEntry } from "./model-entry";
 import { reasoningStrippingProcessor } from "./reasoning-processor";
 import { selectTutorTools } from "./tutor-tools";
@@ -137,31 +137,13 @@ export const tutorAgent = new Agent({
   // an empty map for the (default) tool-less tutor. The platform never mentions
   // tools in the prompt; authors reference them in `tutor_instructions`.
   tools: async ({ requestContext }) => selectTutorTools((await loadTutor(requestContext)).tools),
-  // Persist the conversation so the tutor remembers earlier turns. No explicit
-  // storage here: Memory inherits the Mastra instance's Postgres store (see
-  // `index.ts`), so threads/messages land in the `mastra_*` tables. The thread
-  // id is server-generated per page load (app/[code]/page.tsx) and ownership-
-  // checked in the CopilotKit route, which also sets the resource id (the
-  // tutor code — threads group per code, see docs/tutor-codes.md). `semanticRecall`
-  // is disabled — it would require a vector store + embedder we don't run; plain
-  // recent-message history is all the tutor needs.
-  //
-  // `lastMessages` is the ENTIRE context the tutor gets: `@ag-ui/mastra` hands
-  // the agent only the messages the thread's memory does not hold yet (the new
-  // turn), which means prior turns reach the model ONLY through this recalled
-  // window. 40 ≈ 20 exchanges, enough
-  // for a sentence-by-sentence tutor; raise it if longer sessions need to see
-  // further back.
-  //
-  // NOTE: `Memory` REQUIRES a storage provider — if `DATABASE_URL` is
-  // unset, the instance has no store and a tutor chat fails ("Memory requires a
-  // storage provider"). That's acceptable: storage is effectively required to chat.
-  memory: new Memory({
-    options: {
-      lastMessages: 40,
-      semanticRecall: false,
-    },
-  }),
+  // Persist the conversation so the tutor remembers earlier turns (`chatMemory`,
+  // shared with every chat agent). No explicit storage here: Memory inherits the
+  // Mastra instance's Postgres store (see `index.ts`), so threads/messages land in the
+  // `mastra_*` tables. The thread id is server-generated per page load
+  // (app/[code]/page.tsx) and ownership-checked in the CopilotKit route, which also
+  // sets the resource id (the tutor code — threads group per code).
+  memory: chatMemory(),
   // Reasoning is a live-only artefact: this drops it after the response has
   // streamed and before memory persists the turn (app/mastra/reasoning-processor.ts).
   outputProcessors: [reasoningStrippingProcessor],

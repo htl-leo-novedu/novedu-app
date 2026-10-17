@@ -1,6 +1,6 @@
 import { loadAppHostedYaml } from "@/lib/app-hosted-yaml";
 import { type LoadQuizResult, resolveQuiz } from "@/lib/quiz-resolve";
-import { parseQuiz } from "@/lib/quiz-yaml";
+import { parseQuiz, QUIZ_NOUN } from "@/lib/quiz-yaml";
 
 // Loads + leniently parses the quiz YAML behind a (verified) quiz URL, via the shared
 // `loadAppHostedYaml`, then hands the parsed document to the PURE `resolveQuiz`
@@ -16,7 +16,7 @@ import { parseQuiz } from "@/lib/quiz-yaml";
 export type { LoadQuizResult } from "@/lib/quiz-resolve";
 
 export function loadQuiz(quizUrl: string): Promise<LoadQuizResult> {
-  return loadAppHostedYaml(quizUrl, parseQuiz, "quiz", (parsed, { url, fetcher }) =>
+  return loadAppHostedYaml(quizUrl, QUIZ_NOUN, parseQuiz, (parsed, { url, fetcher }) =>
     resolveQuiz(parsed.quiz, url, fetcher),
   );
 }

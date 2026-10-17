@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parse as parseYamlText } from "yaml";
 import type { Fetcher } from "@/lib/prompt-fragments";
+import { fixtureResponse, fragmentFetcher, LIB_A_URL } from "@/lib/prompt-fragments/test-fixtures";
 import { checkWritingValue, loadAndCheckWriting } from "@/lib/writing-validate";
 
 // The writing AUTHORING validator: the strict schema gate. Pure, no network — a
@@ -66,26 +67,6 @@ instructions: "Coach the student."
   });
 });
 
-describe("loadAndCheckWriting — negative", () => {
-  it("rejects a fetch failure as FETCH_FAILED (no throw)", async () => {
-    const result = await loadAndCheckWriting(URL_, fetcherFor("", false));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]?.code).toBe("FETCH_FAILED");
-  });
-
-  it("rejects invalid YAML as YAML_PARSE_ERROR", async () => {
-    const result = await loadAndCheckWriting(URL_, fetcherFor("id: w\n  bad: : :"));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]?.code).toBe("YAML_PARSE_ERROR");
-  });
-
-  it("rejects a disallowed URL scheme as INVALID_URL", async () => {
-    const result = await loadAndCheckWriting("file:///etc/passwd", fetcherFor(VALID));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]?.code).toBe("INVALID_URL");
-  });
-});
-
 describe("checkWritingValue — schema errors", () => {
   const check = (yaml: string) => checkWritingValue(parseYamlText(yaml), URL_);
 
@@ -135,127 +116,34 @@ instructons: "typo — should be instructions"
   });
 });
 
-// --- document-level prompt fragments (identical machinery to quiz/coding) ----------
+// --- wiring of the shared steps -----------------------------------------------------
+// The fetch / YAML / scheme failures (`loadAndValidate`, lib/prompt-fragments) and the
+// fragment + text-file gate over `instructions` (`checkInstructions`,
+// lib/activity-load.ts) are covered once by their own tests; these prove the wiring.
 
-const LIB_URL = "https://example.com/lib.yaml";
-const LIB_YAML = `id: lib
-fragments:
-  - id: safety
-    version: 1
-    content: |
-      Always be safe and kind.
-  - id: lang
-    version: 1
-    input_schema:
-      type: object
-      required: [language]
-      properties:
-        language:
-          type: string
-    content: |
-      Respond in {{language}}.
-`;
+describe("loadAndCheckWriting — shared steps", () => {
+  it("reports a schema error of the file with its own code", async () => {
+    const result = await loadAndCheckWriting(URL_, fetcherFor("id: x\n"));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors[0]?.code).toBe("WRITING_SCHEMA_ERROR");
+  });
 
-const fetcherMap =
-  (bodies: Record<string, string>): Fetcher =>
-  async (url) => {
-    const text = bodies[url];
-    return text === undefined
-      ? { ok: false, status: 404, text: async () => "" }
-      : { ok: true, status: 200, text: async () => text };
-  };
-
-describe("loadAndCheckWriting — fragments", () => {
-  it("accepts an activity that pulls in valid fragments", async () => {
+  it("runs the fragment gate over instructions", async () => {
     const writing = `
 id: essay
 llm:
   model: m
 fragment_files:
-  - id: lib
-    url: ${LIB_URL}
+  - id: lib_a
+    url: ${LIB_A_URL}
 instructions: |
-  {{fragment "lib.safety"}}
-  {{fragment "lib.lang" language="English"}}
-
-  Coach the draft.
+  {{fragment "lib_a.str_frag"}}
 `;
     const result = await loadAndCheckWriting(
       URL_,
-      fetcherMap({ [URL_]: writing, [LIB_URL]: LIB_YAML }),
-    );
-    expect(result.ok).toBe(true);
-  });
-
-  it("a plain activity (no fragments) is still valid", async () => {
-    const result = await loadAndCheckWriting(URL_, fetcherMap({ [URL_]: VALID }));
-    expect(result.ok).toBe(true);
-  });
-
-  it("surfaces a fragment consistency error (missing required variable)", async () => {
-    const writing = `
-id: essay
-llm:
-  model: m
-fragment_files:
-  - id: lib
-    url: ${LIB_URL}
-instructions: |
-  {{fragment "lib.lang"}}
-
-  Coach the draft.
-`;
-    const result = await loadAndCheckWriting(
-      URL_,
-      fetcherMap({ [URL_]: writing, [LIB_URL]: LIB_YAML }),
+      fragmentFetcher(new Map([[URL_, fixtureResponse(writing)]])),
     );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.map((e) => e.code)).toContain("MISSING_REQUIRED_VARIABLE");
-  });
-});
-
-// --- document-level text files ({{file "alias"}}) — authoring gate (validateLibraries: true)
-const TEXT_URL = "https://example.com/course.md";
-const COURSE_BODY = "L1\nL2\nL3\n"; // 3 logical lines
-
-describe("loadAndCheckWriting — text files", () => {
-  it("accepts an activity that embeds a text file with an in-bounds {{file}} marker", async () => {
-    const writing = `
-id: essay
-llm:
-  model: m
-text_files:
-  - id: course
-    url: ${TEXT_URL}
-instructions: |
-  Base the feedback on:
-  {{file "course" from=1 to=2}}
-`;
-    const result = await loadAndCheckWriting(
-      URL_,
-      fetcherMap({ [URL_]: writing, [TEXT_URL]: COURSE_BODY }),
-    );
-    expect(result.ok).toBe(true);
-  });
-
-  it("TEXT_FILE_RANGE_OUT_OF_BOUNDS for a `from` past end-of-file", async () => {
-    const writing = `
-id: essay
-llm:
-  model: m
-text_files:
-  - id: course
-    url: ${TEXT_URL}
-instructions: |
-  {{file "course" from=99}}
-`;
-    const result = await loadAndCheckWriting(
-      URL_,
-      fetcherMap({ [URL_]: writing, [TEXT_URL]: COURSE_BODY }),
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors.map((e) => e.code)).toContain("TEXT_FILE_RANGE_OUT_OF_BOUNDS");
-    }
   });
 });

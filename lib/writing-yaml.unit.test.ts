@@ -65,52 +65,6 @@ instructions: Give feedback.
     expect(result.writing.anonymous).toBe(false);
   });
 
-  it("defaults a missing llm.provider to SCCH and carries an explicit one", () => {
-    const defaulted = parseWriting(VALID);
-    expect(defaulted.ok && defaulted.writing.provider).toBe("SCCH");
-    const foundry = parseWriting(`
-llm:
-  model: gpt-5.4-mini
-  provider: Azure Foundry
-instructions: Give feedback.
-`);
-    expect(foundry.ok && foundry.writing.provider).toBe("Azure Foundry");
-  });
-
-  it("rejects an unsupported llm.provider instead of silently using SCCH", () => {
-    const result = parseWriting(`
-llm:
-  model: m
-  provider: OpenAI
-instructions: Give feedback.
-`);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toContain("llm.provider");
-  });
-
-  it("leaves a missing llm.reasoning undefined and carries an explicit level", () => {
-    const absent = parseWriting(VALID);
-    expect(absent.ok && absent.writing.reasoning).toBeUndefined();
-    const pinned = parseWriting(`
-llm:
-  model: m
-  reasoning: high
-instructions: Give feedback.
-`);
-    expect(pinned.ok && pinned.writing.reasoning).toBe("high");
-  });
-
-  it("rejects an unsupported llm.reasoning, naming the levels", () => {
-    const result = parseWriting(`
-llm:
-  model: m
-  reasoning: turbo
-instructions: Give feedback.
-`);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toMatch(/minimal.*low.*medium.*high.*xhigh/);
-  });
-
   it("honours an explicit anonymous: true", () => {
     const result = parseWriting(`
 anonymous: true
@@ -123,14 +77,28 @@ instructions: Give feedback.
     expect(result.writing.anonymous).toBe(true);
   });
 
-  it.each([
-    ["invalid YAML", ":::not yaml::: ["],
-    ["missing model", "instructions: Give feedback.\n"],
-    ["missing instructions", "llm:\n  model: m\n"],
-  ])("rejects %s with a friendly message", (_label, content) => {
-    const result = parseWriting(content);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(typeof result.message).toBe("string");
+  // The shared prefix (YAML, llm.model/provider/reasoning) is covered by
+  // lib/activity-load.unit.test.ts; this proves the wiring and the noun.
+  it("carries the llm block and names itself in an llm failure", () => {
+    const pinned = parseWriting(
+      "llm:\n  model: m\n  provider: OpenRouter\n  reasoning: high\ninstructions: Coach.\n",
+    );
+    expect(pinned.ok && pinned.writing).toMatchObject({
+      model: "m",
+      provider: "OpenRouter",
+      reasoning: "high",
+    });
+    expect(parseWriting("instructions: Coach.\n")).toEqual({
+      ok: false,
+      message: "This writing activity does not specify a model (llm.model).",
+    });
+  });
+
+  it("rejects an activity without instructions", () => {
+    expect(parseWriting("llm:\n  model: m\n")).toEqual({
+      ok: false,
+      message: "This writing activity has no instructions for the assistant.",
+    });
   });
 });
 

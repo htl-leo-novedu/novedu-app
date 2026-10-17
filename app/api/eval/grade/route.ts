@@ -1,13 +1,7 @@
 import { RequestContext } from "@mastra/core/request-context";
 import { z } from "zod";
 import { mastra } from "@/app/mastra";
-import {
-  QUIZ_EVAL_INSTRUCTIONS,
-  QUIZ_EVAL_MODEL,
-  QUIZ_EVAL_PROVIDER,
-  QUIZ_EVAL_REASONING,
-  QUIZ_VERDICT_SCHEMA,
-} from "@/app/mastra/quiz-agents";
+import { QUIZ_VERDICT_SCHEMA } from "@/app/mastra/quiz-agents";
 import { ApiAuthError, requireBearerTeacher } from "@/lib/api-auth";
 import { readBoundedJson } from "@/lib/bounded-json";
 import { providerUnavailableReason } from "@/lib/llm/availability";
@@ -17,11 +11,12 @@ import {
   parseLenientReasoningLevel,
 } from "@/lib/llm/provider";
 import { classifyUpstreamLlmError } from "@/lib/llm/upstream-error";
+import { QUIZ_EVAL_CONTEXT, setLlmContext } from "@/lib/llm-context";
 import { buildAnswerMessage } from "@/lib/quiz-grading-prompt";
 import { gradeWithTruncationRetry } from "@/lib/quiz-truncation-retry";
 import type { QuizVerdict } from "@/lib/quiz-types";
 import { recordError } from "@/lib/telemetry";
-import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { setUsageContext } from "@/lib/usage-context-keys";
 import { authErrorResponse, json } from "../../shared";
 import { llmCallUsage } from "../shared";
 
@@ -140,18 +135,20 @@ export async function POST(request: Request): Promise<Response> {
     if (!answer) return json({ message: "The answer is empty." }, 400);
 
     const requestContext = new RequestContext();
-    requestContext.set(QUIZ_EVAL_INSTRUCTIONS, body.system);
-    requestContext.set(QUIZ_EVAL_MODEL, body.llm.model);
-    requestContext.set(QUIZ_EVAL_PROVIDER, provider);
-    // Only when the caller pinned one: an unset key leaves the agent's resolver sending
-    // no `reasoning_effort` at all, which is what "the model decides" means.
-    if (reasoning) requestContext.set(QUIZ_EVAL_REASONING, reasoning);
+    setLlmContext(requestContext, QUIZ_EVAL_CONTEXT, body.system, {
+      provider,
+      model: body.llm.model,
+      // Absent unless the caller pinned one — "the model decides".
+      reasoning,
+    });
     // Usage attribution: evals are metered under their own pseudo-code + module, so a
     // teacher's eval spend shows as its own group in the dashboard and can never be
     // mistaken for a class's usage (docs/usage-metering.md).
-    requestContext.set(USAGE_CODE, EVAL_USAGE_CODE);
-    requestContext.set(USAGE_USER_ID, user.userId);
-    requestContext.set(USAGE_MODULE, EVAL_USAGE_MODULE);
+    setUsageContext(requestContext, {
+      code: EVAL_USAGE_CODE,
+      userId: user.userId,
+      module: EVAL_USAGE_MODULE,
+    });
 
     try {
       // The same truncation retry as the student path — the ONE shared implementation,

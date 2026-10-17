@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { collapseReplayedRuns, toAguiMessage } from "@/lib/conversation-collapse";
 import { getDb } from "@/lib/db";
 import { userChats } from "@/lib/db/schema";
+import { THREAD_ID_PATTERN } from "@/lib/thread-token";
 import { buildPreview } from "@/lib/tutor-history-preview";
 import type { TutorThreadSummary } from "@/lib/tutor-history-types";
 
@@ -23,10 +24,6 @@ import type { TutorThreadSummary } from "@/lib/tutor-history-types";
 // Its importers are guard-tested (lib/tutor-history-isolation.unit.test.ts).
 //
 // SERVER-ONLY: uses the database. Never import from client components.
-
-// Thread ids are server-generated UUIDs; this guards the value before it reaches
-// a query, mirroring the pattern in user-chat-store / the runtime route.
-const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 
 /**
  * When the thread's latest message (user or assistant) was written, `null` for a

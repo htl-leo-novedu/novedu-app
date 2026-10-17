@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import type { Command } from "commander";
 import { type CodingCheckResult, loadAndCheckCoding } from "@/lib/coding-validate";
 import { type EvalCheckResult, loadAndCheckEval } from "@/lib/eval-validate";
+import { FILE_KINDS, type FileKind } from "@/lib/file-name";
 import {
   type BuildResult,
   type FragmentCheckResult,
@@ -21,18 +22,14 @@ import {
   formatWritingResult,
 } from "../format";
 
-/** What the input YAML is validated AS — declared by the caller, never auto-detected. */
-export type ValidateKind = "tutor" | "fragment" | "quiz" | "writing" | "coding" | "eval";
+/**
+ * What the input YAML is validated AS — declared by the caller, never auto-detected:
+ * every file kind, plus an eval file.
+ */
+export type ValidateKind = FileKind | "eval";
 
 /** Every kind the `--kind` flag accepts (used for the option help + guard). */
-export const VALIDATE_KINDS: readonly ValidateKind[] = [
-  "tutor",
-  "fragment",
-  "quiz",
-  "writing",
-  "coding",
-  "eval",
-];
+export const VALIDATE_KINDS: readonly ValidateKind[] = [...FILE_KINDS, "eval"];
 
 /** The CLI-local outcome: the raw core result tagged with the kind that produced it, so the command can pick a formatter without re-deriving it. */
 export type ValidateOutcome =

@@ -1,21 +1,16 @@
 import { RequestContext } from "@mastra/core/request-context";
 import { z } from "zod";
 import { mastra } from "@/app/mastra";
-import {
-  EVAL_TUTOR_INSTRUCTIONS,
-  EVAL_TUTOR_MODEL,
-  EVAL_TUTOR_PROVIDER,
-  EVAL_TUTOR_REASONING,
-  EVAL_TUTOR_TOOLS,
-} from "@/app/mastra/eval-agents";
+import { EVAL_TUTOR_TOOLS } from "@/app/mastra/eval-agents";
 import { ApiAuthError, requireBearerTeacher } from "@/lib/api-auth";
 import { readBoundedJson } from "@/lib/bounded-json";
 import { providerUnavailableReason } from "@/lib/llm/availability";
 import { DEFAULT_PROVIDER, parseLenientProvider, REASONING_LEVELS } from "@/lib/llm/provider";
 import { classifyUpstreamLlmError } from "@/lib/llm/upstream-error";
+import { EVAL_TUTOR_CONTEXT, setLlmContext } from "@/lib/llm-context";
 import { recordError } from "@/lib/telemetry";
 import { TUTOR_TOOL_NAMES } from "@/lib/tutor-tools/names";
-import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { setUsageContext } from "@/lib/usage-context-keys";
 import { authErrorResponse, json } from "../../shared";
 import { llmCallUsage } from "../shared";
 
@@ -162,18 +157,20 @@ export async function POST(request: Request): Promise<Response> {
     if (unavailable) return json({ message: unavailable }, 400);
 
     const requestContext = new RequestContext();
-    requestContext.set(EVAL_TUTOR_INSTRUCTIONS, body.system);
-    requestContext.set(EVAL_TUTOR_MODEL, body.llm.model);
-    requestContext.set(EVAL_TUTOR_PROVIDER, provider);
+    setLlmContext(requestContext, EVAL_TUTOR_CONTEXT, body.system, {
+      provider,
+      model: body.llm.model,
+      // Absent unless the caller pinned one — "the model decides".
+      reasoning: body.llm.reasoning,
+    });
     requestContext.set(EVAL_TUTOR_TOOLS, body.tools);
-    // Only when the caller pinned one: an unset key means no `reasoning_effort` is sent
-    // at all, which is what "let the model decide" means.
-    if (body.llm.reasoning) requestContext.set(EVAL_TUTOR_REASONING, body.llm.reasoning);
     // Generation tokens land in the SAME buckets as the judgings that audit them — one
     // eval run is one cost (docs/usage-metering.md).
-    requestContext.set(USAGE_CODE, EVAL_USAGE_CODE);
-    requestContext.set(USAGE_USER_ID, user.userId);
-    requestContext.set(USAGE_MODULE, EVAL_USAGE_MODULE);
+    setUsageContext(requestContext, {
+      code: EVAL_USAGE_CODE,
+      userId: user.userId,
+      module: EVAL_USAGE_MODULE,
+    });
 
     try {
       const res = await mastra.getAgent("evalTutor").generate(

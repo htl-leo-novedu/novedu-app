@@ -10,11 +10,10 @@ import {
   type BuildResult,
   type Fetcher,
   type LoadOptions,
-  loadYaml,
+  loadAndValidate,
   type ValidationWarning,
-  validate,
 } from "@/lib/prompt-fragments";
-import { type Tutor, TutorSchema } from "./schemas";
+import { TutorSchema } from "./schemas";
 
 export async function loadAndBuildTutorPrompt(
   url: string,
@@ -24,10 +23,7 @@ export async function loadAndBuildTutorPrompt(
   const warnings: ValidationWarning[] = [];
 
   // --- tutor definition ---
-  const tutorYaml = await loadYaml(url, fetchImpl, opts);
-  if (!tutorYaml.ok) return { ok: false, errors: [tutorYaml.error], warnings };
-
-  const tutorValid = validate<Tutor>(tutorYaml.value, TutorSchema, "TUTOR_SCHEMA_ERROR", url);
+  const tutorValid = await loadAndValidate(url, fetchImpl, opts, TutorSchema, "TUTOR_SCHEMA_ERROR");
   if (!tutorValid.ok) return { ok: false, errors: [tutorValid.error], warnings };
   const tutor = tutorValid.data;
 

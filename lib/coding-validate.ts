@@ -4,8 +4,8 @@
 // validator seam (`lib/file-validators.ts`) and the `@novedu/cli validate --kind
 // coding` command.
 //
-// PURE / CLI-safe: imports only `lib/tutors` helpers (the shared scheme-gated YAML
-// load, the Zod-validate wrapper, the error model) and the Zod schema — never
+// PURE / CLI-safe: imports only the shared load/check steps (`lib/prompt-fragments`,
+// `lib/activity-load`) and the Zod schema — never
 // `lib/coding-fetch` (DB-backed) or any server-only module. The lenient runtime
 // `parseCoding` (`lib/coding-yaml.ts`) is unchanged and separate.
 //
@@ -13,11 +13,11 @@
 // — unlike quiz/writing — this validator carries no anonymity flag;
 // the file-validator seam freezes `anonymous: true` onto the code row.
 
+import { checkInstructions } from "@/lib/activity-load";
 import {
-  assembleFragmentPrompt,
   type Fetcher,
   type LoadOptions,
-  loadYaml,
+  loadAndValidate,
   type ValidationError,
   type ValidationWarning,
   validate,
@@ -47,7 +47,7 @@ export type CodingCheckResult =
  * `checkCodingValue` so `loadAndCheckCoding` can reuse the single `validate` it already
  * ran (no second parse of the same document against the same schema).
  */
-function checkCodingParsed(coding: CodingYaml): CodingCheckResult {
+function checkCodingParsed(coding: CodingYaml): Extract<CodingCheckResult, { ok: true }> {
   return {
     ok: true,
     codingId: coding.id,
@@ -70,36 +70,25 @@ export function checkCodingValue(parsed: unknown, url?: string): CodingCheckResu
 }
 
 /**
- * Validate a coding FILE: scheme-gate + fetch + parse (shared `loadYaml`), then the
- * pure `checkCodingValue`. The web app passes the default http(s)-only schemes; the
- * CLI adds `file:` so a local coding YAML on disk validates too.
+ * Validate a coding FILE: scheme-gate + fetch + parse + schema (shared
+ * `loadAndValidate`), metadata, then the fragment block's authoring gate over
+ * `instructions` (shared `checkInstructions`). The web app passes the default
+ * http(s)-only schemes; the CLI adds `file:` so a local coding YAML on disk validates too.
  */
 export async function loadAndCheckCoding(
   url: string,
   fetchImpl: Fetcher,
   opts: LoadOptions = {},
 ): Promise<CodingCheckResult> {
-  const yaml = await loadYaml(url, fetchImpl, opts);
-  if (!yaml.ok) return { ok: false, errors: [yaml.error], warnings: [] };
-
-  // Validate the schema ONCE, then reuse the typed value for both metadata and the
-  // fragment block below (no second parse of the same document).
-  const valid = validate<CodingYaml>(yaml.value, CodingYamlSchema, "CODING_SCHEMA_ERROR", url);
-  if (!valid.ok) return { ok: false, errors: [valid.error], warnings: [] };
-
-  const checked = checkCodingParsed(valid.data);
-  if (!checked.ok) return checked;
-
-  // The fragment block's authoring gate: fetch + placement checks + a host-template
-  // render dry-run over `instructions` (authoring default: `validateLibraries: true`).
-  const assembled = await assembleFragmentPrompt(
-    { fragment_files: valid.data.fragment_files, text_files: valid.data.text_files },
+  const valid = await loadAndValidate(
     url,
     fetchImpl,
-    { allowedSchemes: opts.allowedSchemes, validateLibraries: opts.validateLibraries ?? true },
-    valid.data.instructions,
+    opts,
+    CodingYamlSchema,
+    "CODING_SCHEMA_ERROR",
   );
-  const warnings = [...checked.warnings, ...assembled.warnings];
-  if (!assembled.ok) return { ok: false, errors: assembled.errors, warnings };
-  return { ...checked, warnings };
+  if (!valid.ok) return { ok: false, errors: [valid.error], warnings: [] };
+  const checked = await checkInstructions(valid.data, url, fetchImpl, opts);
+  if (!checked.ok) return checked;
+  return { ...checkCodingParsed(valid.data), warnings: checked.warnings };
 }

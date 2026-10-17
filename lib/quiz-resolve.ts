@@ -1,12 +1,21 @@
+import { loadActivityFrom } from "@/lib/activity-load";
 import type { ImageRef } from "@/lib/image-ref";
 import {
   assembleFragmentPrompt,
   assembleFragmentPrompts,
+  DEFAULT_ALLOWED_SCHEMES,
   EMPTY_FRAGMENT_BLOCK,
   type Fetcher,
   resolveFragmentUrl,
+  schemeAllowed,
 } from "@/lib/prompt-fragments";
-import { parseQuiz, type Quiz, type QuizFileRef, type QuizQuestion } from "@/lib/quiz-yaml";
+import {
+  parseQuiz,
+  QUIZ_NOUN,
+  type Quiz,
+  type QuizFileRef,
+  type QuizQuestion,
+} from "@/lib/quiz-yaml";
 
 // The quiz RUNTIME resolution: turn a leniently parsed quiz into the runnable `Quiz` the
 // grader and the discussion chat see — the quiz's TWO host texts rendered against the
@@ -41,17 +50,7 @@ export interface QuizResolveOptions {
   allowedSchemes?: string[];
 }
 
-const DEFAULT_SCHEMES = ["http:", "https:"];
-
 type IncludeResult = { ok: true; questions: QuizQuestion[] } | { ok: false; message: string };
-
-function schemeAllowed(url: string, allowed: string[]): boolean {
-  try {
-    return allowed.includes(new URL(url).protocol);
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Renders ONE quiz document's `instructions` host text against its OWN fragment
@@ -186,7 +185,7 @@ export async function resolveQuiz(
   fetcher: Fetcher,
   opts: QuizResolveOptions = {},
 ): Promise<LoadQuizResult> {
-  const allowedSchemes = opts.allowedSchemes ?? DEFAULT_SCHEMES;
+  const allowedSchemes = opts.allowedSchemes ?? DEFAULT_ALLOWED_SCHEMES;
   // Runtime hot path: `validateLibraries: false`. The quiz has TWO host texts —
   // `instructions` and `discussion.instructions` — rendered in ONE pass against the
   // document's fragment block (libraries/text files fetched once); with no
@@ -256,26 +255,17 @@ export async function resolveQuiz(
  * app-free counterpart of `loadQuiz` (`lib/quiz-fetch.ts`) used by the prompt dump and
  * the CLI, where there is no database and a quiz may live on disk (`file:`).
  */
-export async function loadQuizFrom(
+export function loadQuizFrom(
   url: string,
   fetcher: Fetcher,
   opts: QuizResolveOptions = {},
 ): Promise<LoadQuizResult> {
-  const allowedSchemes = opts.allowedSchemes ?? DEFAULT_SCHEMES;
-  if (!schemeAllowed(url, allowedSchemes)) {
-    return { ok: false, message: `This quiz's URL is not allowed: ${url}` };
-  }
-  try {
-    const res = await fetcher(url);
-    if (!res.ok) {
-      return res.status === 404
-        ? { ok: false, message: "This quiz could not be found." }
-        : { ok: false, message: `This quiz could not be loaded (HTTP ${res.status}).` };
-    }
-    const parsed = parseQuiz(await res.text());
-    if (!parsed.ok) return parsed;
-    return await resolveQuiz(parsed.quiz, url, fetcher, { allowedSchemes });
-  } catch {
-    return { ok: false, message: "This quiz could not be loaded. Try again." };
-  }
+  return loadActivityFrom(
+    url,
+    fetcher,
+    QUIZ_NOUN,
+    parseQuiz,
+    (parsed) => resolveQuiz(parsed.quiz, url, fetcher, opts),
+    opts.allowedSchemes,
+  );
 }

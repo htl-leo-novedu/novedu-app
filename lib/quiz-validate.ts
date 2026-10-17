@@ -21,7 +21,7 @@ import {
   error,
   type Fetcher,
   type LoadOptions,
-  loadYaml,
+  loadAndValidate,
   resolveFragmentUrl,
   type ValidationError,
   type ValidationWarning,
@@ -207,17 +207,14 @@ async function checkInclude(
     };
   }
 
-  // Shared scheme gate + fetch + YAML parse (identical to the top-level load).
-  const yaml = await loadYaml(includeUrl, fetchImpl, opts);
-  if (!yaml.ok) {
-    return {
-      ok: false,
-      errors: [includeUnreadable(ref.id, includeUrl, [yaml.error])],
-      warnings: [],
-    };
-  }
-
-  const valid = validate<QuizYaml>(yaml.value, QuizYamlSchema, "QUIZ_SCHEMA_ERROR", includeUrl);
+  // Shared scheme gate + fetch + YAML parse + schema (identical to the top-level load).
+  const valid = await loadAndValidate(
+    includeUrl,
+    fetchImpl,
+    opts,
+    QuizYamlSchema,
+    "QUIZ_SCHEMA_ERROR",
+  );
   if (!valid.ok) {
     return {
       ok: false,
@@ -274,7 +271,7 @@ async function checkInclude(
 }
 
 /**
- * Validate a quiz FILE: scheme-gate + fetch + parse (shared `loadYaml`), the pure
+ * Validate a quiz FILE: scheme-gate + fetch + parse + schema (shared `loadAndValidate`), the pure
  * `checkQuizValue`, the document-level fragment block's authoring gate — fetch
  * every referenced library, run the THOROUGH whole-library check, consistency, and an
  * assembly dry-run (the strict-Handlebars backstop) — and a DEEP check of every
@@ -288,12 +285,9 @@ export async function loadAndCheckQuiz(
   fetchImpl: Fetcher,
   opts: LoadOptions = {},
 ): Promise<QuizCheckResult> {
-  const yaml = await loadYaml(url, fetchImpl, opts);
-  if (!yaml.ok) return { ok: false, errors: [yaml.error], warnings: [] };
-
   // Validate the schema ONCE, then reuse the typed value for both the question-id check
   // and the fragment block below (no second parse of the same document).
-  const valid = validate<QuizYaml>(yaml.value, QuizYamlSchema, "QUIZ_SCHEMA_ERROR", url);
+  const valid = await loadAndValidate(url, fetchImpl, opts, QuizYamlSchema, "QUIZ_SCHEMA_ERROR");
   if (!valid.ok) return { ok: false, errors: [valid.error], warnings: [] };
 
   const checked = checkQuizParsed(valid.data);

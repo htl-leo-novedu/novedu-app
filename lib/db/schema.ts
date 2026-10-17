@@ -324,10 +324,11 @@ export const files = pgTable(
     // Public identifier / GET-URL key. Bounded (see the note above). Allows letters/digits/underscore/hyphen today; `/`-separated
     // folder paths are a future extension (hence the generous length).
     name: varchar("name", { length: 450 }).notNull(),
-    // "tutor" | "fragment" | "quiz" — chosen at create time, picks the validator.
+    // A `FileKind` (lib/file-name.ts) — chosen at create time, picks the validator.
     kind: varchar("kind", { length: 16 }).notNull(),
-    // Denormalized from the validated YAML (tutor only; null for fragments/quiz) so
-    // the file list can be searched by title/description without parsing every body.
+    // Denormalized from the validated YAML (title: every activity kind; description:
+    // tutor only; both null for fragments) so the file list can be searched by
+    // title/description without parsing every body.
     title: text("title"),
     description: text("description"),
     // The ENTIRE YAML for this version (unbounded `text`).

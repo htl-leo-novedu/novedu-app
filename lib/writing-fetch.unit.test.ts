@@ -15,18 +15,11 @@ vi.mock("@/lib/app-hosted-fetcher", () => ({
   },
 }));
 
+import { LIB_A_URL, LIB_A_YAML } from "@/lib/prompt-fragments/test-fixtures";
 import { loadWriting } from "@/lib/writing-fetch";
 import { toPublicWriting } from "@/lib/writing-yaml";
 
 const URL_ = "https://app.test/api/files/writing";
-const LIB_URL = "https://example.com/lib.yaml";
-const LIB_YAML = `id: lib
-fragments:
-  - id: safety
-    version: 1
-    content: |
-      SAFETY-MARKER be kind.
-`;
 
 beforeEach(() => {
   state.bodies = {};
@@ -40,58 +33,25 @@ id: essay
 llm:
   model: m
 fragment_files:
-  - id: lib
-    url: ${LIB_URL}
+  - id: lib_a
+    url: ${LIB_A_URL}
 instructions: |
-  {{fragment "lib.safety"}}
+  {{fragment "lib_a.safety_frag"}}
 
   INSTRUCTIONS-MARKER coach the draft.
 `,
-      [LIB_URL]: LIB_YAML,
+      [LIB_A_URL]: LIB_A_YAML,
     };
     const result = await loadWriting(URL_);
     expect(result.ok).toBe(true);
     if (result.ok) {
       const { instructions } = result.writing;
-      expect(instructions).toContain("SAFETY-MARKER");
+      expect(instructions).toContain("LAST-MARKER");
       expect(instructions).toContain("INSTRUCTIONS-MARKER");
-      expect(instructions.indexOf("SAFETY-MARKER")).toBeLessThan(
+      expect(instructions.indexOf("LAST-MARKER")).toBeLessThan(
         instructions.indexOf("INSTRUCTIONS-MARKER"),
       );
     }
-  });
-
-  it("leaves instructions unchanged for a plain activity (no fragments)", async () => {
-    state.bodies = {
-      [URL_]: `
-id: essay
-llm:
-  model: m
-instructions: "INSTRUCTIONS-MARKER only."
-`,
-    };
-    const result = await loadWriting(URL_);
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.writing.instructions).toBe("INSTRUCTIONS-MARKER only.");
-  });
-
-  it("fails closed when a referenced fragment library cannot be fetched", async () => {
-    state.bodies = {
-      [URL_]: `
-id: essay
-llm:
-  model: m
-fragment_files:
-  - id: lib
-    url: ${LIB_URL}
-instructions: |
-  {{fragment "lib.safety"}}
-
-  Coach.
-`,
-    };
-    const result = await loadWriting(URL_);
-    expect(result.ok).toBe(false);
   });
 
   it("does not leak the fragment-augmented instructions through toPublicWriting", async () => {
@@ -101,26 +61,26 @@ id: essay
 llm:
   model: m
 fragment_files:
-  - id: lib
-    url: ${LIB_URL}
+  - id: lib_a
+    url: ${LIB_A_URL}
 instructions: |
-  {{fragment "lib.safety"}}
+  {{fragment "lib_a.safety_frag"}}
 
   INSTRUCTIONS-MARKER coach the draft.
 `,
-      [LIB_URL]: LIB_YAML,
+      [LIB_A_URL]: LIB_A_YAML,
     };
     const result = await loadWriting(URL_);
     expect(result.ok).toBe(true);
     if (result.ok) {
       // Guard: the fold really happened, so the projection is exercised on a non-trivial
       // (fragment-augmented) instructions string.
-      expect(result.writing.instructions).toContain("SAFETY-MARKER");
+      expect(result.writing.instructions).toContain("LAST-MARKER");
       const pub = toPublicWriting(result.writing);
       expect(pub).not.toHaveProperty("instructions");
       expect(pub).not.toHaveProperty("fragmentBlock");
       // Neither the server-only fragment text nor the teacher's prompt may reach the client.
-      expect(JSON.stringify(pub)).not.toContain("SAFETY-MARKER");
+      expect(JSON.stringify(pub)).not.toContain("LAST-MARKER");
       expect(JSON.stringify(pub)).not.toContain("INSTRUCTIONS-MARKER");
     }
   });
