@@ -597,6 +597,14 @@ A new or rotated stage key is created in that workspace and piped straight into
 the stage's vault (*Setting or rotating a secret*); the two stages never share a
 key.
 
+`oai-rstropek-sweden` is **not** part of the Novedu environment: it sits in the
+*Microsoft Azure Sponsorship* subscription, reached through the developer's
+default `az` profile, not `~/.htl-azure-novedu`, and no Novedu identity holds a
+role on it. OpenRouter BYOK for Azure takes an API key only (no Entra
+credential), so that resource keeps local (key) auth enabled. Rotating its key:
+put the resource's second key into the workspace's BYOK entry, verify a request
+still answers on Azure, then regenerate the first key.
+
 ### Sign-in app registrations
 
 Sign-in runs against the tenant that hosts the environment, through two Entra

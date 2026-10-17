@@ -9,6 +9,7 @@ related:
   - 30-sharing-activities/01-creating-codes
   - 30-sharing-activities/02-viewing-usage
   - 10-yaml-for-teachers/04-cli-validation
+  - 50-develop-and-evaluate/03-azure-models-with-a-budget
 ---
 
 Every activity tells Novedu which AI model should run it. You set that in the `llm:` block of the activity's YAML file. The block has three fields: a required `model`, an optional `provider`, and an optional `reasoning` level.
