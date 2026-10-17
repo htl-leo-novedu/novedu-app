@@ -81,7 +81,7 @@ prose carries everything an editor needs.
   own Azure subscription with a spending limit that actually stops requests.
 - Generic for any school: "if your school needs …", never "at our school we …".
   No HTL-, stage- or resource-specific names (workspace, resource, key names,
-  amounts); the three GPT model ids appear only as examples, matching the
+  amounts); the GPT model ids appear only as examples, matching the
   create-code quick picks.
 - Why OpenRouter in front of Azure: an Azure budget only alerts, it never stops
   requests; the OpenRouter workspace budget refuses requests once spent. The

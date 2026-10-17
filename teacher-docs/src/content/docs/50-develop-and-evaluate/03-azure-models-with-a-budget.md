@@ -67,7 +67,7 @@ The shared capacity setting matters. Without it, OpenRouter may answer a request
 
 The workspace's **default guardrail** holds the rules that apply to every key in the workspace. A guardrail is a set of limits OpenRouter checks on every request. Open the workspace's guardrails and edit the default guardrail:
 
-- **Allowed models:** the OpenRouter ids of the models you deployed in step 1, for example `openai/gpt-6-luna`, `openai/gpt-5.6-terra`, and `openai/gpt-6.1-sol`. OpenRouter's id is the vendor, a slash, and the model name.
+- **Allowed models:** the OpenRouter ids of the models you deployed in step 1, for example `openai/gpt-6-luna` and `openai/gpt-6.1-sol`. OpenRouter's id is the vendor, a slash, and the model name.
 - **Allowed providers:** Azure only.
 
 From now on, a request for any other model is refused, whichever key in the workspace sends it.
@@ -104,7 +104,7 @@ Separate keys let you revoke one server's access without touching the other. All
 Teachers need three things from you:
 
 - **The model ids your server accepts**, and that they go with the provider `OpenRouter`, in an activity's `llm:` block or in a code's override.
-- **The quick picks on the create-code form** name three OpenAI GPT models through OpenRouter. They work only if your allowed models include them; for any other model, teachers type the id themselves.
+- **The quick picks on the create-code form** name two OpenAI GPT models through OpenRouter. They work only if your allowed models include them; for any other model, teachers type the id themselves.
 - **What happens when the budget is used up**: every activity on these models fails until the next budget period starts. Activities on other providers keep working, so a free provider stays the better choice for everyday work.
 
 ## When requests to the GPT models fail

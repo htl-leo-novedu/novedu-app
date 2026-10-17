@@ -9,7 +9,6 @@ describe("LLM_OVERRIDE_PRESETS", () => {
   it("lists the OpenRouter GPT models first, then SCCH", () => {
     expect(LLM_OVERRIDE_PRESETS.map((p) => [p.provider, p.model])).toEqual([
       ["OpenRouter", "openai/gpt-6-luna"],
-      ["OpenRouter", "openai/gpt-5.6-terra"],
       ["OpenRouter", "openai/gpt-6.1-sol"],
       ["SCCH", "RedHatAI/gemma-4-31B-it-FP8-Dynamic"],
       ["SCCH", "Qwen/Qwen3.8-27B-FP8"],

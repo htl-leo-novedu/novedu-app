@@ -31,12 +31,6 @@ export const LLM_OVERRIDE_PRESETS: readonly LlmOverridePreset[] = [
     reasoning: "medium",
   },
   {
-    label: "OpenRouter · GPT-5.6 Terra (medium)",
-    provider: "OpenRouter",
-    model: "openai/gpt-5.6-terra",
-    reasoning: "medium",
-  },
-  {
     label: "OpenRouter · GPT-6.1 Sol (medium)",
     provider: "OpenRouter",
     model: "openai/gpt-6.1-sol",

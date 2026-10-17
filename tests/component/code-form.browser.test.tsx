@@ -219,7 +219,7 @@ test("override: an SCCH quick pick resets reasoning to Provider default; Clear e
   const apply = screen.getByRole("button", { name: "Apply LLM quick pick" });
   const reasoning = screen.getByLabelText(/Reasoning/);
 
-  await quickPick.selectOptions("OpenRouter · GPT-5.6 Terra (medium)");
+  await quickPick.selectOptions("OpenRouter · GPT-6.1 Sol (medium)");
   await apply.click();
   expect(inputValue(reasoning)).toBe("medium");
 

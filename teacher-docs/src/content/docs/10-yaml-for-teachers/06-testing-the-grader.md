@@ -174,7 +174,7 @@ There's one trap worth knowing. The model pair replaces your quiz's whole `llm:`
 
 ```bash
 npx @novedu/cli eval ./sorting-quiz.eval.yaml \
-  --llm-provider OpenRouter --llm-model openai/gpt-5.6-terra --llm-reasoning low
+  --llm-provider OpenRouter --llm-model openai/gpt-6.1-sol --llm-reasoning low
 ```
 
 All of this changes only the run itself. Your quiz file keeps its own settings, and any code you've already handed out is unaffected.
