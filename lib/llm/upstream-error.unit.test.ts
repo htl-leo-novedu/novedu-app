@@ -96,7 +96,7 @@ describe("classifyUpstreamLlmError", () => {
     expect(failure.telemetry).not.toHaveProperty("novedu.llm.upstream_code");
   });
 
-  it("reports an upstream 401/403 as a server credential fault, NOT terminal", () => {
+  it("reports an upstream 401 as a server credential fault, NOT terminal", () => {
     // A rotated key or a stale Managed-Identity role fails every call with 401 — the
     // caller's model name is fine, and a token refresh may cure it, so retries stay
     // live (502) and the message must not blame the request.
@@ -115,6 +115,29 @@ describe("classifyUpstreamLlmError", () => {
     expect(failure.message).toContain("server-side");
     expect(failure.message).not.toContain("model name");
     expect(failure.telemetry["novedu.llm.upstream_status"]).toBe(401);
+  });
+
+  it("reports an upstream 403 as credentials OR a spending limit, NOT terminal", () => {
+    // OpenRouter answers a guardrail (a used-up workspace budget among them) with 403,
+    // Azure a missing role — both server-side, and a budget resets, so retries stay
+    // live and the message names both causes without blaming the request.
+    const error = new APICallError({
+      message: "Request blocked: budget exceeded",
+      url: FOUNDRY_URL,
+      requestBodyValues: {},
+      statusCode: 403,
+      isRetryable: false,
+    });
+
+    const failure = classifyUpstreamLlmError(error, CONTEXT);
+
+    expect(failure.terminal).toBe(false);
+    expect(failure.message).toContain("credentials");
+    expect(failure.message).toContain("spending limit (budget)");
+    expect(failure.message).toContain("server-side");
+    expect(failure.message).toContain("(upstream 403)");
+    expect(failure.message).not.toContain("model name");
+    expect(failure.telemetry["novedu.llm.upstream_status"]).toBe(403);
   });
 
   it("points a content_filter rejection at the text, not the llm settings", () => {

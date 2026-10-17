@@ -14,9 +14,9 @@ import type { LlmProvider } from "@/lib/llm/provider";
 // attempts, 30 s of backoff, per case).
 //
 // The inverse mistake matters just as much: blaming the caller for a SERVER fault. An
-// upstream 401/403 (a rotated key, a stale Managed-Identity role) and a bare 404 from a
-// misconfigured endpoint path are not the teacher's model name — the wording below
-// never claims more than the status proves.
+// upstream 401/403 (a rotated key, a stale Managed-Identity role, a used-up provider
+// budget) and a bare 404 from a misconfigured endpoint path are not the teacher's
+// model name — the wording below never claims more than the status proves.
 //
 // SECURITY — what crosses back to the caller: the provider and model IT sent, the
 // upstream HTTP status, and the upstream error CODE (a short, stable identifier like
@@ -140,13 +140,30 @@ export function classifyUpstreamLlmError(
   // role) is a server fault the caller can neither see nor fix — and one a token
   // refresh may cure, so it keeps its retries. Explicit rather than opaque, so nobody
   // chases a model-name typo through an RBAC outage.
-  if (status === 401 || status === 403) {
+  if (status === 401) {
     return {
       terminal: false,
       message:
         `${provider} refused the server's credentials${upstreamRef}. Nothing about ` +
         "the request needs to change — this is a server-side configuration problem; " +
         "retry later, and contact the operator if it persists.",
+      telemetry,
+    };
+  }
+
+  // A 403 is wider than a credential fault: Azure answers a missing RBAC role with
+  // it, and OpenRouter answers a guardrail — a used-up workspace or key budget among
+  // them — with it. Still the server's account, never the request, and a budget
+  // resets, so it keeps its retries; the message names both causes.
+  if (status === 403) {
+    return {
+      terminal: false,
+      message:
+        `${provider} refused the request${upstreamRef}: either it does not accept the ` +
+        "server's credentials or access rights, or the server's account there has " +
+        "reached a spending limit (budget) or usage rule. Nothing about the request " +
+        "needs to change — this is a server-side problem; retry later, and contact " +
+        "the operator if it persists.",
       telemetry,
     };
   }

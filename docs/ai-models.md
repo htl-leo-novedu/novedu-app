@@ -294,7 +294,10 @@ wrapped failure classifies exactly like a raw one.
   and 5xx retryable — a rate limit is a 4xx that must NOT become terminal. Neither is an
   upstream `401`/`403`: the provider refusing the *server's* credentials (a rotated key,
   a stale Managed-Identity role) is a server fault a token refresh may cure, so the
-  caller gets a `502` that says so and retries stay live.
+  caller gets a `502` that says so and retries stay live. A `403` gets wider wording —
+  credentials or access rights, **or** a spending limit / usage rule on the server's
+  account — because OpenRouter answers a guardrail, a used-up budget included, with
+  it (a budget resets, so retrying is right there too).
 - **`message`** — caller-safe: the provider and model the caller itself sent, the
   upstream status, and the upstream error *code*. The commonest case, Azure's
   `404 DeploymentNotFound`, gets its own wording because a teacher hits it routinely

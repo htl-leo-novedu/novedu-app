@@ -104,10 +104,12 @@ prose carries everything an editor needs.
 - Novedu side: the only setting is `OPENROUTER_API_KEY`, one key per server.
   Health's OpenRouter line proves only that the key is accepted, not the
   allowlist or BYOK routing; the check step proves those with a real chat, the
-  OpenRouter activity log, and a refused off-list model (Novedu's 404 message
-  names "not allowed to use it"). OpenRouter documents guardrail refusals as
-  403 but answered an off-list model with 404 when tested; the chapter quotes
-  only the 404 message and names no status for a used-up budget.
+  OpenRouter activity log, and a refused off-list model.
+- The quoted error texts are the upstream-error messages the CLI's `eval` runs
+  show; a failed CHAT turn does not show them, so the chat steps only say that
+  no answer comes back. OpenRouter documents guardrail refusals (a used-up
+  budget included) as 403, which Novedu words as "refused the request …
+  spending limit (budget)"; an off-list model answered 404 when tested.
 
 ## 00-introduction/07-environments
 

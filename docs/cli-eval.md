@@ -496,7 +496,8 @@ retry if you just created the deployment.
 
 Terminal for the same reason — one attempt per case, not four. Rate limits, timeouts
 and outages stay `502` and keep their retries — as does an upstream `401`/`403`, the
-provider refusing the *server's* credentials, whose message says the fault is
+provider refusing the *server's* credentials (a `403` may also be a used-up spending
+limit on the server's provider account), whose message says the fault is
 server-side and not your model name. The message deliberately stops at the
 upstream status + code: the endpoint URL and the provider's own prose are logged to
 Application Insights instead of being handed to the caller

@@ -96,7 +96,7 @@ Separate keys let you revoke one server's access without touching the other. All
 1. Sign in to Novedu as a teacher and open **Health** in the menu. The **OpenRouter models** line shows **OK**, which proves that OpenRouter accepts the key. It doesn't prove that only your models are allowed or that Azure answers.
 2. Create a code for any tutor with an LLM override: on the create-code form, choose **OpenRouter · GPT-6 Luna (medium)** in the quick picks and select **Apply**, or type `OpenRouter` as the provider and one of your model ids as the model. Open the code and send a message. An answer comes back.
 3. In OpenRouter, open the workspace's activity. The request is listed with Azure as the provider.
-4. Edit the code and change the override's model to one that isn't on your list, for example `z-ai/glm-5.3-flash`. Send another message. Novedu shows an error that starts with "OpenRouter answered 404 for model" and says that the server may not be allowed to use it.
+4. Edit the code and change the override's model to one that isn't on your list, for example `z-ai/glm-5.3-flash`. Send another message. No answer comes back, because OpenRouter refuses the model.
 5. Delete the test code.
 
 ## Tell your teachers about the GPT models
@@ -109,10 +109,10 @@ Teachers need three things from you:
 
 ## When requests to the GPT models fail
 
-Every error message names OpenRouter. The messages are written for teachers and ask them to contact the operator, which is you.
+When OpenRouter refuses a request, the activity gets no answer. The clearest error messages come from the Novedu CLI's grading tests (its `eval` command): each one names OpenRouter and the reason, and asks teachers to contact the operator, which is you.
 
 - **"OpenRouter answered 404 for model"**: the model isn't on the workspace's list of allowed models, or the name is wrong. Compare the teacher's model id with your list.
-- **The budget is used up**: OpenRouter refuses every request until the next budget period starts. Raise the budget in the workspace, or wait.
+- **"OpenRouter refused the request (upstream 403)"**: the budget is used up, or another guardrail rule refused the request. OpenRouter refuses every request until the next budget period starts. Raise the budget in the workspace, or wait.
 - **"OpenRouter refused the server's credentials (upstream 401)"**: OpenRouter doesn't accept the server's key, for example because it was deleted. **Health** shows the same problem as **API key rejected**. Put a valid key into the server's settings and restart.
 - **A model that worked yesterday is refused today**: OpenRouter's list of allowed models holds each model at a specific dated version. When OpenRouter moves a model id to a newer version, it may refuse requests until you add the new version to the list, and your Azure deployment may need an upgrade to the same version.
 - **Every request fails after an Azure key change**: OpenRouter still holds the old Azure key. Update the BYOK key in the workspace.
