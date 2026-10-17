@@ -63,6 +63,9 @@ export interface Writing {
   placeholder?: string;
 }
 
+/** How this kind names itself in its student-facing load messages. */
+export const WRITING_NOUN = "writing activity";
+
 export type WritingParseResult = { ok: true; writing: Writing } | { ok: false; message: string };
 
 function asString(value: unknown): string | undefined {

@@ -1,6 +1,6 @@
 import { loadAppHostedYaml } from "@/lib/app-hosted-yaml";
 import { type LoadWritingResult, resolveWriting } from "@/lib/writing-resolve";
-import { parseWriting } from "@/lib/writing-yaml";
+import { parseWriting, WRITING_NOUN } from "@/lib/writing-yaml";
 
 // Loads + leniently parses the writing YAML behind a (verified) writing URL, via the
 // shared `loadAppHostedYaml`, then hands the parsed document to the PURE `resolveWriting`
@@ -16,7 +16,7 @@ import { parseWriting } from "@/lib/writing-yaml";
 export type { LoadWritingResult } from "@/lib/writing-resolve";
 
 export function loadWriting(url: string): Promise<LoadWritingResult> {
-  return loadAppHostedYaml(url, parseWriting, "writing activity", (parsed, { url, fetcher }) =>
+  return loadAppHostedYaml(url, WRITING_NOUN, parseWriting, (parsed, { url, fetcher }) =>
     resolveWriting(parsed.writing, url, fetcher),
   );
 }

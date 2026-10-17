@@ -150,9 +150,10 @@ instructions: |
   inline in `instructions` with `{{fragment "alias.id" …}}` markers, embedding plain-text
   files (e.g. a sample solution) with `{{file "alias"}}` (spliced verbatim, never
   compiled). `loadCoding` (`lib/coding-fetch.ts`) hands the parsed YAML to the pure
-  `resolveCoding` (`lib/coding-resolve.ts`), which renders the block through
-  `assembleFragmentPrompt(block, url, fetcher, { validateLibraries: false, allowedSchemes }, instructions)`
-  and stores the rendered host text back as `instructions`, identical to writing; a
+  `resolveCoding` (`lib/coding-resolve.ts`), which renders the block through the
+  `resolveInstructions` step it shares with writing (`lib/activity-load.ts`):
+  `assembleFragmentPrompt(block, url, fetcher, { validateLibraries: false, allowedSchemes }, instructions)`,
+  storing the rendered host text back as `instructions`; a
   YAML with **neither** `fragment_files` nor `text_files` returns `instructions`
   byte-verbatim (never compiled), and a fetch / consistency / assembly failure fails the
   load closed. TWO coding-specific constraints hold. **(1)** Assembly happens

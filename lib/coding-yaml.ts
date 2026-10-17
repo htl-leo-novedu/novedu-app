@@ -60,6 +60,9 @@ export interface Coding {
   fragmentBlock: FragmentBlock;
 }
 
+/** How this kind names itself in its student-facing load messages. */
+export const CODING_NOUN = "coding activity";
+
 export type CodingParseResult = { ok: true; coding: Coding } | { ok: false; message: string };
 
 function asString(value: unknown): string | undefined {

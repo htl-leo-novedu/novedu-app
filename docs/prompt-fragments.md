@@ -297,10 +297,11 @@ would silently clamp.
   default `validateLibraries: true` — so a broken fragment in a referenced library is
   caught at save / share time, not when the first student opens.
 
-Fragment fetches go through the existing loopback-avoiding `appHostedFetcher` via an
-optional async post-parse `resolve` hook on `loadAppHostedYaml`
-(`lib/app-hosted-yaml.ts`): an app-hosted fragment ref resolves from the database,
-never a loopback fetch — preserving the `docs/files.md` invariant.
+Fragment fetches go through the existing loopback-avoiding `appHostedFetcher`: the
+post-parse `resolve` step of the shared load (`loadActivity`, `lib/activity-load.ts`,
+called by `loadAppHostedYaml` in `lib/app-hosted-yaml.ts`) receives the same fetcher
+the activity was read through, so an app-hosted fragment ref resolves from the
+database, never a loopback fetch — preserving the `docs/files.md` invariant.
 
 ## Security posture
 

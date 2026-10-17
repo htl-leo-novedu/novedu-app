@@ -89,22 +89,28 @@ export interface LoadOptions {
   validateLibraries?: boolean;
 }
 
-const DEFAULT_ALLOWED_SCHEMES = ["http:", "https:"];
+/** The production URL schemes (http(s)); the CLI adds `file:` for on-disk activities. */
+export const DEFAULT_ALLOWED_SCHEMES = ["http:", "https:"];
 
 /**
- * The SSRF scheme gate shared by the top-level activity load (`loadYaml`) and every
- * fragment-file fetch (`assembleFragmentPrompt`): a URL is allowed only if its scheme
- * is in `allowedSchemes` (default http(s); the CLI adds `file:` for on-disk validation).
- * Returns the structured error to surface, or `null` when the scheme is allowed.
+ * The SSRF scheme check every activity and fragment fetch shares: is `url`'s scheme in
+ * `allowedSchemes`? An unparseable URL is never allowed.
+ */
+export function schemeAllowed(url: string, allowedSchemes: string[]): boolean {
+  try {
+    return allowedSchemes.includes(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The structured form of `schemeAllowed` for the top-level activity load (`loadYaml`)
+ * and every fragment-file fetch (`assembleFragmentPrompt`). Returns the error to
+ * surface, or `null` when the scheme is allowed.
  */
 function schemeGate(url: string, allowedSchemes: string[]): ValidationError | null {
-  let scheme: string;
-  try {
-    scheme = new URL(url).protocol;
-  } catch {
-    scheme = "";
-  }
-  if (allowedSchemes.includes(scheme)) return null;
+  if (schemeAllowed(url, allowedSchemes)) return null;
   const allowed = allowedSchemes.map((s) => s.replace(/:$/, "")).join("/");
   return error("INVALID_URL", `Provide a valid ${allowed} URL`, { url });
 }

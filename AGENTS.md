@@ -226,7 +226,7 @@ Read before adding a test or tagging one `@live`, or touching `fake-llm/**` (inc
 
 ### CLI prompt dumps → `docs/cli-prompts.md`
 
-Read before touching: `lib/prompt-dump.ts`, `lib/{quiz,writing,coding}-resolve.ts`, the prompt builders, `cli/src/commands/prompts.ts`.
+Read before touching: `lib/prompt-dump.ts`, `lib/activity-load.ts`, `lib/{quiz,writing,coding}-resolve.ts`, the prompt builders, `cli/src/commands/prompts.ts`.
 
 - Every dumper CALLS the production builders/loaders — never a copy (grep-guarded in `lib/prompt-dump.unit.test.ts`).
 - CLI-bundled `lib/**` must import **nothing** from `app/**`, the DB, or `lib/llm/model.ts`, and carry no `"use server"` — the grep-guard walks the whole transitive closure.

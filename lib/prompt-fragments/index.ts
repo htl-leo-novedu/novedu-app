@@ -41,10 +41,12 @@ export {
   type AssembleResult,
   assembleFragmentPrompt,
   assembleFragmentPrompts,
+  DEFAULT_ALLOWED_SCHEMES,
   type LoadOptions,
   loadAndCheckFragmentFile,
   loadYaml,
   resolveFragmentUrl,
+  schemeAllowed,
 } from "./load";
 export { parseYaml, validate } from "./parse";
 export {

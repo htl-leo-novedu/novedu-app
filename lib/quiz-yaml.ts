@@ -131,6 +131,9 @@ export interface Quiz {
   questions: QuizQuestion[];
 }
 
+/** How this kind names itself in its student-facing load messages. */
+export const QUIZ_NOUN = "quiz";
+
 export type QuizParseResult = { ok: true; quiz: Quiz } | { ok: false; message: string };
 
 function asString(value: unknown): string | undefined {

@@ -97,7 +97,8 @@ A writing YAML may also declare **`fragment_files:`** and/or **`text_files:`** (
 shared prompt-fragment core — `docs/prompt-fragments.md`) and place fragments inline in
 the still-required `instructions` with `{{fragment "alias.id" …}}` markers and embed
 plain-text files with `{{file "alias"}}` (spliced verbatim, never compiled). `loadWriting`
-renders the block through `assembleFragmentPrompt(block, baseUrl, fetch, { validateLibraries: false }, instructions)`
+renders the block through the shared `resolveInstructions` (`lib/activity-load.ts`, the
+same step coding uses), i.e. `assembleFragmentPrompt(block, baseUrl, fetch, { validateLibraries: false }, instructions)`
 — the hot path — and stores the rendered host text back as `instructions`; a fetch /
 consistency / assembly failure fails the load closed. A YAML with **neither**
 `fragment_files` nor `text_files` declared returns `instructions` byte-verbatim (never
