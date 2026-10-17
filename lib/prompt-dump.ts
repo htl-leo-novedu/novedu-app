@@ -158,6 +158,15 @@ export interface PromptDumper {
   dump(url: string, fetcher: Fetcher, opts?: LoadOptions): Promise<PromptDumpResult>;
 }
 
+/** The `llm` block of a dump: provider + model, plus the reasoning level only when pinned. */
+function dumpLlm(activity: PromptDumpLlm): PromptDumpLlm {
+  return {
+    provider: activity.provider,
+    model: activity.model,
+    ...(activity.reasoning ? { reasoning: activity.reasoning } : {}),
+  };
+}
+
 /** Wrap a runtime loader's friendly message as the structured failure shape. */
 function loadFailed(message: string, url: string): PromptDumpResult {
   return { ok: false, errors: [error("ACTIVITY_LOAD_FAILED", message, { url })] };
@@ -186,11 +195,7 @@ const tutorDumper: PromptDumper = {
       dump: {
         kind: "tutor",
         id: result.id,
-        llm: {
-          provider: result.provider,
-          model: result.model,
-          ...(result.reasoning ? { reasoning: result.reasoning } : {}),
-        },
+        llm: dumpLlm(result),
         system: result.prompt,
         tools: result.tools,
       },
@@ -211,11 +216,7 @@ const quizDumper: PromptDumper = {
       dump: {
         kind: "quiz",
         id: quiz.id,
-        llm: {
-          provider: quiz.provider,
-          model: quiz.model,
-          ...(quiz.reasoning ? { reasoning: quiz.reasoning } : {}),
-        },
+        llm: dumpLlm(quiz),
         grading: {
           userMessageTemplate: QUIZ_ANSWER_MESSAGE_TEMPLATE,
           userMessagePhotosOnly: QUIZ_ANSWER_PHOTOS_ONLY_MESSAGE,
@@ -258,11 +259,7 @@ const writingDumper: PromptDumper = {
       dump: {
         kind: "writing",
         id: writing.id,
-        llm: {
-          provider: writing.provider,
-          model: writing.model,
-          ...(writing.reasoning ? { reasoning: writing.reasoning } : {}),
-        },
+        llm: dumpLlm(writing),
         system: writing.instructions,
       },
     };
@@ -290,11 +287,7 @@ const codingDumper: PromptDumper = {
       dump: {
         kind: "coding",
         id: coding.id,
-        llm: {
-          provider: coding.provider,
-          model: coding.model,
-          ...(coding.reasoning ? { reasoning: coding.reasoning } : {}),
-        },
+        llm: dumpLlm(coding),
         system: coding.instructions,
         upstreamSystemMessage: typeof system?.content === "string" ? system.content : "",
       },

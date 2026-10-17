@@ -13,7 +13,12 @@ import {
   EMPTY_FRAGMENT_BLOCK,
   type Fetcher,
   type FragmentBlock,
+  type FragmentFileRef,
+  type LoadOptions,
   schemeAllowed,
+  type TextFileRef,
+  type ValidationError,
+  type ValidationWarning,
 } from "@/lib/prompt-fragments";
 
 // The runtime load every activity kind with a lenient parser (quiz, writing, coding)
@@ -111,6 +116,31 @@ export async function resolveInstructions<
     ok: true,
     activity: { ...activity, fragmentBlock: EMPTY_FRAGMENT_BLOCK, instructions: resolved.prompt },
   };
+}
+
+/**
+ * The AUTHORING counterpart of `resolveInstructions` (writing, coding): the fragment
+ * block's gate over the schema-valid document — fetch + placement checks + a host
+ * template render dry-run of `instructions`. Authoring default: `validateLibraries: true`,
+ * so a broken fragment anywhere in a referenced library blocks the save.
+ */
+export async function checkInstructions(
+  doc: { fragment_files: FragmentFileRef[]; text_files: TextFileRef[]; instructions: string },
+  url: string,
+  fetcher: Fetcher,
+  opts: LoadOptions,
+): Promise<
+  | { ok: true; warnings: ValidationWarning[] }
+  | { ok: false; errors: ValidationError[]; warnings: ValidationWarning[] }
+> {
+  const assembled = await assembleFragmentPrompt(
+    { fragment_files: doc.fragment_files, text_files: doc.text_files },
+    url,
+    fetcher,
+    { allowedSchemes: opts.allowedSchemes, validateLibraries: opts.validateLibraries ?? true },
+    doc.instructions,
+  );
+  return assembled.ok ? { ok: true, warnings: assembled.warnings } : assembled;
 }
 
 // ---- The lenient parse prefix ------------------------------------------------------

@@ -11,6 +11,7 @@
 // renders two (`instructions` + `discussion.instructions`) in one pass; none of them
 // touch Handlebars or `COMPILE_OPTIONS` themselves.
 
+import type { z } from "zod";
 import { resolveRelativeUrl } from "@/lib/relative-url";
 import { renderFragmentContent } from "./assemble";
 import { checkPlacements, resolveAndMerge } from "./consistency";
@@ -23,7 +24,7 @@ import {
 import type { Fetcher } from "./fetcher";
 import { checkFragmentFileValue, checkFragmentTemplates } from "./fragment";
 import { parseHostPlacements, renderHostTemplate } from "./host-template";
-import { parseYaml, validate } from "./parse";
+import { parseYaml, type SchemaErrorCode, validate } from "./parse";
 import { type FragmentBlock, type FragmentFile, FragmentFileSchema } from "./schemas";
 import { sliceLines } from "./text-files";
 
@@ -137,6 +138,23 @@ export async function loadYaml(
   if (!parsed.ok) return { ok: false, error: parsed.error };
 
   return { ok: true, value: parsed.value };
+}
+
+/**
+ * `loadYaml` + the document's schema in one step — the front of every activity's
+ * authoring check (tutor, quiz and its includes, writing, coding). Returns the typed
+ * document or the first structured error.
+ */
+export async function loadAndValidate<T>(
+  url: string,
+  fetchImpl: Fetcher,
+  opts: LoadOptions,
+  schema: z.ZodType<T>,
+  code: SchemaErrorCode,
+): Promise<{ ok: true; data: T } | { ok: false; error: ValidationError }> {
+  const yaml = await loadYaml(url, fetchImpl, opts);
+  if (!yaml.ok) return yaml;
+  return validate<T>(yaml.value, schema, code, url);
 }
 
 /** The result of resolving one document-level fragment block into prompt text. */

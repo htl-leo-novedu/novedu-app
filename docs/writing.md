@@ -22,8 +22,8 @@ through exactly that fixed set of seams; nothing in the generic flow changes.
 
 - **FileKind** — `writing` joins the `FileKind` union (`lib/file-name.ts`), so the
   `/files` kind selector and `novedu_files.kind` carry it.
-- **Validator** — `writingValidator` in `fileValidators` (`lib/file-validators.ts`)
-  is a strict authoring gate exactly like `quizValidator`: it delegates to
+- **Validator** — the `writing` entry of `fileValidators` (`lib/file-validators.ts`)
+  is the same `activityValidator` as every activity kind: it delegates to
   `loadAndCheckWriting` (`lib/writing-validate.ts`), which runs the `WritingYamlSchema`
   Zod check and **blocks** an invalid save, surfacing `title` and `anonymous` on
   success. Writing defaults `anonymous: false` (below). The `readAnonymousFlag`

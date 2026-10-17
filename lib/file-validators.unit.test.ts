@@ -39,40 +39,76 @@ import { fileValidators, readAnonymousFlag } from "@/lib/file-validators";
 const URL_ = "https://example.com/file.yaml";
 const fetcher = vi.fn();
 
-describe("fileValidators.tutor", () => {
-  it("runs the THOROUGH library check and maps title/description/anonymous", async () => {
-    mocks.loadAndBuildTutorPrompt.mockResolvedValue({
+// The four activity kinds share one validator (`activityValidator`): the kind's strict
+// check, the provider gate, then title/description/anonymous with null/null/true
+// fallbacks (coding carries no `anonymous` field — it is always anonymous).
+const activityChecks = {
+  tutor: {
+    check: mocks.loadAndBuildTutorPrompt,
+    // The THOROUGH library check, as at share/create time.
+    args: [URL_, fetcher, { validateLibraries: true }],
+  },
+  quiz: { check: mocks.loadAndCheckQuiz, args: [URL_, fetcher] },
+  writing: { check: mocks.loadAndCheckWriting, args: [URL_, fetcher] },
+  coding: { check: mocks.loadAndCheckCoding, args: [URL_, fetcher] },
+};
+const activityKinds = ["tutor", "quiz", "writing", "coding"] as const;
+
+describe("fileValidators.coding", () => {
+  it("FREEZES anonymous: true, whatever the check returns (coding is always anonymous)", async () => {
+    mocks.loadAndCheckCoding.mockResolvedValue({
+      ok: true,
+      warnings: [],
+      title: "C",
+      anonymous: false,
+      provider: "SCCH",
+    });
+    expect(await fileValidators.coding.validate(URL_, fetcher)).toMatchObject({
+      ok: true,
+      anonymous: true,
+    });
+  });
+});
+
+describe.each(activityKinds)("fileValidators.%s", (kind) => {
+  const { check, args } = activityChecks[kind];
+
+  it("runs the kind's check and maps title/description/anonymous + warnings", async () => {
+    // (Coding's anonymous: true is frozen — its own test above.)
+    const anonymous = kind === "coding";
+    check.mockResolvedValue({
       ok: true,
       warnings: ["w"],
       title: "T",
       description: "D",
-      anonymous: false,
+      anonymous,
+      provider: "SCCH",
     });
-    const result = await fileValidators.tutor.validate(URL_, fetcher);
-    expect(mocks.loadAndBuildTutorPrompt).toHaveBeenCalledWith(URL_, fetcher, {
-      validateLibraries: true,
-    });
+    const result = await fileValidators[kind].validate(URL_, fetcher);
+    expect(check).toHaveBeenCalledWith(...args);
     expect(result).toEqual({
       ok: true,
       warnings: ["w"],
       title: "T",
       description: "D",
-      anonymous: false,
+      anonymous,
     });
   });
 
-  it("defaults title/description to null and anonymous to true when the build omits them", async () => {
-    mocks.loadAndBuildTutorPrompt.mockResolvedValue({ ok: true, warnings: [] });
-    const result = await fileValidators.tutor.validate(URL_, fetcher);
-    expect(result).toMatchObject({ ok: true, title: null, description: null, anonymous: true });
+  it("falls back to null title/description and the privacy-safe anonymous: true", async () => {
+    check.mockResolvedValue({ ok: true, warnings: [], provider: "SCCH" });
+    expect(await fileValidators[kind].validate(URL_, fetcher)).toEqual({
+      ok: true,
+      warnings: [],
+      title: null,
+      description: null,
+      anonymous: true,
+    });
   });
 
-  it("surfaces the structured errors on a failed build", async () => {
-    mocks.loadAndBuildTutorPrompt.mockResolvedValue({
-      ok: false,
-      errors: [{ code: "X", message: "m" }],
-    });
-    expect(await fileValidators.tutor.validate(URL_, fetcher)).toEqual({
+  it("surfaces the structured errors on a failed check (BLOCKS the save)", async () => {
+    check.mockResolvedValue({ ok: false, errors: [{ code: "X", message: "m" }], warnings: [] });
+    expect(await fileValidators[kind].validate(URL_, fetcher)).toEqual({
       ok: false,
       errors: [{ code: "X", message: "m" }],
     });
@@ -103,152 +139,20 @@ describe("fileValidators.fragment", () => {
   });
 });
 
-describe("fileValidators.quiz (strict gate — blocks an invalid quiz)", () => {
-  it("delegates to loadAndCheckQuiz and maps title/anonymous + warnings", async () => {
-    mocks.loadAndCheckQuiz.mockResolvedValue({
-      ok: true,
-      warnings: ["w"],
-      anonymous: false,
-      title: "Q",
-      quizId: "q",
-      model: "m",
-      questionCount: 3,
-    });
-    const result = await fileValidators.quiz.validate(URL_, fetcher);
-    expect(mocks.loadAndCheckQuiz).toHaveBeenCalledWith(URL_, fetcher);
-    expect(result).toEqual({
-      ok: true,
-      warnings: ["w"],
-      title: "Q",
-      description: null,
-      anonymous: false,
-    });
-  });
-
-  it("propagates the structured errors on a failed check (blocks the save)", async () => {
-    mocks.loadAndCheckQuiz.mockResolvedValue({
-      ok: false,
-      errors: [{ code: "QUIZ_SCHEMA_ERROR", message: "m" }],
-      warnings: [],
-    });
-    expect(await fileValidators.quiz.validate(URL_, fetcher)).toEqual({
-      ok: false,
-      errors: [{ code: "QUIZ_SCHEMA_ERROR", message: "m" }],
-    });
-  });
-});
-
-describe("fileValidators.writing (strict gate — blocks an invalid activity)", () => {
-  it("delegates to loadAndCheckWriting and maps title/anonymous + warnings", async () => {
-    mocks.loadAndCheckWriting.mockResolvedValue({
-      ok: true,
-      warnings: [],
-      anonymous: false,
-      title: "W",
-      writingId: "w",
-      model: "m",
-    });
-    const result = await fileValidators.writing.validate(URL_, fetcher);
-    expect(mocks.loadAndCheckWriting).toHaveBeenCalledWith(URL_, fetcher);
-    expect(result).toEqual({
-      ok: true,
-      warnings: [],
-      title: "W",
-      description: null,
-      anonymous: false,
-    });
-  });
-
-  it("propagates the structured errors on a failed check (blocks the save)", async () => {
-    mocks.loadAndCheckWriting.mockResolvedValue({
-      ok: false,
-      errors: [{ code: "WRITING_SCHEMA_ERROR", message: "m" }],
-      warnings: [],
-    });
-    expect(await fileValidators.writing.validate(URL_, fetcher)).toEqual({
-      ok: false,
-      errors: [{ code: "WRITING_SCHEMA_ERROR", message: "m" }],
-    });
-  });
-});
-
-describe("fileValidators.coding", () => {
-  it("validates via loadAndCheckCoding and FREEZES anonymous:true (coding is always anonymous)", async () => {
-    mocks.loadAndCheckCoding.mockResolvedValue({ ok: true, warnings: ["w"], title: "T" });
-    const result = await fileValidators.coding.validate(URL_, fetcher);
-    expect(mocks.loadAndCheckCoding).toHaveBeenCalledWith(URL_, fetcher);
-    expect(result).toEqual({
-      ok: true,
-      warnings: ["w"],
-      title: "T",
-      description: null,
-      // Frozen regardless of the file — no in-app conversations to attribute.
-      anonymous: true,
-    });
-  });
-
-  it("carries no description and defaults title to null", async () => {
-    mocks.loadAndCheckCoding.mockResolvedValue({ ok: true, warnings: [], title: null });
-    expect(await fileValidators.coding.validate(URL_, fetcher)).toMatchObject({
-      ok: true,
-      title: null,
-      description: null,
-      anonymous: true,
-    });
-  });
-
-  it("surfaces the structured errors on a failed check (BLOCKS the save)", async () => {
-    mocks.loadAndCheckCoding.mockResolvedValue({
-      ok: false,
-      errors: [{ code: "CODING_SCHEMA_ERROR", message: "m" }],
-      warnings: [],
-    });
-    expect(await fileValidators.coding.validate(URL_, fetcher)).toEqual({
-      ok: false,
-      errors: [{ code: "CODING_SCHEMA_ERROR", message: "m" }],
-    });
-  });
-});
-
 describe("provider availability gate (app-only, on top of the CLI-shared core)", () => {
   // The loaders are mocked, but providerUnavailableReason stays REAL — the gate's
   // env sensitivity is exactly what these tests pin down.
-  const okResults: Record<"tutor" | "quiz" | "writing" | "coding", () => void> = {
-    tutor: () =>
-      mocks.loadAndBuildTutorPrompt.mockResolvedValue({
-        ok: true,
-        warnings: [],
-        provider: "Azure Foundry",
-      }),
-    quiz: () =>
-      mocks.loadAndCheckQuiz.mockResolvedValue({
-        ok: true,
-        warnings: [],
-        anonymous: true,
-        title: "Q",
-        provider: "Azure Foundry",
-      }),
-    writing: () =>
-      mocks.loadAndCheckWriting.mockResolvedValue({
-        ok: true,
-        warnings: [],
-        anonymous: false,
-        title: "W",
-        provider: "Azure Foundry",
-      }),
-    coding: () =>
-      mocks.loadAndCheckCoding.mockResolvedValue({
-        ok: true,
-        warnings: [],
-        title: "C",
-        provider: "Azure Foundry",
-      }),
-  };
+  const okFoundry = (kind: (typeof activityKinds)[number]) =>
+    activityChecks[kind].check.mockResolvedValue({
+      ok: true,
+      warnings: [],
+      provider: "Azure Foundry",
+    });
 
-  for (const kind of ["tutor", "quiz", "writing", "coding"] as const) {
+  for (const kind of activityKinds) {
     it(`${kind}: BLOCKS a valid Foundry file when the server has no AZURE_FOUNDRY_ENDPOINT`, async () => {
       vi.stubEnv("AZURE_FOUNDRY_ENDPOINT", "");
-      okResults[kind]();
+      okFoundry(kind);
       const result = await fileValidators[kind].validate(URL_, fetcher);
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -261,7 +165,7 @@ describe("provider availability gate (app-only, on top of the CLI-shared core)",
 
   it("passes a Foundry file when the server is configured for it", async () => {
     vi.stubEnv("AZURE_FOUNDRY_ENDPOINT", "https://res.openai.azure.com");
-    okResults.quiz();
+    okFoundry("quiz");
     expect(await fileValidators.quiz.validate(URL_, fetcher)).toMatchObject({ ok: true });
   });
 

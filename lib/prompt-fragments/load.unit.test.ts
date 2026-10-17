@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import type { FetchResponse } from "./fetcher";
-import { assembleFragmentPrompt, assembleFragmentPrompts } from "./load";
+import { assembleFragmentPrompt, assembleFragmentPrompts, loadAndValidate } from "./load";
 import type { FragmentBlock } from "./schemas";
 import { fixtureResponse, LIB_A_URL, LIB_A_YAML } from "./test-fixtures";
 
@@ -323,5 +324,40 @@ describe("assembleFragmentPrompts — several host texts, one shared block", () 
     );
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.prompts).toEqual(hosts);
+  });
+});
+
+// The front of every activity's authoring check (tutor, quiz + its includes, writing,
+// coding): scheme gate → fetch → YAML → the document's schema, first error wins.
+describe("loadAndValidate", () => {
+  const Doc = z.strictObject({ id: z.string() });
+  const load = (url: string, body: FetchResponse) =>
+    loadAndValidate(url, fetcherFor({ [url]: body }), {}, Doc, "WRITING_SCHEMA_ERROR");
+
+  it("returns the typed document", async () => {
+    expect(await load(BASE_URL, fixtureResponse("id: doc\n"))).toEqual({
+      ok: true,
+      data: { id: "doc" },
+    });
+  });
+
+  it.each([
+    ["a disallowed scheme", "file:///etc/passwd", fixtureResponse("id: doc\n"), "INVALID_URL"],
+    ["a failed fetch", BASE_URL, fixtureResponse("", { ok: false, status: 404 }), "FETCH_FAILED"],
+    ["invalid YAML", BASE_URL, fixtureResponse("id: c\n  bad: : :"), "YAML_PARSE_ERROR"],
+    ["a schema mismatch", BASE_URL, fixtureResponse("idd: doc\n"), "WRITING_SCHEMA_ERROR"],
+  ])("reports %s as its structured error", async (_label, url, body, code) => {
+    const result = await load(url, body);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe(code);
+  });
+
+  it("attaches the URL and the Zod issues to a schema error", async () => {
+    const result = await load(BASE_URL, fixtureResponse("idd: doc\n"));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.url).toBe(BASE_URL);
+      expect(result.error.zodIssues).toBeTruthy();
+    }
   });
 });

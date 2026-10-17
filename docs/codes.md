@@ -65,6 +65,12 @@ standalone **Validate** button (fetcher resolves the editor buffer + app-hosted
 siblings) AND by code-create (fetcher = `appHostedFetcher`; url = the row's
 `file_url`).
 
+The four activity kinds share one validator body (`activityValidator`): the kind's
+strict check, then the app-only provider gate, then the metadata — `title` and
+`description` default to `null` and `anonymous` to the privacy-safe `true` when the
+kind's check carries none. Each check starts with the shared `loadAndValidate`
+(scheme gate, fetch, YAML, the kind's Zod schema — `docs/prompt-fragments.md`).
+
 - `tutor` → the THOROUGH gate (`loadAndBuildTutorPrompt`, `validateLibraries:
   true`): every fragment in every referenced library is strict-rendered, surfacing
   `title`/`description`/`anonymous`.
@@ -79,7 +85,8 @@ siblings) AND by code-create (fetcher = `appHostedFetcher`; url = the row's
   `novedu-cli validate --kind quiz` command.
 - `writing` → `loadAndCheckWriting` (`lib/writing-validate.ts`): the same kind of
   strict `WritingYamlSchema` gate, differing only in that writing defaults
-  `anonymous: false` — see `docs/writing.md`.
+  `anonymous: false` — see `docs/writing.md`. Its fragment gate over `instructions`
+  is `checkInstructions` (`lib/activity-load.ts`), shared with coding.
 - `coding` → `loadAndCheckCoding` (`lib/coding-validate.ts`): the same kind of strict
   `CodingYamlSchema` gate (bad YAML, missing field, no `llm.model`, no `instructions`
   → blocks the save), differing only in that it carries **no** anonymity flag — coding

@@ -44,6 +44,7 @@ export {
   DEFAULT_ALLOWED_SCHEMES,
   type LoadOptions,
   loadAndCheckFragmentFile,
+  loadAndValidate,
   loadYaml,
   resolveFragmentUrl,
   schemeAllowed,

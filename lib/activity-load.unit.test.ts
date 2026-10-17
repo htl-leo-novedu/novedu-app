@@ -2,13 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import {
   asBool,
   asString,
+  checkInstructions,
   loadActivity,
   loadActivityFrom,
   parseActivityYaml,
   resolveInstructions,
 } from "@/lib/activity-load";
 import { EMPTY_FRAGMENT_BLOCK, type Fetcher, type FragmentBlock } from "@/lib/prompt-fragments";
-import { fixtureResponse, fragmentFetcher, LIB_A_URL } from "@/lib/prompt-fragments/test-fixtures";
+import {
+  BROKEN_TEMPLATE_YAML,
+  fixtureResponse,
+  fragmentFetcher,
+  LIB_A_URL,
+} from "@/lib/prompt-fragments/test-fixtures";
 
 // The shared fetch → parse → resolve load behind every lenient activity kind (quiz,
 // writing, coding — app side via `loadAppHostedYaml`, CLI side via `load<Kind>From`).
@@ -243,5 +249,80 @@ describe("asString / asBool", () => {
     expect(asBool(false, true)).toBe(false);
     expect(asBool("false", true)).toBe(true);
     expect(asBool(undefined, false)).toBe(false);
+  });
+});
+
+// The authoring counterpart of `resolveInstructions` (writing, coding).
+describe("checkInstructions", () => {
+  const TEXT_URL = "https://fixtures.test/tutors/solution.ts";
+  const BROKEN_URL = "https://fixtures.test/tutors/broken.yaml";
+  const fetcher = fragmentFetcher(
+    new Map([
+      [TEXT_URL, fixtureResponse("one\ntwo\nthree\n")],
+      [BROKEN_URL, fixtureResponse(BROKEN_TEMPLATE_YAML)],
+    ]),
+  );
+  const doc = (instructions: string, fragments: string[] = [], texts: string[] = []) => ({
+    fragment_files: fragments.map((url, n) => ({ id: n === 0 ? "lib_a" : `lib_${n}`, url })),
+    text_files: texts.map((url) => ({ id: "solution", url })),
+    instructions,
+  });
+  const codes = (result: Awaited<ReturnType<typeof checkInstructions>>) =>
+    result.ok ? [] : result.errors.map((e) => e.code);
+
+  it("accepts instructions that place valid fragments and text files", async () => {
+    const result = await checkInstructions(
+      doc(
+        `{{fragment "lib_a.safety_frag"}}\n{{file "solution" from=1 to=2}}`,
+        [LIB_A_URL],
+        [TEXT_URL],
+      ),
+      URL_,
+      fetcher,
+      {},
+    );
+    expect(result).toEqual({ ok: true, warnings: [] });
+  });
+
+  it("accepts plain instructions without fetching anything", async () => {
+    const neverFetch: Fetcher = async (url) => {
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    };
+    expect(await checkInstructions(doc("Plain {{ prose."), URL_, neverFetch, {})).toEqual({
+      ok: true,
+      warnings: [],
+    });
+  });
+
+  it("surfaces a placement error (missing required variable)", async () => {
+    const result = await checkInstructions(
+      doc(`{{fragment "lib_a.str_frag"}}`, [LIB_A_URL]),
+      URL_,
+      fetcher,
+      {},
+    );
+    expect(codes(result)).toContain("MISSING_REQUIRED_VARIABLE");
+  });
+
+  it("surfaces an out-of-bounds text-file range", async () => {
+    const result = await checkInstructions(
+      doc(`{{file "solution" from=99}}`, [], [TEXT_URL]),
+      URL_,
+      fetcher,
+      {},
+    );
+    expect(codes(result)).toContain("TEXT_FILE_RANGE_OUT_OF_BOUNDS");
+  });
+
+  it("checks the whole library by default (authoring), but not when told otherwise", async () => {
+    // Only `ok_frag` is placed; the library's unplaced `undeclared_frag` is broken.
+    const broken = doc(`{{fragment "lib_a.ok_frag" topic="t"}}`, [BROKEN_URL]);
+    expect(codes(await checkInstructions(broken, URL_, fetcher, {}))).toContain(
+      "FRAGMENT_TEMPLATE_ERROR",
+    );
+    expect(await checkInstructions(broken, URL_, fetcher, { validateLibraries: false })).toEqual({
+      ok: true,
+      warnings: [],
+    });
   });
 });

@@ -56,24 +56,42 @@ function providerGate(provider: LlmProvider): FileValidationResult | null {
   return reason ? { ok: false, errors: [{ code: "PROVIDER_UNAVAILABLE", message: reason }] } : null;
 }
 
-// tutor: the THOROUGH authoring gate (every fragment in every referenced library
-// is strict-rendered), matching share/create time and the validate page. The
-// build result already surfaces title/description/anonymous.
-const tutorValidator: FileValidator = {
-  async validate(url, fetcher) {
-    const result = await loadAndBuildTutorPrompt(url, fetcher, { validateLibraries: true });
-    if (!result.ok) return { ok: false, errors: result.errors };
-    const gated = providerGate(result.provider);
-    if (gated) return gated;
-    return {
-      ok: true,
-      warnings: result.warnings,
-      title: result.title ?? null,
-      description: result.description ?? null,
-      anonymous: result.anonymous ?? true,
-    };
-  },
-};
+// An activity kind's validator: its strict authoring check (tutor, quiz, writing,
+// coding — CLI-shared and env-free), then the app-only provider gate, then the metadata
+// code-create freezes onto the row. Kinds without a field fall back alike: no
+// denormalized title/description ⇒ null; no `anonymous` field ⇒ the privacy-safe `true`.
+function activityValidator(
+  check: (
+    url: string,
+    fetcher: Fetcher,
+  ) => Promise<
+    | {
+        ok: true;
+        provider: LlmProvider;
+        warnings: ValidationWarning[];
+        title?: string | null;
+        description?: string;
+        anonymous?: boolean;
+      }
+    | { ok: false; errors: ValidationError[] }
+  >,
+): FileValidator {
+  return {
+    async validate(url, fetcher) {
+      const result = await check(url, fetcher);
+      if (!result.ok) return { ok: false, errors: result.errors };
+      const gated = providerGate(result.provider);
+      if (gated) return gated;
+      return {
+        ok: true,
+        warnings: result.warnings,
+        title: result.title ?? null,
+        description: result.description ?? null,
+        anonymous: result.anonymous ?? true,
+      };
+    },
+  };
+}
 
 // fragment: a pure library kind — a real validator, NO module. Carries no
 // title/description/anonymous (privacy-safe `true` default is never read: a
@@ -86,74 +104,24 @@ const fragmentValidator: FileValidator = {
   },
 };
 
-// quiz: a strict authoring gate, exactly like tutor/fragment — a structurally
-// broken quiz (bad YAML, missing field, no `llm.model`, no questions, duplicate
-// question id) returns ok:false and BLOCKS the save. On success it carries the
-// metadata code-create freezes onto the row: the privacy flag (default true) and a
-// title. Quizzes carry no denormalized description.
-const quizValidator: FileValidator = {
-  async validate(url, fetcher) {
-    const result = await loadAndCheckQuiz(url, fetcher);
-    if (!result.ok) return { ok: false, errors: result.errors };
-    const gated = providerGate(result.provider);
-    if (gated) return gated;
-    return {
-      ok: true,
-      warnings: result.warnings,
-      title: result.title,
-      description: null,
-      anonymous: result.anonymous,
-    };
-  },
-};
-
-// writing: a strict authoring gate exactly like quiz, except writing DEFAULTS
-// `anonymous: false` (the writing divergence). A structurally broken activity
-// (bad YAML, missing field, no `llm.model`, no instructions) BLOCKS the save.
-const writingValidator: FileValidator = {
-  async validate(url, fetcher) {
-    const result = await loadAndCheckWriting(url, fetcher);
-    if (!result.ok) return { ok: false, errors: result.errors };
-    const gated = providerGate(result.provider);
-    if (gated) return gated;
-    return {
-      ok: true,
-      warnings: result.warnings,
-      title: result.title,
-      description: null,
-      anonymous: result.anonymous,
-    };
-  },
-};
-
-// coding: a strict authoring gate exactly like quiz/writing (bad YAML, missing
-// field, no `llm.model`, no instructions → ok:false, BLOCKS the save). Coding is
-// ALWAYS anonymous — there are no in-app conversations to attribute — so the seam
-// FREEZES `anonymous: true` regardless of the file (the schema has no
-// `anonymous` field to read). Coding carries no denormalized description. The
-// lenient runtime read the proxy needs lives in lib/coding-yaml.ts.
-const codingValidator: FileValidator = {
-  async validate(url, fetcher) {
-    const result = await loadAndCheckCoding(url, fetcher);
-    if (!result.ok) return { ok: false, errors: result.errors };
-    const gated = providerGate(result.provider);
-    if (gated) return gated;
-    return {
-      ok: true,
-      warnings: result.warnings,
-      title: result.title,
-      description: null,
-      anonymous: true,
-    };
-  },
-};
-
 export const fileValidators: Record<FileKind, FileValidator> = {
-  tutor: tutorValidator,
+  // The THOROUGH tutor gate (every fragment in every referenced library is
+  // strict-rendered), matching share/create time and the validate page.
+  tutor: activityValidator((url, fetcher) =>
+    loadAndBuildTutorPrompt(url, fetcher, { validateLibraries: true }),
+  ),
   fragment: fragmentValidator,
-  quiz: quizValidator,
-  writing: writingValidator,
-  coding: codingValidator,
+  // A structurally broken quiz / writing / coding activity BLOCKS the save; each check
+  // defaults to the thorough library validation itself. Writing DEFAULTS
+  // `anonymous: false` (the writing divergence) in its own check.
+  quiz: activityValidator(loadAndCheckQuiz),
+  writing: activityValidator(loadAndCheckWriting),
+  // Coding is ALWAYS anonymous (no in-app conversations to attribute): frozen here,
+  // whatever the check returns.
+  coding: activityValidator(async (url, fetcher) => {
+    const result = await loadAndCheckCoding(url, fetcher);
+    return result.ok ? { ...result, anonymous: true } : result;
+  }),
 };
 
 // Runtime-light read of just the activity YAML's `anonymous` flag, keyed by

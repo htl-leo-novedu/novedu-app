@@ -159,6 +159,8 @@ and never re-implement any of it.
 - **`loadYaml` / `LoadOptions`** — the shared front of every load: enforce the URL
   scheme allow-list (SSRF guard: http(s) on the server; the CLI adds `file:`), fetch,
   parse YAML. `LoadOptions` carries `allowedSchemes` and `validateLibraries`.
+  **`loadAndValidate`** adds the document's Zod schema on top — the front of every
+  activity's authoring check (tutor, quiz and its includes, writing, coding).
 - **`loadAndCheckFragmentFile`** — the standalone fragment-library validator (a real
   validator with **no** module; the `fragment` FileKind in `docs/codes.md`).
 - **`resolveFragmentUrl`, the fragment schemas** (`FragmentFileRefSchema`,

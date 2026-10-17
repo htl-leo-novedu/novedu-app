@@ -89,8 +89,8 @@ samples (the coding YAML under `activities/examples/`).
   page is never listed. Coding conversations themselves are still never stored —
   there is no in-app chat to attribute, and `novedu_user_chats` stays untouched.
   The `anonymous` flag stays frozen `true` and keeps its narrower meaning (no
-  conversation to attribute); `readAnonymousFlag("coding")` still returns
-  `{ anonymous: true, definitive: true }` and the validator still freezes
+  conversation to attribute); `readAnonymousFlag("coding")` returns
+  `{ anonymous: true, definitive: true }` and the validator freezes
   `anonymous: true` onto the row.
 - **Metering**: because the key resolves a real `userId`, the usage tap records
   `recordLlmUsage({ code, module: "coding", userId, provider, model, codingRequests: 1, … })`, which

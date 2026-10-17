@@ -74,121 +74,74 @@ function renderErrors(errors: ValidationError[]): string[] {
   return lines;
 }
 
+/** The warnings block every check report ends with (nothing when there are none). */
+function warningLines(warnings: ValidationWarning[]): string[] {
+  if (!warnings.length) return [];
+  return ["", yellow(`${warnings.length} warning(s):`), ...renderWarnings(warnings)];
+}
+
+/**
+ * The one shape of every `validate` report: on success a "✔ Valid <label>" headline +
+ * the kind's own detail lines; on failure a "✘ Invalid <label>" headline + the error
+ * list (with any flattened Zod issues); warnings on either branch.
+ */
+function formatCheck<T extends { ok: true; warnings: ValidationWarning[] }>(
+  result: T | { ok: false; errors: ValidationError[]; warnings: ValidationWarning[] },
+  label: string,
+  source: string,
+  details: (result: T) => string[],
+): string {
+  if (!result.ok) {
+    return [
+      red(`✘ Invalid ${label}`) + dim(` — ${source}`),
+      "",
+      red(`${result.errors.length} error(s):`),
+      ...renderErrors(result.errors),
+      ...warningLines(result.warnings),
+    ].join("\n");
+  }
+  return [
+    green(`✔ Valid ${label}`) + dim(` — ${source}`),
+    ...details(result),
+    ...warningLines(result.warnings),
+  ].join("\n");
+}
+
 export function formatResult(result: BuildResult, source: string): string {
-  const lines: string[] = [];
-
-  if (result.ok) {
-    lines.push(green(`✔ Valid tutor`) + dim(` — ${source}`));
-    lines.push(`  model: ${result.model}`);
-    lines.push(`  system prompt: ${result.prompt.length} chars`);
-    lines.push(
-      `  imageInput: ${result.imageInput}   anonymous: ${result.anonymous}` +
-        (result.exampleQuestions.length
-          ? `   exampleQuestions: ${result.exampleQuestions.length}`
-          : ""),
-    );
-    if (result.tools.length) lines.push(`  tools: ${result.tools.join(", ")}`);
-    if (result.warnings.length) {
-      lines.push("");
-      lines.push(yellow(`${result.warnings.length} warning(s):`));
-      lines.push(...renderWarnings(result.warnings));
-    }
-    return lines.join("\n");
-  }
-
-  lines.push(red(`✘ Invalid tutor`) + dim(` — ${source}`));
-  lines.push("");
-  lines.push(red(`${result.errors.length} error(s):`));
-  lines.push(...renderErrors(result.errors));
-  if (result.warnings.length) {
-    lines.push("");
-    lines.push(yellow(`${result.warnings.length} warning(s):`));
-    lines.push(...renderWarnings(result.warnings));
-  }
-  return lines.join("\n");
+  return formatCheck(result, "tutor", source, (r) => [
+    `  model: ${r.model}`,
+    `  system prompt: ${r.prompt.length} chars`,
+    `  imageInput: ${r.imageInput}   anonymous: ${r.anonymous}` +
+      (r.exampleQuestions.length ? `   exampleQuestions: ${r.exampleQuestions.length}` : ""),
+    ...(r.tools.length ? [`  tools: ${r.tools.join(", ")}`] : []),
+  ]);
 }
 
 /** Same renderer, for a standalone fragment-FILE check (`--kind fragment`). */
 export function formatFragmentResult(result: FragmentCheckResult, source: string): string {
-  const lines: string[] = [];
-
-  if (result.ok) {
-    lines.push(green(`✔ Valid fragment file`) + dim(` — ${source}`));
-    lines.push(`  id: ${result.fragmentFileId}`);
-    lines.push(
-      `  fragments: ${result.fragmentIds.length}` +
-        (result.fragmentIds.length ? ` (${result.fragmentIds.join(", ")})` : ""),
-    );
-    if (result.warnings.length) {
-      lines.push("");
-      lines.push(yellow(`${result.warnings.length} warning(s):`));
-      lines.push(...renderWarnings(result.warnings));
-    }
-    return lines.join("\n");
-  }
-
-  lines.push(red(`✘ Invalid fragment file`) + dim(` — ${source}`));
-  lines.push("");
-  lines.push(red(`${result.errors.length} error(s):`));
-  lines.push(...renderErrors(result.errors));
-  if (result.warnings.length) {
-    lines.push("");
-    lines.push(yellow(`${result.warnings.length} warning(s):`));
-    lines.push(...renderWarnings(result.warnings));
-  }
-  return lines.join("\n");
-}
-
-/**
- * Shared tail for the quiz/writing renderers: on failure, the error list (with any
- * flattened Zod issues); plus any warnings on either branch.
- */
-function renderFailureAndWarnings(
-  result: { ok: false; errors: ValidationError[]; warnings: ValidationWarning[] },
-  label: string,
-  source: string,
-): string {
-  const lines = [red(`✘ Invalid ${label}`) + dim(` — ${source}`), ""];
-  lines.push(red(`${result.errors.length} error(s):`));
-  lines.push(...renderErrors(result.errors));
-  if (result.warnings.length) {
-    lines.push("");
-    lines.push(yellow(`${result.warnings.length} warning(s):`));
-    lines.push(...renderWarnings(result.warnings));
-  }
-  return lines.join("\n");
+  return formatCheck(result, "fragment file", source, (r) => [
+    `  id: ${r.fragmentFileId}`,
+    `  fragments: ${r.fragmentIds.length}` +
+      (r.fragmentIds.length ? ` (${r.fragmentIds.join(", ")})` : ""),
+  ]);
 }
 
 /** Renderer for a quiz check (`--kind quiz`). */
 export function formatQuizResult(result: QuizCheckResult, source: string): string {
-  if (!result.ok) return renderFailureAndWarnings(result, "quiz", source);
-
-  const lines = [green(`✔ Valid quiz`) + dim(` — ${source}`)];
-  lines.push(`  id: ${result.quizId}`);
-  lines.push(`  model: ${result.model}`);
-  lines.push(`  questions: ${result.questionCount}   anonymous: ${result.anonymous}`);
-  if (result.warnings.length) {
-    lines.push("");
-    lines.push(yellow(`${result.warnings.length} warning(s):`));
-    lines.push(...renderWarnings(result.warnings));
-  }
-  return lines.join("\n");
+  return formatCheck(result, "quiz", source, (r) => [
+    `  id: ${r.quizId}`,
+    `  model: ${r.model}`,
+    `  questions: ${r.questionCount}   anonymous: ${r.anonymous}`,
+  ]);
 }
 
 /** Renderer for a writing-activity check (`--kind writing`). */
 export function formatWritingResult(result: WritingCheckResult, source: string): string {
-  if (!result.ok) return renderFailureAndWarnings(result, "writing activity", source);
-
-  const lines = [green(`✔ Valid writing activity`) + dim(` — ${source}`)];
-  lines.push(`  id: ${result.writingId}`);
-  lines.push(`  model: ${result.model}`);
-  lines.push(`  anonymous: ${result.anonymous}`);
-  if (result.warnings.length) {
-    lines.push("");
-    lines.push(yellow(`${result.warnings.length} warning(s):`));
-    lines.push(...renderWarnings(result.warnings));
-  }
-  return lines.join("\n");
+  return formatCheck(result, "writing activity", source, (r) => [
+    `  id: ${r.writingId}`,
+    `  model: ${r.model}`,
+    `  anonymous: ${r.anonymous}`,
+  ]);
 }
 
 /**
@@ -197,18 +150,11 @@ export function formatWritingResult(result: WritingCheckResult, source: string):
  * is shown as a fixed note, not a per-file value.
  */
 export function formatCodingResult(result: CodingCheckResult, source: string): string {
-  if (!result.ok) return renderFailureAndWarnings(result, "coding activity", source);
-
-  const lines = [green(`✔ Valid coding activity`) + dim(` — ${source}`)];
-  lines.push(`  id: ${result.codingId}`);
-  lines.push(`  model: ${result.model}`);
-  lines.push(`  anonymous: true ${dim("(always — no conversations are stored)")}`);
-  if (result.warnings.length) {
-    lines.push("");
-    lines.push(yellow(`${result.warnings.length} warning(s):`));
-    lines.push(...renderWarnings(result.warnings));
-  }
-  return lines.join("\n");
+  return formatCheck(result, "coding activity", source, (r) => [
+    `  id: ${r.codingId}`,
+    `  model: ${r.model}`,
+    `  anonymous: true ${dim("(always — no conversations are stored)")}`,
+  ]);
 }
 
 /**
@@ -217,24 +163,15 @@ export function formatCodingResult(result: CodingCheckResult, source: string): s
  * would produce — in the units of its own kind.
  */
 export function formatEvalResult(result: EvalCheckResult, source: string): string {
-  if (!result.ok) return renderFailureAndWarnings(result, "eval", source);
-
-  const lines = [green(`✔ Valid eval`) + dim(` — ${source}`)];
-  lines.push(`  id: ${result.evalFile.id}`);
-  lines.push(`  kind: ${result.kind}`);
-  lines.push(`  target: ${result.targetUrl}`);
-  if (result.kind === "tutor") {
-    lines.push(`  conversations: ${result.caseCount}`);
-  } else {
-    lines.push(`  questions: ${result.evalFile.questions.length}   cases: ${result.caseCount}`);
-  }
-  lines.push(`  ${result.kind} model: ${llmSpecText(result.llm)}`);
-  if (result.warnings.length) {
-    lines.push("");
-    lines.push(yellow(`${result.warnings.length} warning(s):`));
-    lines.push(...renderWarnings(result.warnings));
-  }
-  return lines.join("\n");
+  return formatCheck(result, "eval", source, (r) => [
+    `  id: ${r.evalFile.id}`,
+    `  kind: ${r.kind}`,
+    `  target: ${r.targetUrl}`,
+    r.kind === "tutor"
+      ? `  conversations: ${r.caseCount}`
+      : `  questions: ${r.evalFile.questions.length}   cases: ${r.caseCount}`,
+    `  ${r.kind} model: ${llmSpecText(r.llm)}`,
+  ]);
 }
 
 /** One-line answer snippet for a mismatch line (single-line, bounded). */

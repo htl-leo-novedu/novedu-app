@@ -17,16 +17,19 @@ export function parseYaml(
   }
 }
 
+/** The schema-error code each validated document kind reports. */
+export type SchemaErrorCode =
+  | "TUTOR_SCHEMA_ERROR"
+  | "FRAGMENT_FILE_SCHEMA_ERROR"
+  | "QUIZ_SCHEMA_ERROR"
+  | "WRITING_SCHEMA_ERROR"
+  | "CODING_SCHEMA_ERROR";
+
 /** Validate an already-parsed value against a Zod schema, attaching treeified issues on failure. */
 export function validate<T>(
   value: unknown,
   schema: z.ZodType<T>,
-  code:
-    | "TUTOR_SCHEMA_ERROR"
-    | "FRAGMENT_FILE_SCHEMA_ERROR"
-    | "QUIZ_SCHEMA_ERROR"
-    | "WRITING_SCHEMA_ERROR"
-    | "CODING_SCHEMA_ERROR",
+  code: SchemaErrorCode,
   url?: string,
 ): { ok: true; data: T } | { ok: false; error: ValidationError } {
   const result = schema.safeParse(value);

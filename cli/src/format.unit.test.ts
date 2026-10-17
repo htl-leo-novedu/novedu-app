@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { BuildResult, FragmentCheckResult } from "@/lib/prompt-fragments";
+import type { CodingCheckResult } from "@/lib/coding-validate";
+import type { BuildResult } from "@/lib/prompt-fragments";
 import type { QuizCheckResult } from "@/lib/quiz-validate";
 import type { WritingCheckResult } from "@/lib/writing-validate";
 import type { EvalBatchFileInput, EvalRunResult } from "./eval-run";
 import { summarizeBatch } from "./eval-run";
 import {
+  formatCodingResult,
   formatEvalBatchReport,
   formatEvalReport,
   formatFragmentResult,
@@ -13,11 +15,11 @@ import {
   formatWritingResult,
 } from "./format";
 
-// The formatter is pure presentation; these tests pin that a schema error's Zod
-// field detail makes it into the human-readable report (not just the generic
-// message), so the CLI is as diagnosable as the web UI.
+// The formatter is pure presentation. Every `validate` report shares one shape
+// (headline, the kind's detail lines, errors with their Zod field detail, warnings),
+// pinned once here on the tutor; the per-kind blocks pin only each kind's own lines.
 
-describe("formatResult — schema error detail", () => {
+describe("formatResult — the shared report shape", () => {
   it("flattens zod issues beneath the tutor error line", () => {
     const result: BuildResult = {
       ok: false,
@@ -42,26 +44,34 @@ describe("formatResult — schema error detail", () => {
     expect(out).toContain('Unrecognized key: "nae"');
     expect(out).toContain("name: Invalid input: expected string, received undefined");
   });
-});
 
-describe("formatFragmentResult — schema error detail", () => {
-  it("flattens zod issues beneath the fragment error line", () => {
-    const result: FragmentCheckResult = {
-      ok: false,
-      warnings: [],
-      errors: [
-        {
-          code: "FRAGMENT_FILE_SCHEMA_ERROR",
-          message: "Document does not match the expected structure",
-          zodIssues: { properties: { id: { errors: ["Invalid input: expected string"] } } },
-        },
-      ],
-    };
-
-    const out = formatFragmentResult(result, "fragments.yaml");
-
-    expect(out).toContain("FRAGMENT_FILE_SCHEMA_ERROR");
-    expect(out).toContain("id: Invalid input: expected string");
+  it("closes either branch with the warnings block", () => {
+    const warnings = [{ code: "UNUSED_FRAGMENT_FILE" as const, message: "lib is never placed" }];
+    const valid = formatFragmentResult(
+      { ok: true, fragmentFileId: "lib", fragmentIds: [], warnings },
+      "lib.yaml",
+    );
+    expect(valid.split("\n")).toEqual([
+      "✔ Valid fragment file — lib.yaml",
+      "  id: lib",
+      "  fragments: 0",
+      "",
+      "1 warning(s):",
+      "  ⚠ UNUSED_FRAGMENT_FILE lib is never placed",
+    ]);
+    const invalid = formatFragmentResult(
+      { ok: false, errors: [{ code: "FETCH_FAILED", message: "gone" }], warnings },
+      "lib.yaml",
+    );
+    expect(invalid.split("\n")).toEqual([
+      "✘ Invalid fragment file — lib.yaml",
+      "",
+      "1 error(s):",
+      "  ✗ FETCH_FAILED gone",
+      "",
+      "1 warning(s):",
+      "  ⚠ UNUSED_FRAGMENT_FILE lib is never placed",
+    ]);
   });
 });
 
@@ -83,25 +93,6 @@ describe("formatQuizResult", () => {
     expect(out).toContain("Valid quiz");
     expect(out).toContain("capitals");
     expect(out).toContain("questions: 5");
-  });
-
-  it("flattens zod issues beneath the quiz schema error line", () => {
-    const result: QuizCheckResult = {
-      ok: false,
-      warnings: [],
-      errors: [
-        {
-          code: "QUIZ_SCHEMA_ERROR",
-          message: "Document does not match the expected structure",
-          zodIssues: { properties: { llm: { errors: ["Invalid input: expected object"] } } },
-        },
-      ],
-    };
-
-    const out = formatQuizResult(result, "quiz.yaml");
-
-    expect(out).toContain("QUIZ_SCHEMA_ERROR");
-    expect(out).toContain("llm: Invalid input: expected object");
   });
 
   it("labels a duplicate-question-id error with the question id", () => {
@@ -137,27 +128,6 @@ describe("formatWritingResult", () => {
     expect(out).toContain("Valid writing activity");
     expect(out).toContain("essay");
   });
-
-  it("flattens zod issues beneath the writing schema error line", () => {
-    const result: WritingCheckResult = {
-      ok: false,
-      warnings: [],
-      errors: [
-        {
-          code: "WRITING_SCHEMA_ERROR",
-          message: "Document does not match the expected structure",
-          zodIssues: {
-            properties: { instructions: { errors: ["Invalid input: expected string"] } },
-          },
-        },
-      ],
-    };
-
-    const out = formatWritingResult(result, "writing.yaml");
-
-    expect(out).toContain("WRITING_SCHEMA_ERROR");
-    expect(out).toContain("instructions: Invalid input: expected string");
-  });
 });
 
 /** A minimal finished run — only the fields the eval report renders. */
@@ -189,6 +159,26 @@ function runResult(usage: { input: number; cachedInput: number; output: number }
     falseCorrect: { count: 0, denominator: 0, rate: 0 },
   } as EvalRunResult;
 }
+
+describe("formatCodingResult", () => {
+  it("renders a valid coding activity's id and model, with the fixed anonymity note", () => {
+    const result: CodingCheckResult = {
+      ok: true,
+      codingId: "buddy",
+      model: "some-model",
+      provider: "SCCH",
+      title: null,
+      warnings: [],
+    };
+
+    expect(formatCodingResult(result, "coding.yaml").split("\n")).toEqual([
+      "✔ Valid coding activity — coding.yaml",
+      "  id: buddy",
+      "  model: some-model",
+      "  anonymous: true (always — no conversations are stored)",
+    ]);
+  });
+});
 
 describe("formatEvalReport — token totals", () => {
   it("prints one tokens line when the run reported usage", () => {
