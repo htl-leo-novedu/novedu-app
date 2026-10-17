@@ -66,7 +66,7 @@ below. No custom CSS.
   and where the chapters live — so the corpus is read directly with no copy step
   and editing a chapter live-reloads a running dev server. A collection that
   comes up empty would still build green but hollow — which is why the `build`
-  script ends with `scripts/verify-dist.mjs`: a post-build check
+  script ends with `teacher-docs/scripts/verify-dist.mjs`: a post-build check
   that **every** corpus chapter `<section>/<chapter>.md` produced its
   `dist/<section>/<chapter>/index.html` (so it also catches partial builds),
   that `index.html`, `404.html`, the Pagefind index and the sitemap files
@@ -143,7 +143,7 @@ by the root vitest `unit` project (`**/*.unit.test.ts`), so it runs in
 `npm test` and `qa` with no extra wiring (the file declares the `node` vitest
 environment). `npm run docs:build` is the build-level check on top: schema
 validation, dead-slug build failure, Pagefind index, and the post-build
-`scripts/verify-dist.mjs` output check (which also covers the llms.txt surface —
+`teacher-docs/scripts/verify-dist.mjs` output check (which also covers the llms.txt surface —
 every chapter has a Markdown twin and appears in both index and full text). Typechecking follows the `cli` pattern — every
 workspace is excluded from the root `tsc` program but gets its own leg in the
 root `typecheck` script: `tsc --noEmit` (app) + `tsc -p cli` + `astro check`
@@ -165,7 +165,7 @@ it — and is not served by the Next.js app at all. The moving parts:
   (CNAME-validated, SWA-managed certificate). Resource, domain and the deploy
   identity's role are in `docs/azure-runtime-env.md`.
 - **`teacher-docs/public/staticwebapp.config.json`**, copied into `dist/` by
-  Astro (and required by `scripts/verify-dist.mjs`), holds the only host
+  Astro (and required by `teacher-docs/scripts/verify-dist.mjs`), holds the only host
   configuration:
   - `.md` is served as `text/markdown; charset=utf-8` with
     `Content-Disposition: inline` (route `/*.md`) — browsers would otherwise

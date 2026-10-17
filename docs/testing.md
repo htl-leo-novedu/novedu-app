@@ -179,7 +179,15 @@ non-secret dummy — see `docs/ci-security.md`.
   statement (one displaced below an import is a plain string, which biome rewrites
   to `("use server");`); and a `"use server"` module exports only
   `async function`s and type declarations — no re-export, no `export const`, no
-  default export.
+  default export. `tests/unit/docs-references.test.ts` keeps the developer docs
+  (`AGENTS.md`, `README.md`, `docs/*.md`) in step with the tree: every backticked
+  repo path (a `dir/**` glob: its directory) and source-file name exists, every
+  relative link and `.md#anchor` resolves, every `/api/…` path a doc names has a
+  route file (`GET /api/files` exactly that route; a bare path may name a namespace)
+  and `docs/api.md` names every route, and no doc uses change-history wording
+  (`used to be`, `was renamed`, `formerly`, `since v…`). A failure lists one `file:line: problem`
+  per line; fix the doc, and put a path that is untracked by design (build output,
+  local-only files) on the test's short allowlist.
 
 ## Test fixtures
 

@@ -223,6 +223,7 @@ Read before adding a test or tagging one `@live`, or touching `fake-llm/**` (inc
 
 - Prefer fast, secret-free tests; `@live` only when the real DB/LLM/storage is genuinely needed, always with exactly one of `@live-db`/`@live-llm`/`@live-storage`/`@live-telemetry`. CI runs hermetic + `@live-db` only — LLM-backed specs among them run against the fake LLM (`fake-llm/`); `@live-llm` is only for a specific provider or real model behaviour (`npm run test:e2e:live-llm`, local). `@demo` specs run only against a demo build — the Playwright config picks the suite by `NOVEDU_AUTH_MODE` (CI: the `e2e-demo` job).
 - Mock the I/O seams, but keep security-critical pure modules (e.g. `lib/thread-token.ts`) real.
+- `tests/unit/docs-references.test.ts` checks every repo path, file name, Markdown link and `/api/…` path in `AGENTS.md`, `README.md` and `docs/*.md` against the tree (and that `docs/api.md` names every route), and flags change-history wording — fix the doc, never loosen a rule.
 
 ### CLI prompt dumps → `docs/cli-prompts.md`
 
