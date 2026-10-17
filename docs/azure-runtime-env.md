@@ -595,7 +595,9 @@ OpenRouter's management API or website:
 
 A new or rotated stage key is created in that workspace and piped straight into
 the stage's vault (*Setting or rotating a secret*); the two stages never share a
-key.
+key. Local development has a third key of its own, `novedu-localhost`, in the
+developer's git-ignored `.env`, so the local `@live-llm` OpenRouter legs
+(docs/testing.md) run against the same allowlist as the stages.
 
 `oai-rstropek-sweden` is **not** part of the Novedu environment: it sits in the
 *Microsoft Azure Sponsorship* subscription, reached through the developer's

@@ -56,7 +56,7 @@ const OPENROUTER_TUTOR = `id: e2e-openrouter-tutor
 name: "E2E OpenRouter Tutor"
 description: "A minimal tutor used to smoke-test the OpenRouter provider."
 llm:
-  model: z-ai/glm-5.3-flash
+  model: openai/gpt-6-luna
   provider: OpenRouter
 prompt:
   tutor_instructions: |
