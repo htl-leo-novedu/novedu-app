@@ -87,7 +87,9 @@ placeholder: ""                          # optional starter text for the editor
 
 `parseWriting` returns a friendly message (not structured errors) when an essential
 field is missing — `llm.model` and `instructions` are required; the student page
-shows that as a notice. **`instructions` (the teacher's system prompt) and `model`
+shows that as a notice. The YAML / `llm` part of that read (`llm.model`,
+`llm.provider`, `llm.reasoning`) is the `parseActivityYaml` prefix every lenient
+parser shares (`lib/activity-load.ts`). **`instructions` (the teacher's system prompt) and `model`
 are SERVER-ONLY.** The client-safe projection — `toPublicWriting` →
 `WritingPublic` (`lib/writing-types.ts`) — carries only `title`, `description`, and
 `placeholder`; the render component MUST call it before sending anything to the

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadActivity, loadActivityFrom, resolveInstructions } from "@/lib/activity-load";
+import {
+  asBool,
+  asString,
+  loadActivity,
+  loadActivityFrom,
+  parseActivityYaml,
+  resolveInstructions,
+} from "@/lib/activity-load";
 import { EMPTY_FRAGMENT_BLOCK, type Fetcher, type FragmentBlock } from "@/lib/prompt-fragments";
 import { fixtureResponse, fragmentFetcher, LIB_A_URL } from "@/lib/prompt-fragments/test-fixtures";
 
@@ -171,5 +178,70 @@ describe("resolveInstructions", () => {
       ok: false,
       message: "This gizmo's prompt fragments could not be loaded.",
     });
+  });
+});
+
+describe("parseActivityYaml", () => {
+  const parseOk = (content: string) => {
+    const result = parseActivityYaml(content, "gizmo");
+    if (!result.ok) throw new Error(result.message);
+    return result;
+  };
+
+  it("returns the root mapping and the llm block, defaulting the provider to SCCH", () => {
+    const result = parseOk("id: g\nllm:\n  model: m\n  imageInput: true\n");
+    expect(result.root.id).toBe("g");
+    expect(result.llm).toEqual({ model: "m", provider: "SCCH", reasoning: undefined });
+  });
+
+  it("carries an explicit provider and reasoning level", () => {
+    const result = parseOk("llm:\n  model: m\n  provider: Azure Foundry\n  reasoning: high\n");
+    expect(result.llm).toEqual({ model: "m", provider: "Azure Foundry", reasoning: "high" });
+  });
+
+  it("coerces a numeric model id (YAML types scalars by value)", () => {
+    expect(parseOk("llm:\n  model: 4\n").llm.model).toBe("4");
+  });
+
+  it.each([
+    ["invalid YAML", ":::not yaml::: [", "This gizmo could not be read — its YAML is not valid."],
+    ["a scalar document", "just text", "This gizmo is empty or malformed."],
+    ["a list document", "- a\n- b\n", "This gizmo is empty or malformed."],
+    ["an empty document", "", "This gizmo is empty or malformed."],
+    ["a missing model", "id: g\n", "This gizmo does not specify a model (llm.model)."],
+    ["a blank model", "llm:\n  model: '  '\n", "This gizmo does not specify a model (llm.model)."],
+    [
+      "an unsupported provider",
+      "llm:\n  model: m\n  provider: OpenAI\n",
+      'This gizmo uses an unsupported llm.provider (use "SCCH", "Azure Foundry" or "OpenRouter").',
+    ],
+    [
+      "an unsupported reasoning level",
+      "llm:\n  model: m\n  reasoning: turbo\n",
+      "This gizmo uses an unsupported llm.reasoning (one of none, minimal, low, medium, high, xhigh).",
+    ],
+  ])("rejects %s, naming the kind", (_label, content, message) => {
+    expect(parseActivityYaml(content, "gizmo")).toEqual({ ok: false, message });
+  });
+});
+
+describe("asString / asBool", () => {
+  it.each([
+    ["text", "text"],
+    ["  ", undefined],
+    [1, "1"],
+    [true, "true"],
+    [Number.NaN, undefined],
+    [Number.POSITIVE_INFINITY, undefined],
+    [null, undefined],
+    [{}, undefined],
+  ])("asString(%o) is %o", (value, expected) => {
+    expect(asString(value)).toBe(expected);
+  });
+
+  it("asBool takes only a literal boolean, else the fallback", () => {
+    expect(asBool(false, true)).toBe(false);
+    expect(asBool("false", true)).toBe(true);
+    expect(asBool(undefined, false)).toBe(false);
   });
 });

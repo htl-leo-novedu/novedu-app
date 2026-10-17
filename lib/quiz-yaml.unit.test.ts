@@ -76,57 +76,24 @@ questions:
     expect(result.quiz).not.toHaveProperty("immediateFeedback");
   });
 
-  it("defaults a missing llm.provider to SCCH and carries an explicit one", () => {
-    const defaulted = parseQuiz(VALID);
-    expect(defaulted.ok && defaulted.quiz.provider).toBe("SCCH");
-    const foundry = parseQuiz(`
-llm:
-  model: gpt-5.4-mini
-  provider: Azure Foundry
-questions:
-  - id: a
-    question: Q
-    evaluation: E
-`);
-    expect(foundry.ok && foundry.quiz.provider).toBe("Azure Foundry");
-  });
-
-  it("leaves a missing llm.reasoning undefined and carries an explicit level", () => {
-    const absent = parseQuiz(VALID);
-    expect(absent.ok && absent.quiz.reasoning).toBeUndefined();
-    const pinned = parseQuiz(`
-llm:
-  model: m
-  reasoning: high
-questions:
-  - id: a
-    question: Q
-    evaluation: E
-`);
-    expect(pinned.ok && pinned.quiz.reasoning).toBe("high");
-  });
-
-  it("rejects an unsupported llm.reasoning, naming the levels", () => {
-    const result = parseQuiz(`
-llm:
-  model: m
-  reasoning: turbo
-questions:
-  - id: a
-    question: Q
-    evaluation: E
-`);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toMatch(/minimal.*low.*medium.*high.*xhigh/);
+  // The shared prefix (YAML, llm.model/provider/reasoning) is covered by
+  // lib/activity-load.unit.test.ts; this proves the wiring and the noun.
+  it("carries the llm block and names itself in an llm failure", () => {
+    const pinned = parseQuiz(
+      "llm:\n  model: m\n  provider: OpenRouter\n  reasoning: high\nquestions:\n  - id: a\n    question: Q\n    evaluation: E\n",
+    );
+    expect(pinned.ok && pinned.quiz).toMatchObject({
+      model: "m",
+      provider: "OpenRouter",
+      reasoning: "high",
+    });
+    expect(parseQuiz("questions:\n  - id: a\n    question: Q\n    evaluation: E\n")).toEqual({
+      ok: false,
+      message: "This quiz does not specify a model (llm.model).",
+    });
   });
 
   it.each([
-    ["invalid YAML", ":::not yaml::: ["],
-    ["missing model", "questions:\n  - id: a\n    question: Q\n    evaluation: E\n"],
-    [
-      "an unsupported llm.provider",
-      "llm:\n  model: m\n  provider: OpenAI\nquestions:\n  - id: a\n    question: Q\n    evaluation: E\n",
-    ],
     ["no questions", "llm:\n  model: m\n"],
     [
       "no complete questions",

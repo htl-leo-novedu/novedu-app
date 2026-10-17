@@ -144,7 +144,8 @@ instructions: |
 - **`parseCoding`** (`lib/coding-yaml.ts`) is the lenient runtime read: it requires
   only `llm.model` + `instructions` and returns `{ title?, model, provider, instructions }`
   (`provider` defaults to SCCH when missing; a present-but-invalid value is
-  rejected). `model`, `provider` and `instructions` are **server-only**.
+  rejected — the `parseActivityYaml` prefix shared with quiz and writing,
+  `lib/activity-load.ts`). `model`, `provider` and `instructions` are **server-only**.
 - **Fragments**: a coding YAML may declare **`fragment_files:`** and/or **`text_files:`**
   (the shared prompt-fragment core — `docs/prompt-fragments.md`) and place fragments
   inline in `instructions` with `{{fragment "alias.id" …}}` markers, embedding plain-text

@@ -537,7 +537,8 @@ shortcut). Students reach it at `/<code>` like any other activity; the runner +
 in-page discussion live in `app/[code]/_quiz/`.
 
 - **Quiz YAML** (sample: `activities/examples/sorting-algorithms/sorting-quiz.yaml`, parsed leniently by `parseQuiz` in
-  `lib/quiz-yaml.ts`): `id`, `name`, optional `title`/`description` (student
+  `lib/quiz-yaml.ts`, which starts with the `parseActivityYaml` prefix every lenient
+  parser shares, `lib/activity-load.ts`): `id`, `name`, optional `title`/`description` (student
   welcome), `anonymous` (default `true`), `shuffle` (default `true`), optional
   **`question_count`** (attempt length, below), `llm.model`
   (grades AND drives the discussion) with optional `llm.provider` (missing ⇒ SCCH;
