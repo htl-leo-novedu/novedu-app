@@ -44,11 +44,7 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/lib/telemetry", () => ({ emitEvent }));
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
 
-import {
-  QUIZ_EVAL_INSTRUCTIONS,
-  QUIZ_EVAL_MODEL,
-  QUIZ_EVAL_PROVIDER,
-} from "@/app/mastra/quiz-agents";
+import { QUIZ_EVAL_CONTEXT } from "@/lib/llm-context";
 import { saveQuizResult, startDiscussion, submitAnswer } from "@/lib/quiz-actions";
 import { getThreadTokenSecret, verifyThreadToken } from "@/lib/thread-token";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
@@ -106,8 +102,8 @@ describe("submitAnswer LLM selection", () => {
   it("grades with the quiz YAML's provider/model when the code has no override", async () => {
     const result = await submitAnswer({ code: entry.code, questionId: "q1", answer: "4" });
     expect(result).toEqual({ ok: true, result: "correct", feedback: "Well done." });
-    expect(gradedContext().get(QUIZ_EVAL_MODEL)).toBe("yaml-model");
-    expect(gradedContext().get(QUIZ_EVAL_PROVIDER)).toBe("SCCH");
+    expect(gradedContext().get(QUIZ_EVAL_CONTEXT.model)).toBe("yaml-model");
+    expect(gradedContext().get(QUIZ_EVAL_CONTEXT.provider)).toBe("SCCH");
     expect(storeQuizResult).not.toHaveBeenCalled();
   });
 
@@ -118,8 +114,8 @@ describe("submitAnswer LLM selection", () => {
     });
     const result = await submitAnswer({ code: entry.code, questionId: "q1", answer: "4" });
     expect(result).toMatchObject({ ok: true });
-    expect(gradedContext().get(QUIZ_EVAL_MODEL)).toBe("gpt-5.4-mini");
-    expect(gradedContext().get(QUIZ_EVAL_PROVIDER)).toBe("Azure Foundry");
+    expect(gradedContext().get(QUIZ_EVAL_CONTEXT.model)).toBe("gpt-5.4-mini");
+    expect(gradedContext().get(QUIZ_EVAL_CONTEXT.provider)).toBe("Azure Foundry");
   });
 });
 
@@ -147,7 +143,7 @@ describe("submitAnswer usage metering", () => {
 });
 
 describe("submitAnswer grading-prompt composition", () => {
-  const instructions = () => gradedContext().get(QUIZ_EVAL_INSTRUCTIONS) as string;
+  const instructions = () => gradedContext().get(QUIZ_EVAL_CONTEXT.instructions) as string;
 
   it("orders compound preamble → source preamble → grading frame → evaluation", async () => {
     loadQuiz.mockResolvedValue({

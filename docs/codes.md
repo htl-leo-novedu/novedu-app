@@ -456,8 +456,8 @@ throws, the bridge forwards the full history; Mastra's Postgres store upserts
 messages by id, so that run stores no duplicate rows, but the model sees the
 re-sent history on top of the recalled window for that one turn. Otherwise the
 model's whole view of the conversation is the recalled `lastMessages` window
-(currently **40** ≈ 20 exchanges, in `tutor-agent.ts` / `quiz-agents.ts`) — raise
-it if longer sessions must see further back. Older conversations (recorded when
+(currently **40** ≈ 20 exchanges — `chatMemory()` in `app/mastra/agent-context.ts`,
+shared by every chat agent); raise it if longer sessions must see further back. Older conversations (recorded when
 Mastra stored the re-sent history under fresh ids) hold telescoped duplicates; the
 viewer collapses them on read (see below).
 

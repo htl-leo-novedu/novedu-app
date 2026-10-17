@@ -1,12 +1,7 @@
 import { Agent } from "@mastra/core/agent";
 import type { RequestContext } from "@mastra/core/request-context";
-import {
-  DEFAULT_PROVIDER,
-  type LlmProvider,
-  parseLenientProvider,
-  parseLenientReasoningLevel,
-} from "@/lib/llm/provider";
-import { modelEntry } from "./model-entry";
+import { EVAL_JUDGE_CONTEXT, EVAL_TUTOR_CONTEXT } from "@/lib/llm-context";
+import { contextInstructions, contextModel } from "./agent-context";
 import { selectTutorTools } from "./tutor-tools";
 
 // The two agents behind the teacher-only eval endpoints (docs/cli-eval.md):
@@ -31,37 +26,10 @@ import { selectTutorTools } from "./tutor-tools";
 // 404s. Their only callers are the `requireBearerTeacher`-gated eval routes (AGENTS.md,
 // docs/codes.md).
 
-// RequestContext keys, distinct from the quiz agents' so a request for one can never
-// satisfy the other (defense in depth on top of the runtime route's agent gating).
-export const EVAL_JUDGE_INSTRUCTIONS = "eval-judge-instructions";
-export const EVAL_JUDGE_MODEL = "eval-judge-model";
-export const EVAL_JUDGE_PROVIDER = "eval-judge-provider";
-/** Optional reasoning effort for the judge; absent = the model's own default. */
-export const EVAL_JUDGE_REASONING = "eval-judge-reasoning";
-
-// The tutor-generation agent's own keys, distinct again for the same reason.
-export const EVAL_TUTOR_INSTRUCTIONS = "eval-tutor-instructions";
-export const EVAL_TUTOR_MODEL = "eval-tutor-model";
-export const EVAL_TUTOR_PROVIDER = "eval-tutor-provider";
-/** Optional reasoning effort for the tutor under test; absent = the model's default. */
-export const EVAL_TUTOR_REASONING = "eval-tutor-reasoning";
-/** The tutor's `tools:` grant for this run, as the catalog names the route validated. */
+// The tutor-generation agent's tool grant: the catalog names the route validated. Its
+// prompt/model keys are `EVAL_TUTOR_CONTEXT`, the judge's `EVAL_JUDGE_CONTEXT`
+// (lib/llm-context.ts).
 export const EVAL_TUTOR_TOOLS = "eval-tutor-tools";
-
-function requiredString(requestContext: RequestContext, key: string): string {
-  const value = requestContext.get(key);
-  if (typeof value !== "string" || value === "") {
-    throw new Error(`Missing "${key}" on the request context for the eval judge agent.`);
-  }
-  return value;
-}
-
-// An absent provider key means SCCH (matching the YAML default); the route already
-// rejected an invalid value, so lenient reading here is safe. The reasoning key is
-// read the same way at each resolver: absent pins no effort.
-function providerFrom(requestContext: RequestContext, key: string): LlmProvider {
-  return parseLenientProvider(requestContext.get(key)) ?? DEFAULT_PROVIDER;
-}
 
 // The tool grant off the context. The ROUTE already rejected an unknown name with a
 // terminal 400, so anything arriving here is a catalog name; a non-array is a wiring bug
@@ -80,13 +48,8 @@ function toolNames(requestContext: RequestContext, key: string): string[] {
 export const evalJudgeAgent = new Agent({
   id: "evalJudge",
   name: "Eval Judge",
-  instructions: ({ requestContext }) => requiredString(requestContext, EVAL_JUDGE_INSTRUCTIONS),
-  model: ({ requestContext }) =>
-    modelEntry(
-      providerFrom(requestContext, EVAL_JUDGE_PROVIDER),
-      requiredString(requestContext, EVAL_JUDGE_MODEL),
-      parseLenientReasoningLevel(requestContext.get(EVAL_JUDGE_REASONING)),
-    ),
+  instructions: contextInstructions(EVAL_JUDGE_CONTEXT),
+  model: contextModel(EVAL_JUDGE_CONTEXT),
 });
 
 /**
@@ -100,12 +63,7 @@ export const evalJudgeAgent = new Agent({
 export const evalTutorAgent = new Agent({
   id: "evalTutor",
   name: "Eval Tutor",
-  instructions: ({ requestContext }) => requiredString(requestContext, EVAL_TUTOR_INSTRUCTIONS),
-  model: ({ requestContext }) =>
-    modelEntry(
-      providerFrom(requestContext, EVAL_TUTOR_PROVIDER),
-      requiredString(requestContext, EVAL_TUTOR_MODEL),
-      parseLenientReasoningLevel(requestContext.get(EVAL_TUTOR_REASONING)),
-    ),
+  instructions: contextInstructions(EVAL_TUTOR_CONTEXT),
+  model: contextModel(EVAL_TUTOR_CONTEXT),
   tools: ({ requestContext }) => selectTutorTools(toolNames(requestContext, EVAL_TUTOR_TOOLS)),
 });

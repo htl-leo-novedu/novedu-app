@@ -25,13 +25,8 @@ vi.mock("@/lib/llm/availability", () => ({
 }));
 vi.mock("@/auth", () => ({ auth: { api: { getSession: vi.fn() } } }));
 
-import {
-  QUIZ_EVAL_INSTRUCTIONS,
-  QUIZ_EVAL_MODEL,
-  QUIZ_EVAL_PROVIDER,
-  QUIZ_EVAL_REASONING,
-} from "@/app/mastra/quiz-agents";
 import { auth } from "@/auth";
+import { QUIZ_EVAL_CONTEXT } from "@/lib/llm-context";
 import { buildAnswerMessage } from "@/lib/quiz-grading-prompt";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
 import { bearerSession } from "@/tests/mock-auth-session";
@@ -183,9 +178,9 @@ describe("POST /api/eval/grade grading", () => {
     expect(prompt).toBe(buildAnswerMessage("4"));
 
     const ctx = opts.requestContext;
-    expect(ctx.get(QUIZ_EVAL_INSTRUCTIONS)).toBe(VALID_BODY.system);
-    expect(ctx.get(QUIZ_EVAL_MODEL)).toBe("test-model");
-    expect(ctx.get(QUIZ_EVAL_PROVIDER)).toBe("SCCH");
+    expect(ctx.get(QUIZ_EVAL_CONTEXT.instructions)).toBe(VALID_BODY.system);
+    expect(ctx.get(QUIZ_EVAL_CONTEXT.model)).toBe("test-model");
+    expect(ctx.get(QUIZ_EVAL_CONTEXT.provider)).toBe("SCCH");
     expect(ctx.get(USAGE_CODE)).toBe("cli-eval");
     expect(ctx.get(USAGE_MODULE)).toBe("eval");
     expect(ctx.get(USAGE_USER_ID)).toBe("teacher-oid-1");
@@ -201,7 +196,7 @@ describe("POST /api/eval/grade grading", () => {
       string,
       { requestContext: { get(key: string): unknown } },
     ];
-    expect(opts.requestContext.get(QUIZ_EVAL_REASONING)).toBe("high");
+    expect(opts.requestContext.get(QUIZ_EVAL_CONTEXT.reasoning)).toBe("high");
   });
 
   it("leaves the reasoning key UNSET when the body carries no level", async () => {
@@ -212,7 +207,7 @@ describe("POST /api/eval/grade grading", () => {
       { requestContext: { get(key: string): unknown } },
     ];
     // Unset ⇒ the resolver sends no `reasoning_effort` at all, the model's own default.
-    expect(opts.requestContext.get(QUIZ_EVAL_REASONING)).toBeUndefined();
+    expect(opts.requestContext.get(QUIZ_EVAL_CONTEXT.reasoning)).toBeUndefined();
   });
 
   it("defaults the provider to SCCH when the body omits it", async () => {
@@ -222,7 +217,7 @@ describe("POST /api/eval/grade grading", () => {
       string,
       { requestContext: { get(key: string): unknown } },
     ];
-    expect(opts.requestContext.get(QUIZ_EVAL_PROVIDER)).toBe("SCCH");
+    expect(opts.requestContext.get(QUIZ_EVAL_CONTEXT.provider)).toBe("SCCH");
   });
 
   it("reports the grading call's tokens when the model reported usage", async () => {

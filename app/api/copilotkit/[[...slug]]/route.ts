@@ -16,7 +16,7 @@ import { RUNTIME_CODE_HEADER, RUNTIME_THREAD_TOKEN_HEADER } from "@/lib/runtime-
 import { getSession } from "@/lib/session";
 import { effectiveTeacherForSession } from "@/lib/student-mode";
 import { getThreadTokenSecret, verifyThreadToken } from "@/lib/thread-token";
-import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { setUsageContext } from "@/lib/usage-context-keys";
 import { recordUserMessage } from "@/lib/usage-store";
 import { recordUserChat } from "@/lib/user-chat-store";
 
@@ -305,9 +305,7 @@ async function handler(req: Request): Promise<Response> {
   // reads these three keys off every span. `usageUserId` is set for ALL codes,
   // including anonymous ones — it is only ever stored against an hour bucket in
   // `usage_by_user`, never linked to the code (see lib/usage-store.ts).
-  built.context.set(USAGE_CODE, code);
-  built.context.set(USAGE_USER_ID, userId);
-  built.context.set(USAGE_MODULE, entry.module);
+  setUsageContext(built.context, { code, userId, module: entry.module });
 
   // The library's own runner, innermost. A TUTOR's is wrapped in the snapshot
   // runner, which answers a `connect` with the thread's stored messages so a

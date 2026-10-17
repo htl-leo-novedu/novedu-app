@@ -23,13 +23,8 @@ vi.mock("@/lib/llm/availability", () => ({
 }));
 vi.mock("@/auth", () => ({ auth: { api: { getSession: vi.fn() } } }));
 
-import {
-  EVAL_JUDGE_INSTRUCTIONS,
-  EVAL_JUDGE_MODEL,
-  EVAL_JUDGE_PROVIDER,
-  EVAL_JUDGE_REASONING,
-} from "@/app/mastra/eval-agents";
 import { auth } from "@/auth";
+import { EVAL_JUDGE_CONTEXT } from "@/lib/llm-context";
 import { FEEDBACK_JUDGE_CRITERIA } from "@/lib/quiz-feedback-judge";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
 import { bearerSession } from "@/tests/mock-auth-session";
@@ -194,9 +189,9 @@ describe("POST /api/eval/judge judging", () => {
     expect(subject).toBe(VALID_BODY.subject);
 
     const ctx = generateOptions().requestContext;
-    expect(ctx.get(EVAL_JUDGE_INSTRUCTIONS)).toBe(VALID_BODY.system);
-    expect(ctx.get(EVAL_JUDGE_MODEL)).toBe("test-model");
-    expect(ctx.get(EVAL_JUDGE_PROVIDER)).toBe("SCCH");
+    expect(ctx.get(EVAL_JUDGE_CONTEXT.instructions)).toBe(VALID_BODY.system);
+    expect(ctx.get(EVAL_JUDGE_CONTEXT.model)).toBe("test-model");
+    expect(ctx.get(EVAL_JUDGE_CONTEXT.provider)).toBe("SCCH");
     // Judge tokens meter into the SAME buckets as the gradings they audit.
     expect(ctx.get(USAGE_CODE)).toBe("cli-eval");
     expect(ctx.get(USAGE_MODULE)).toBe("eval");
@@ -217,7 +212,7 @@ describe("POST /api/eval/judge judging", () => {
       string,
       { requestContext: { get(key: string): unknown } },
     ];
-    expect(withLevel.requestContext.get(EVAL_JUDGE_REASONING)).toBe("high");
+    expect(withLevel.requestContext.get(EVAL_JUDGE_CONTEXT.reasoning)).toBe("high");
 
     mocks.generate.mockClear();
     await postRequest(VALID_BODY, await mint());
@@ -226,7 +221,7 @@ describe("POST /api/eval/judge judging", () => {
       { requestContext: { get(key: string): unknown } },
     ];
     // Unset ⇒ no `reasoning_effort` is sent at all.
-    expect(without.requestContext.get(EVAL_JUDGE_REASONING)).toBeUndefined();
+    expect(without.requestContext.get(EVAL_JUDGE_CONTEXT.reasoning)).toBeUndefined();
   });
 
   it("constrains the model to the CALLER's criteria — the kind-agnostic property", async () => {
@@ -256,7 +251,7 @@ describe("POST /api/eval/judge judging", () => {
   it("defaults the provider to SCCH when the body omits it", async () => {
     await postRequest({ ...VALID_BODY, llm: { model: "test-model" } }, await mint());
 
-    expect(generateOptions().requestContext.get(EVAL_JUDGE_PROVIDER)).toBe("SCCH");
+    expect(generateOptions().requestContext.get(EVAL_JUDGE_CONTEXT.provider)).toBe("SCCH");
   });
 
   it("reports the judge call's tokens when the model reported usage", async () => {

@@ -300,13 +300,16 @@ structural.
 ## The writing agent — `app/mastra/writing-agents.ts`
 
 The `writing` agent is configured **entirely per request** from the
-`RequestContext`: the descriptor's `buildRequestContext` loads the YAML and sets
-`WRITING_INSTRUCTIONS` (the teacher's system prompt) and `WRITING_MODEL` (resolved
-against the shared `scchProvider`). The keys are distinct from the other agents' so
-a request for one can never satisfy another (defense in depth on top of the runtime
-route's agent gating). It is **memory-backed** exactly like `tutorAgent` and the
-quiz discussion agent — `lastMessages` window (40), **no** semantic recall — so a
-thread persists and earlier turns reach the model through the recalled window.
+`RequestContext`: the descriptor's `buildRequestContext` loads the YAML and sets the
+teacher's system prompt and the effective provider/model (+ reasoning) under
+`WRITING_CONTEXT` — `llmRequestContext` in `lib/llm-context.ts`, the same step the
+quiz discussion uses; the agent reads them back through `contextInstructions` /
+`contextModel` (`app/mastra/agent-context.ts`). The keys are distinct from the other
+agents' so a request for one can never satisfy another (defense in depth on top of
+the runtime route's agent gating). It is **memory-backed** exactly like `tutorAgent`
+and the quiz discussion agent — the shared `chatMemory()`: `lastMessages` window
+(40), **no** semantic recall — so a thread persists and earlier turns reach the
+model through the recalled window.
 `resourceId = the code`, set by the runtime route.
 
 Because `getCurrentText` is the only tool and it cannot mutate, and because the

@@ -1,20 +1,15 @@
 import { RequestContext } from "@mastra/core/request-context";
 import { z } from "zod";
 import { mastra } from "@/app/mastra";
-import {
-  EVAL_JUDGE_INSTRUCTIONS,
-  EVAL_JUDGE_MODEL,
-  EVAL_JUDGE_PROVIDER,
-  EVAL_JUDGE_REASONING,
-} from "@/app/mastra/eval-agents";
 import { ApiAuthError, requireBearerTeacher } from "@/lib/api-auth";
 import { readBoundedJson } from "@/lib/bounded-json";
 import { providerUnavailableReason } from "@/lib/llm/availability";
 import { DEFAULT_PROVIDER, parseLenientProvider, REASONING_LEVELS } from "@/lib/llm/provider";
 import { classifyUpstreamLlmError } from "@/lib/llm/upstream-error";
+import { EVAL_JUDGE_CONTEXT, setLlmContext } from "@/lib/llm-context";
 import { type FeedbackJudgeIssue, judgmentSchema } from "@/lib/quiz-feedback-judge";
 import { recordError } from "@/lib/telemetry";
-import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { setUsageContext } from "@/lib/usage-context-keys";
 import { authErrorResponse, json } from "../../shared";
 import { llmCallUsage } from "../shared";
 
@@ -130,17 +125,19 @@ export async function POST(request: Request): Promise<Response> {
     if (unavailable) return json({ message: unavailable }, 400);
 
     const requestContext = new RequestContext();
-    requestContext.set(EVAL_JUDGE_INSTRUCTIONS, body.system);
-    requestContext.set(EVAL_JUDGE_MODEL, body.llm.model);
-    requestContext.set(EVAL_JUDGE_PROVIDER, provider);
-    // Only when the caller pinned one: an unset key means no `reasoning_effort` is sent
-    // at all, which is what "let the model decide" means.
-    if (body.llm.reasoning) requestContext.set(EVAL_JUDGE_REASONING, body.llm.reasoning);
+    setLlmContext(requestContext, EVAL_JUDGE_CONTEXT, body.system, {
+      provider,
+      model: body.llm.model,
+      // Absent unless the caller pinned one — "the model decides".
+      reasoning: body.llm.reasoning,
+    });
     // Judge tokens land in the SAME buckets as the gradings they audit — one eval run is
     // one cost, and splitting it would only make the dashboard harder to read.
-    requestContext.set(USAGE_CODE, EVAL_USAGE_CODE);
-    requestContext.set(USAGE_USER_ID, user.userId);
-    requestContext.set(USAGE_MODULE, EVAL_USAGE_MODULE);
+    setUsageContext(requestContext, {
+      code: EVAL_USAGE_CODE,
+      userId: user.userId,
+      module: EVAL_USAGE_MODULE,
+    });
 
     try {
       const res = await mastra.getAgent("evalJudge").generate(body.subject, {

@@ -22,14 +22,9 @@ vi.mock("@/lib/llm/availability", () => ({
 }));
 vi.mock("@/auth", () => ({ auth: { api: { getSession: vi.fn() } } }));
 
-import {
-  EVAL_TUTOR_INSTRUCTIONS,
-  EVAL_TUTOR_MODEL,
-  EVAL_TUTOR_PROVIDER,
-  EVAL_TUTOR_REASONING,
-  EVAL_TUTOR_TOOLS,
-} from "@/app/mastra/eval-agents";
+import { EVAL_TUTOR_TOOLS } from "@/app/mastra/eval-agents";
 import { auth } from "@/auth";
+import { EVAL_TUTOR_CONTEXT } from "@/lib/llm-context";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
 import { bearerSession } from "@/tests/mock-auth-session";
 import { POST } from "./route";
@@ -204,11 +199,11 @@ describe("POST /api/eval/respond generation", () => {
     ]);
 
     const ctx = requestContext();
-    expect(ctx.get(EVAL_TUTOR_INSTRUCTIONS)).toBe(VALID_BODY.system);
-    expect(ctx.get(EVAL_TUTOR_MODEL)).toBe("test-model");
-    expect(ctx.get(EVAL_TUTOR_PROVIDER)).toBe("SCCH");
+    expect(ctx.get(EVAL_TUTOR_CONTEXT.instructions)).toBe(VALID_BODY.system);
+    expect(ctx.get(EVAL_TUTOR_CONTEXT.model)).toBe("test-model");
+    expect(ctx.get(EVAL_TUTOR_CONTEXT.provider)).toBe("SCCH");
     // No level in the body ⇒ the key stays unset, so no `reasoning_effort` is sent.
-    expect(ctx.get(EVAL_TUTOR_REASONING)).toBeUndefined();
+    expect(ctx.get(EVAL_TUTOR_CONTEXT.reasoning)).toBeUndefined();
     expect(ctx.get(EVAL_TUTOR_TOOLS)).toEqual([]);
     // Generation tokens meter into the SAME buckets as the judgings that audit them.
     expect(ctx.get(USAGE_CODE)).toBe("cli-eval");
@@ -221,7 +216,7 @@ describe("POST /api/eval/respond generation", () => {
       { ...VALID_BODY, llm: { model: "test-model", reasoning: "minimal" } },
       await mint(),
     );
-    expect(requestContext().get(EVAL_TUTOR_REASONING)).toBe("minimal");
+    expect(requestContext().get(EVAL_TUTOR_CONTEXT.reasoning)).toBe("minimal");
   });
 
   it("passes a valid catalog tool grant through to the agent", async () => {
@@ -233,7 +228,7 @@ describe("POST /api/eval/respond generation", () => {
   it("defaults the provider to SCCH when the body omits it", async () => {
     await postRequest({ ...VALID_BODY, llm: { model: "test-model" } }, await mint());
 
-    expect(requestContext().get(EVAL_TUTOR_PROVIDER)).toBe("SCCH");
+    expect(requestContext().get(EVAL_TUTOR_CONTEXT.provider)).toBe("SCCH");
   });
 
   it("reports the tool NAMES the generation made, in call order, duplicates kept", async () => {

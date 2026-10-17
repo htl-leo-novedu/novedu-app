@@ -256,7 +256,10 @@ one.)
 How the level reaches the wire, per path:
 
 - **Agent path**: every agent's `model:` resolver returns `modelEntry(provider,
-  model, reasoning)` (`app/mastra/model-entry.ts`) — the `ModelWithRetries[]`
+  model, reasoning)` (`app/mastra/model-entry.ts`); for the context-configured agents
+  (writing, quiz grader + discussion, eval judge + tutor) that resolver is
+  `contextModel` (`app/mastra/agent-context.ts`), reading the keys the caller set with
+  `setLlmContext` (`lib/llm-context.ts`) — `modelEntry` returns the `ModelWithRetries[]`
   array form carrying `providerOptions: { <key>: { reasoningEffort } }`. The
   array form is REQUIRED: a bare-model return drops `providerOptions`, and
   Mastra's `modelSettings.reasoning` is a no-op on ai-sdk v3, so neither is an
