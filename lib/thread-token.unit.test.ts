@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   canonicalThreadPayload,
   getThreadTokenSecret,
+  newThread,
   resetThreadTokenSecretForTests,
   signThreadToken,
+  THREAD_ID_PATTERN,
   type ThreadTokenPayload,
   verifyThreadToken,
 } from "@/lib/thread-token";
@@ -86,5 +88,26 @@ describe("getThreadTokenSecret", () => {
     const first = getThreadTokenSecret();
     expect(first).not.toBe("the-auth-secret");
     expect(getThreadTokenSecret()).toBe(first);
+  });
+});
+
+describe("newThread", () => {
+  afterEach(() => {
+    resetThreadTokenSecretForTests();
+  });
+
+  it("mints a fresh UUID thread id with a token the production secret verifies", () => {
+    resetThreadTokenSecretForTests();
+    vi.stubEnv("AUTH_SECRET", "the-auth-secret");
+    const first = newThread("a1b2c3d4e5", "student-1");
+    expect(first.threadId).toMatch(THREAD_ID_PATTERN);
+    expect(first.threadId).not.toBe(newThread("a1b2c3d4e5", "student-1").threadId);
+    expect(
+      verifyThreadToken(
+        first.threadToken,
+        { code: "a1b2c3d4e5", userId: "student-1", threadId: first.threadId },
+        getThreadTokenSecret(),
+      ),
+    ).toBe(true);
   });
 });

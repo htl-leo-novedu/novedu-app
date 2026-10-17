@@ -192,13 +192,14 @@ code outside its window stops accepting saves mid-session. A student may write
 **only their own** `(code, user_id)` row — the row key is the session user id, never
 client-supplied. The action:
 
-1. trims the text and `checkCode`s the code (rejection → a human-readable message);
-2. confirms `entry.module === "writing"`;
-3. resolves the session user id (no session → "Please sign in");
-4. **re-reads the `anonymous` flag LIVE from the YAML** (`loadWriting`) and
+1. trims the text;
+2. runs the shared student gate `verifyStudentActivity(code, "writing")`
+   (`lib/activity-gate.ts`): the session user id (no session → "Please sign in"),
+   `checkCode`, and `entry.module === "writing"`, each refusal a human-readable message;
+3. **re-reads the `anonymous` flag LIVE from the YAML** (`loadWriting`) and
    **rejects** the save when the activity is anonymous — defense in depth, so an
    anonymous writing code never accumulates attributed rows even if a client tries;
-5. `saveSubmission(...)`.
+4. `saveSubmission(...)`.
 
 Nothing is graded or echoed back — the result is just `{ ok }` or `{ ok: false,
 message }`.

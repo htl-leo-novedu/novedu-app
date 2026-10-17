@@ -100,32 +100,14 @@ it("binds the token to the SESSION user, not the caller", async () => {
   ).toBe(false);
 });
 
-it("refuses without a signed-in user", async () => {
-  getSession.mockResolvedValue(null);
-
-  expect(await startNewTutorThread({ code: CODE })).toEqual({
-    ok: false,
-    message: "Please sign in to continue.",
-  });
-});
-
-it.each([
-  ["unknown-code", "This code is not valid."],
-  ["not-started", "This activity's availability window has not started yet."],
-  ["expired", "This activity's availability window has ended."],
-  ["lookup-failed", "Codes cannot be checked right now — try again in a moment."],
-] as const)("refuses a %s code", async (reason, message) => {
-  checkCode.mockResolvedValue({ ok: false, reason });
-
-  expect(await startNewTutorThread({ code: CODE })).toEqual({ ok: false, message });
-});
-
-it("refuses a code from another module", async () => {
+// The session / code / module refusals and their texts are the shared student gate's
+// (lib/activity-gate.unit.test.ts); this proves the tutor wiring.
+it("refuses through the shared student gate, for tutor codes only", async () => {
   checkCode.mockResolvedValue({ ok: true, entry: { code: CODE, module: "quiz" } });
 
   expect(await startNewTutorThread({ code: CODE })).toEqual({
     ok: false,
-    message: "This code is not a tutor.",
+    message: "This code is not for this activity.",
   });
 });
 

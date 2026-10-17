@@ -45,6 +45,11 @@ runtime route, the public coding routes, and the module server actions — quiz,
 writing, tutor), each re-checking on **every** server touch
 — one PK SELECT on the pooled connection — so an open activity stops accepting
 input the moment its window closes (403 / error with a human-readable reason).
+The module server actions open with the shared student gate
+`verifyStudentActivity(code, module)` (`lib/activity-gate.ts`, no `"use server"`):
+session user → `checkCode` → the code's module, refusing with one neutral message
+table (`CODE_REJECTION_MESSAGES`, shared with the runtime route) whichever activity
+the student is in.
 Malformed codes are pattern-rejected without a database round-trip — which also
 gives every unknown single-segment URL (`/whatever`) a clean "unknown code" page,
 since `app/[code]` catches all non-static top-level paths.

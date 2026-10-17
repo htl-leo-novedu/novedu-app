@@ -12,6 +12,7 @@ import {
   writingSubmissions,
 } from "@/lib/db/schema";
 import { deleteResultsForCode } from "@/lib/quiz-result-store";
+import { THREAD_ID_PATTERN } from "@/lib/thread-token";
 
 // Read-side queries (and the destructive delete) behind a code's stats — shared
 // by every module (tutor conversations, quiz discussions, …).
@@ -34,10 +35,6 @@ import { deleteResultsForCode } from "@/lib/quiz-result-store";
 //
 // SERVER-ONLY: uses the database and the Mastra store. Never import from client
 // components.
-
-// Thread ids are server-generated UUIDs; this guards the value before it reaches
-// a query, mirroring the pattern in user-chat-store / the runtime route.
-const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 
 /**
  * How many qualifying conversations each of the given codes has, as a map from

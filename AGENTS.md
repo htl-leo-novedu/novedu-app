@@ -64,9 +64,9 @@ Read before touching: `lib/registry-schema.ts`, `cli/src/registry.ts`, `cli/src/
 
 ### Codes → `docs/codes.md`
 
-Read before touching: `app/[code]/**`, `app/codes/**`, `app/api/copilotkit/**`, `lib/code-*.ts`, `lib/code-modules/**`, `lib/file-validators.ts`, `lib/quiz-*.ts`, `lib/thread-token.ts`.
+Read before touching: `app/[code]/**`, `app/codes/**`, `app/api/copilotkit/**`, `lib/activity-gate.ts`, `lib/code-*.ts`, `lib/code-modules/**`, `lib/file-validators.ts`, `lib/quiz-*.ts`, `lib/thread-token.ts`.
 
-- `checkCode()` gates EVERY student-facing server touch and must be re-run on each: the `/[code]` dispatcher, the CopilotKit route, both public coding routes (`chat/completions` + `models`), and the student server actions (`lib/{tutor,writing,report}-actions.ts`, `lib/quiz-verify.ts`). The conversation export `GET /api/codes/<code>/conversations` is NOT one of them — a **creator-only** bearer read (`created_by` = the bearer user) whose store never joins `novedu_user_chats`/`novedu_user`, so it carries no student identity for any code (`docs/api.md`).
+- `checkCode()` gates EVERY student-facing server touch and must be re-run on each: the `/[code]` dispatcher, the CopilotKit route, both public coding routes (`chat/completions` + `models`), and the student server actions (`lib/{tutor,writing,report}-actions.ts`, `lib/quiz-verify.ts` — all but the report action through the shared gate `lib/activity-gate.ts`). The conversation export `GET /api/codes/<code>/conversations` is NOT one of them — a **creator-only** bearer read (`created_by` = the bearer user) whose store never joins `novedu_user_chats`/`novedu_user`, so it carries no student identity for any code (`docs/api.md`).
 - Fixed layering: **FileKind** → validator (`lib/file-validators.ts`) → **CodeModule** descriptor; adding a module touches only the documented seams.
 - Editing a code changes only note + window + the LLM override pair — never the module, `file_url`, or the frozen `anonymous`.
 - `novedu_user_chats` is the only user↔chat link, written only for non-anonymous activities. THREE sanctioned exceptions: `novedu_reports` stores the reporter's user id even on anonymous codes behind an explicit on-form notice (`docs/reports.md`), `novedu_coding_keys` stores the requester's user id behind an explicit on-page notice (`docs/coding.md`), and `novedu_quiz_results` stores a student's saved quiz counts only on their explicit Finish-page choice behind an on-page notice (`docs/home.md`). The quiz-result store has NO teacher reader — `lib/quiz-result-store.ts` is its only access and its importers are guard-tested.
@@ -77,7 +77,7 @@ Read before touching: `app/[code]/**`, `app/codes/**`, `app/api/copilotkit/**`, 
 Read before touching: `lib/report-*.ts`, `lib/quiz-verify.ts`, `components/report-button.tsx` + its mounts, `app/reports/**`, `app/api/reports/**`, `cli/src/commands/reports.ts`, `novedu_reports`.
 
 - Reports are ALWAYS attributed to the reporter's user id (the sanctioned exception above); the store never joins `novedu_user_chats`; telemetry stays content-free.
-- **`lib/quiz-verify.ts` must never gain `"use server"`** — it would mint an endpoint leaking the quiz `evaluation` prompts.
+- **`lib/quiz-verify.ts` and the student gate `lib/activity-gate.ts` must never gain `"use server"`** — it would mint endpoints leaking the quiz `evaluation` prompts and any code row (both guard-tested).
 
 ### Prompt fragments → `docs/prompt-fragments.md`
 

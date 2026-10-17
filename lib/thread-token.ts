@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 // Thread-ownership tokens: the chat page (app/[code]/page.tsx) generates the
 // Mastra thread id server-side and signs (code, userId, threadId); the chat
@@ -23,6 +23,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 //
 // SERVER-ONLY: uses node:crypto and handles the signing secret. Never import
 // from client components.
+
+/**
+ * The shape of a thread id accepted from a client: a belt-and-braces check before any
+ * lookup or HMAC. The server issues UUIDs; the token, not this pattern, proves ownership.
+ */
+export const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 
 export interface ThreadTokenPayload {
   /** The tutor code the chat was opened under. */
@@ -66,6 +72,18 @@ export function verifyThreadToken(
 ): boolean {
   if (typeof token !== "string" || token === "") return false;
   return safeEqualHex(token, signThreadToken(payload, secret));
+}
+
+/**
+ * A fresh server-generated thread id for `(code, userId)` and its ownership token,
+ * signed with the production secret — what every chat surface hands the browser.
+ */
+export function newThread(code: string, userId: string): { threadId: string; threadToken: string } {
+  const threadId = randomUUID();
+  return {
+    threadId,
+    threadToken: signThreadToken({ code, userId, threadId }, getThreadTokenSecret()),
+  };
 }
 
 // Purpose-bound key derived from AUTH_SECRET (already required by Auth.js, so

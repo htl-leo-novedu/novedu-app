@@ -24,8 +24,7 @@ vi.mock("@/lib/code-store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/code-store")>()),
   checkCode,
 }));
-// Keep the REAL CODE_REJECTION_MESSAGES map (the rejection wording is a contract);
-// only the DB-touching verification is stubbed.
+// Only the DB-touching quiz verification is stubbed.
 vi.mock("@/lib/quiz-verify", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/quiz-verify")>()),
   verifyAndLoadQuestion,
@@ -42,7 +41,7 @@ vi.mock("@/lib/telemetry", () => ({ emitEvent }));
 vi.mock("@/lib/student-mode", () => ({ requireTeacherUserId }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-import { CODE_REJECTION_MESSAGES } from "@/lib/quiz-verify";
+import { CODE_REJECTION_MESSAGES } from "@/lib/activity-gate";
 import {
   deleteSelectedReportsAction,
   markSelectedReportsResolvedAction,

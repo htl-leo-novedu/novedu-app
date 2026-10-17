@@ -1,9 +1,13 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import { type CodeRejection, checkCode } from "@/lib/code-store";
-import { getSession } from "@/lib/session";
-import { getThreadTokenSecret, signThreadToken, verifyThreadToken } from "@/lib/thread-token";
+import { verifyStudentActivity } from "@/lib/activity-gate";
+import {
+  getThreadTokenSecret,
+  newThread,
+  signThreadToken,
+  THREAD_ID_PATTERN,
+  verifyThreadToken,
+} from "@/lib/thread-token";
 import {
   historyEnabled,
   liveTutorAnonymous,
@@ -44,16 +48,6 @@ import type { ListTutorThreadsResult, OpenTutorThreadResult } from "@/lib/tutor-
 // thread is left untouched — the teacher can still read it and any report already
 // filed against it still resolves.
 
-const CODE_REJECTION_MESSAGES: Record<CodeRejection, string> = {
-  "unknown-code": "This code is not valid.",
-  "not-started": "This activity's availability window has not started yet.",
-  expired: "This activity's availability window has ended.",
-  "lookup-failed": "Codes cannot be checked right now — try again in a moment.",
-};
-
-// Belt-and-braces shape check before any lookup, as in the runtime route.
-const THREAD_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
-
 export type StartOverResult =
   | { ok: true; threadId: string; threadToken: string }
   | { ok: false; message: string };
@@ -64,24 +58,9 @@ export type StartOverResult =
  * provider remounts on the new thread (see `providerKey` in app/module-chat.tsx).
  */
 export async function startNewTutorThread(input: { code: string }): Promise<StartOverResult> {
-  const session = await getSession();
-  const userId = session?.user?.id;
-  if (!userId) return { ok: false, message: "Please sign in to continue." };
-
-  const verification = await checkCode(input.code);
-  if (!verification.ok) {
-    return { ok: false, message: CODE_REJECTION_MESSAGES[verification.reason] };
-  }
-  if (verification.entry.module !== "tutor") {
-    return { ok: false, message: "This code is not a tutor." };
-  }
-
-  const threadId = randomUUID();
-  const threadToken = signThreadToken(
-    { code: input.code, userId, threadId },
-    getThreadTokenSecret(),
-  );
-  return { ok: true, threadId, threadToken };
+  const gate = await verifyStudentActivity(input.code, "tutor");
+  if (!gate.ok) return gate;
+  return { ok: true, ...newThread(input.code, gate.userId) };
 }
 
 /**
@@ -107,12 +86,9 @@ export async function resumeTutorThread(input: {
   if (typeof input.threadId !== "string" || !THREAD_ID_PATTERN.test(input.threadId)) {
     return refused;
   }
-  const session = await getSession();
-  const userId = session?.user?.id;
-  if (!userId) return refused;
-
-  const verification = await checkCode(input.code);
-  if (!verification.ok || verification.entry.module !== "tutor") return refused;
+  const gate = await verifyStudentActivity(input.code, "tutor");
+  if (!gate.ok) return refused;
+  const { userId, entry } = gate;
 
   if (
     !verifyThreadToken(
@@ -132,8 +108,8 @@ export async function resumeTutorThread(input: {
   // runner applies, so a reopened older conversation survives a reload too.
   const reopenable = await ownerMayReopen({
     code: input.code,
-    frozenAnonymous: verification.entry.anonymous,
-    fileUrl: verification.entry.fileUrl,
+    frozenAnonymous: entry.anonymous,
+    fileUrl: entry.fileUrl,
     userId,
     threadId: input.threadId,
   });
@@ -149,12 +125,9 @@ const OPEN_REFUSED_MESSAGE = "This conversation can't be opened.";
  * false). `undefined` when any part fails.
  */
 async function historyGate(code: string): Promise<{ userId: string } | undefined> {
-  const session = await getSession();
-  const userId = session?.user?.id;
-  if (!userId) return undefined;
-  const verification = await checkCode(code);
-  if (!verification.ok || verification.entry.module !== "tutor") return undefined;
-  const { entry } = verification;
+  const gate = await verifyStudentActivity(code, "tutor");
+  if (!gate.ok) return undefined;
+  const { userId, entry } = gate;
   // The frozen flag first: an anonymous code never pays the YAML read.
   if (entry.anonymous) return undefined;
   if (!historyEnabled(entry.anonymous, await liveTutorAnonymous(entry.fileUrl))) {

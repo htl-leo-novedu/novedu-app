@@ -91,9 +91,9 @@ input**. Steps:
 
 1. `getSession()` → the session `userId` (no session → "Please sign in").
 2. `isReportReaction` narrows the reaction; the description is trimmed and capped at
-   `REPORT_DESCRIPTION_MAX`; `threadId` must match `/^[A-Za-z0-9-]{1,64}$/`.
-3. `checkCode(code)` re-verifies the code is valid and in-window (same rejection
-   wording as the quiz actions, via `CODE_REJECTION_MESSAGES`) — an expired code
+   `REPORT_DESCRIPTION_MAX`; `threadId` must match `THREAD_ID_PATTERN` (`lib/thread-token.ts`).
+3. `checkCode(code)` re-verifies the code is valid and in-window (the shared student
+   rejection wording, `CODE_REJECTION_MESSAGES` in `lib/activity-gate.ts`) — an expired code
    blocks reporting mid-session, consistent with `submitAnswer`.
 4. **`verifyThreadToken(threadToken, { code, userId, threadId }, getThreadTokenSecret())`**
    — this is the **first server action to call `verifyThreadToken`**, its designed
@@ -140,7 +140,8 @@ from a `"use server"` module would mint a public server-action endpoint** that
 returns the loaded `Quiz` — which carries the server-only `evaluation` grading
 prompts (they may embed the expected answer). So it lives in `lib/quiz-verify.ts`,
 a **server-only module deliberately WITHOUT the `"use server"` directive**, together
-with `CODE_REJECTION_MESSAGES` and `effectiveImageInput`, and both callers import it
+with `effectiveImageInput`, on top of the shared student gate `lib/activity-gate.ts`
+(likewise directive-free), and both callers import it
 as plain server code. **`lib/quiz-verify.ts` must never gain the `"use server"`
 directive** — that would open exactly that endpoint.
 

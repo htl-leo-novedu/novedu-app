@@ -21,7 +21,7 @@ import {
   verifyAndLoadQuestion,
   verifyAndLoadQuiz,
 } from "@/lib/quiz-verify";
-import { getThreadTokenSecret, signThreadToken } from "@/lib/thread-token";
+import { newThread } from "@/lib/thread-token";
 import { setUsageContext } from "@/lib/usage-context-keys";
 import { recordQuizAnswer } from "@/lib/usage-store";
 
@@ -184,12 +184,8 @@ export async function startDiscussion(
   if (!checked.ok) return checked;
   const images = checked.images;
 
-  const threadId = randomUUID();
   const resourceId = ctx.code;
-  const threadToken = signThreadToken(
-    { code: resourceId, userId: ctx.userId, threadId },
-    getThreadTokenSecret(),
-  );
+  const { threadId, threadToken } = newThread(resourceId, ctx.userId);
 
   // The three seed messages. The question text is the SERVER's (authoritative);
   // the answer/verdict/feedback are the student's own graded turn — faking them

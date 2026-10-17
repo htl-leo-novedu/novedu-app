@@ -208,7 +208,7 @@ describe("action failure paths (grader/agent never invoked)", () => {
     const result = await submitAnswer({ code: entry.code, questionId: "q1", answer: "4" });
     expect(result).toEqual({
       ok: false,
-      message: "This quiz's availability window has ended.",
+      message: "This activity's availability window has ended.",
     });
     expect(generate).not.toHaveBeenCalled();
   });
@@ -233,7 +233,7 @@ describe("action failure paths (grader/agent never invoked)", () => {
     });
     expect(expired).toEqual({
       ok: false,
-      message: "This quiz's availability window has ended.",
+      message: "This activity's availability window has ended.",
     });
 
     checkCode.mockResolvedValue({ ok: true, entry });
@@ -474,11 +474,17 @@ describe("startDiscussion photo seeds", () => {
   });
 });
 
-describe("quiz-verify stays free of 'use server'", () => {
-  it("never mints an endpoint that would return the evaluation prompts", () => {
+describe("the verification preambles stay free of 'use server'", () => {
+  it("quiz-verify never mints an endpoint that would return the evaluation prompts", () => {
     // `verifyAndLoadQuestion` returns the loaded Quiz, `evaluation` prompts and
     // all — a `"use server"` directive in that file would publish it.
     const source = readFileSync(join(__dirname, "quiz-verify.ts"), "utf8");
+    expect(source).not.toMatch(/^\s*["']use server["']/m);
+  });
+
+  it("the shared student gate never becomes a public endpoint", () => {
+    // `verifyStudentActivity` returns the code row (file URL, LLM override).
+    const source = readFileSync(join(__dirname, "activity-gate.ts"), "utf8");
     expect(source).not.toMatch(/^\s*["']use server["']/m);
   });
 });

@@ -70,26 +70,13 @@ describe("saveWriting — the anonymous rejection (defense in depth)", () => {
   });
 });
 
+// The session / code / module refusals and their texts are the shared student gate's
+// (lib/activity-gate.unit.test.ts); this proves the writing wiring.
 describe("saveWriting — the gates", () => {
-  it("rejects an invalid code before reading the session or the store", async () => {
-    checkCode.mockResolvedValue({ ok: false, reason: "unknown-code" });
-    const res = await saveWriting({ code: CODE, text: "x" });
-    expect(res.ok).toBe(false);
-    expect(getSession).not.toHaveBeenCalled();
-    expect(saveSubmission).not.toHaveBeenCalled();
-  });
-
-  it("rejects when there is no session user (no oid)", async () => {
-    getSession.mockResolvedValue(null);
-    const res = await saveWriting({ code: CODE, text: "x" });
-    expect(res.ok).toBe(false);
-    expect(saveSubmission).not.toHaveBeenCalled();
-  });
-
-  it("rejects a code that is not a writing activity", async () => {
+  it("refuses through the shared student gate, for writing codes only, saving nothing", async () => {
     checkCode.mockResolvedValue(validEntry({ module: "tutor" }));
     const res = await saveWriting({ code: CODE, text: "x" });
-    expect(res.ok).toBe(false);
+    expect(res).toEqual({ ok: false, message: "This code is not for this activity." });
     expect(saveSubmission).not.toHaveBeenCalled();
   });
 

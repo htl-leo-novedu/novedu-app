@@ -1,8 +1,8 @@
-import { type CodeRejection, checkCode, effectiveLlm } from "@/lib/code-store";
+import { verifyStudentActivity } from "@/lib/activity-gate";
+import { effectiveLlm } from "@/lib/code-store";
 import type { LlmProvider, ReasoningLevel } from "@/lib/llm/provider";
 import { loadQuiz } from "@/lib/quiz-fetch";
 import type { Quiz, QuizQuestion } from "@/lib/quiz-yaml";
-import { getSession } from "@/lib/session";
 
 // The shared quiz-verification preamble — SERVER-ONLY, but deliberately WITHOUT a
 // `"use server"` directive. It is imported by the `"use server"` file
@@ -31,34 +31,18 @@ export type LoadedQuestion = {
   llm: { provider: LlmProvider; model: string; reasoning?: ReasoningLevel };
 };
 
-export const CODE_REJECTION_MESSAGES: Record<CodeRejection, string> = {
-  "unknown-code": "This quiz code is not valid.",
-  "not-started": "This quiz's availability window has not started yet.",
-  expired: "This quiz's availability window has ended.",
-  "lookup-failed": "Quiz codes cannot be checked right now — try again in a moment.",
-};
-
 export type LoadedQuiz = Omit<LoadedQuestion, "question">;
 
-// The quiz-level preamble: authenticated session + valid, in-window quiz code +
-// the (server-authoritative) quiz re-loaded from the code's file. Returns a
-// ready-to-show message on any failure. `saveQuizResult` uses it directly (it
-// needs the attempt length, not a question).
+// The quiz-level preamble: the shared student gate (session + valid, in-window quiz
+// code, lib/activity-gate.ts) + the (server-authoritative) quiz re-loaded from the
+// code's file. Returns a ready-to-show message on any failure. `saveQuizResult` uses
+// it directly (it needs the attempt length, not a question).
 export async function verifyAndLoadQuiz(
   input: QuizCodeInput,
 ): Promise<LoadedQuiz | { ok: false; message: string }> {
-  const session = await getSession();
-  const userId = session?.user?.id;
-  if (!userId) return { ok: false, message: "Please sign in to continue." };
-
-  const verification = await checkCode(input.code);
-  if (!verification.ok) {
-    return { ok: false, message: CODE_REJECTION_MESSAGES[verification.reason] };
-  }
-  const { entry } = verification;
-  if (entry.module !== "quiz") {
-    return { ok: false, message: "This code is not a quiz." };
-  }
+  const gate = await verifyStudentActivity(input.code, "quiz");
+  if (!gate.ok) return gate;
+  const { userId, entry } = gate;
 
   const loaded = await loadQuiz(entry.fileUrl);
   if (!loaded.ok) return { ok: false, message: loaded.message };
