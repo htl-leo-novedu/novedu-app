@@ -4,7 +4,7 @@ description: Write a quiz file with open-ended questions and private grading gui
 sidebar:
   order: 4
 audience: teacher
-keywords: [quiz, questions, grading, evaluation, rubric, shuffle, skip question, live hint, immediate_feedback, photo answer, imageInput, discussion, fragments, quiz_files, compound quiz, final quiz, question_count, attempt length, eval, golden answers, test the grader]
+keywords: [quiz, questions, grading, evaluation, rubric, shuffle, skip question, photo answer, imageInput, discussion, fragments, quiz_files, compound quiz, final quiz, question_count, attempt length, eval, golden answers, test the grader]
 related:
   - 20-building-activities/01-handling-yaml
   - 20-building-activities/02-available-llms
@@ -59,7 +59,6 @@ Field by field:
 - **`title`** and **`description`** (optional): what students see on the welcome screen before the first question. Write the `description` for your students.
 - **`anonymous`** (optional, default `true`): by default a quiz is anonymous, so answers feed the statistics but aren't linked to a student. Set `anonymous: false` to attribute each attempt to the signed-in student. The setting is frozen onto a code when you create one; editing the file later doesn't change a live code.
 - **`shuffle`** (optional, default `true`): questions appear in a random order per attempt. Set `shuffle: false` to keep your authored order.
-- **`immediate_feedback`** (optional, default `true`): while a student types an answer, a small label beside the answer box shows where that answer currently stands. Set `immediate_feedback: false` to switch the hint off for this quiz; see "The live hint while typing" below.
 - **`llm.model`** (required): the model that grades the answers and drives the discussion chat. You can also set an optional `llm.provider` (the provider decides where the AI runs) and an optional `llm.reasoning` level (how hard the model thinks before it grades); the create-code form can override all three per code.
 - **`question_count`** (optional): how many questions one attempt asks. Leave it out to ask every question exactly once; see "How many questions one attempt asks" below.
 - **`questions`** (required, unless the quiz pulls its questions from other quiz files with `quiz_files`): each question needs an `id` (unique within the quiz), a `question`, and an `evaluation`; an optional `title` labels it in the statistics and progress display.
@@ -113,29 +112,6 @@ Students see the chosen length in the progress display ("Question 3 of 30"). Two
 - `question_count` shapes one attempt in the student's browser; it is not an exam lock. Reloading the page starts a fresh attempt, and answers are not stored.
 - Skipping never changes the length of an attempt: a skipped question returns later instead of being replaced by a new one.
 - A repeated question is simply graded again, independently of the earlier answer.
-
-## The live hint while typing
-
-While a student types an answer, a small coloured label with an icon appears beside the **Your answer** label and shows where that answer currently stands:
-
-- Green, with a tick: **Looks correct**.
-- Amber, with a minus: **Partly there**.
-- Red, with a cross: **Not yet**.
-- Grey, with a question mark: **Unsure**, when the check cannot tell.
-
-The hint appears once the student pauses typing for a moment, and it fades while they carry on typing, because it then describes text that has already moved on. Pointing at it shows the same wording as a tooltip, including the sentence that this is a live hint, not the final verdict.
-
-The live hint is a quick check, never the grade. Nothing about it is stored, it never shows written feedback, and it does not change what a student gets on **Submit**: the verdict and the feedback still come from your `evaluation` guidance when the answer is submitted. Once a student submits, the hint disappears and the verdict card takes over. The hint reads only what the student has typed, so photos attached to an answer are not part of it.
-
-The live hint appears only when your school's Novedu server has the feature switched on. If it is switched off there, students never see the hint and `immediate_feedback` changes nothing.
-
-Set `immediate_feedback: false` to switch the hint off for one quiz:
-
-```yaml
-immediate_feedback: false
-```
-
-That is worth doing for an exam or a test, where students should commit to an answer instead of tuning it until the hint turns green.
 
 ## Photo answers
 

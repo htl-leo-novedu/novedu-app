@@ -255,11 +255,16 @@ semantics: the web form's `createCodeAction` (`lib/code-actions.ts`,
 The **LLM override** section is two free-text fields (provider + model) plus a
 **reasoning** select ("Provider default" — no level sent — + the
 `REASONING_LEVELS`, of which `none` explicitly sends `reasoning_effort: "none"`)
-and
-preset buttons (`LLM_OVERRIDE_PRESETS`, `lib/llm/presets.ts` — the built-in
-SCCH/Gemma-4, Azure-Foundry/gpt-5.4-mini, Azure-Foundry/gpt-5.6-terra (which
-also fills reasoning `low`), SCCH/Qwen-3.8-27B and OpenRouter/GLM-5.3-Flash
-fills; a Clear button empties all three).
+and a **quick-pick** row: a select ("LLM quick pick", no `name`, so it is never
+submitted) over `LLM_OVERRIDE_PRESETS` (`lib/llm/presets.ts` — OpenRouter
+`openai/gpt-6-luna`, `openai/gpt-5.6-terra` and `openai/gpt-6.1-sol`, each at
+reasoning `medium`, then SCCH Gemma 4 and SCCH Qwen 3.8 27B with no level), an
+**Apply** button and a **Clear** button. Choosing a pick changes nothing; Apply
+(disabled until a pick is chosen) fills all three fields — a pick without a level
+puts reasoning back on "Provider default" — and they stay free text afterwards;
+Clear empties all three. The list is a convenience, never an allowlist: every
+pick is offered whatever the server has configured, and the save-time gate below
+refuses an unconfigured provider.
 Left blank, the code serves the activity YAML's `llm:` values. Filled, the
 override replaces the whole `llm:` block for every request under the code (the
 pair is both-or-nothing and a reasoning level requires it: the server rejects a
@@ -533,8 +538,7 @@ in-page discussion live in `app/[code]/_quiz/`.
 
 - **Quiz YAML** (sample: `activities/examples/sorting-algorithms/sorting-quiz.yaml`, parsed leniently by `parseQuiz` in
   `lib/quiz-yaml.ts`): `id`, `name`, optional `title`/`description` (student
-  welcome), `anonymous` (default `true`), `shuffle` (default `true`),
-  `immediate_feedback` (default `true` — the live pre-check hint, below), optional
+  welcome), `anonymous` (default `true`), `shuffle` (default `true`), optional
   **`question_count`** (attempt length, below), `llm.model`
   (grades AND drives the discussion) with optional `llm.provider` (missing ⇒ SCCH;
   every module's YAML has it — docs/ai-models.md) and optional `llm.imageInput`
@@ -690,79 +694,6 @@ in-page discussion live in `app/[code]/_quiz/`.
   `lib/quiz-actions.unit.test.ts` + `tests/component/quiz-runner.browser.test.tsx`;
   the real vision round-trip is `e2e/quiz-image.spec.ts` (`@live-llm`,
   CI-excluded).
-- **Immediate feedback (pre-check)** — while a student types, a small pill
-  (icon + label) beside the "Your answer" label says where the answer currently
-  stands. A hint, never
-  the grade: it is produced by a separate classifier (**Jev**, behind
-  `lib/llm/jev-client.ts` — `docs/ai-models.md`) that returns one enum and no
-  prose, so it is neither the grader nor an oracle for it.
-  - **Two-level gate.** The SERVER gate is `immediateFeedbackConfigured()`
-    (`lib/quiz-immediate-feedback.ts`, server-only and app-only like
-    `lib/llm/availability.ts`): `QUIZ_IMMEDIATE_FEEDBACK` equal to a
-    case-insensitive, trimmed `true` **and** `openrouterConfigured()` — Jev rides
-    the OpenRouter key. Anything else is off. Flag on without the key: exactly one
-    boot warning from `instrumentation.ts`, then off. The AUTHOR's half is the
-    top-level quiz YAML field **`immediate_feedback`** (default `true`; set
-    `false` for exams). On an INCLUDED quiz it is ignored like every other
-    include-level field — the compound quiz's own value governs.
-  - **Effective flag** = gate AND `quiz.immediateFeedback`, computed in
-    `app/[code]/render-quiz.tsx` and handed to `toPublicQuiz(quiz, {
-    immediateFeedback })` — the projection takes it as an option rather than
-    reading env, so it stays pure — and lands on `QuizPublic.immediateFeedback`.
-    That copy only decides whether the runner asks; it is never the authorization.
-  - **`precheckAnswer`** (`lib/quiz-actions.ts`, beside `submitAnswer` — never in
-    `lib/quiz-verify.ts`) checks in this order, cheap before expensive: trim →
-    empty or longer than `PRECHECK_MAX_ANSWER_CHARS` → `{ ok: false }`;
-    `immediateFeedbackConfigured()` (a pure env read, so it sits BEFORE any I/O —
-    with the feature off an unsolicited call costs nothing); `verifyAndLoadQuestion`
-    (session, `checkCode()`, module, quiz reload, question lookup — its rejection
-    MESSAGE is dropped); `ctx.quiz.immediateFeedback`; only then `askJev`. The
-    request is built by the pure, client-safe **`lib/quiz-precheck.ts`**: state =
-    the question text, `grading_notes` (the question's `sourcePreamble` +
-    `evaluation`; the quiz-level `instructionsPreamble` is deliberately NOT sent)
-    and the trimmed answer, plus one Choice question keyed by the `QuizVerdict`
-    vocabulary. Photos are not part of it — Jev is text-only, so the hint judges
-    the typed text alone.
-  - **Hint enum** `PrecheckVerdict = correct | partial | incorrect | unsure`
-    (`lib/quiz-types.ts`, client-safe). `mapPrecheckAnswer` degrades to `unsure`
-    below `PRECHECK_MIN_CONFIDENCE`; the confidence itself never leaves the server.
-    The indicator (`app/[code]/_quiz/precheck-indicator.tsx`) gives each state a
-    distinct SHAPE as well as a colour — spinner while checking, green
-    circle-check / amber circle-minus / red circle-x / grey question mark, dimmed
-    while stale — with the same sentence in `title` and `aria-label`: *"Live hint:
-    … — a quick check while you type, not the final verdict."*
-  - **Fail quiet, always.** Every rejection — empty text, an expired code, the gate
-    off, a Jev timeout or outage — is the same bare `{ ok: false }`; the action
-    never throws, so a classifier problem cannot surface as a server-action error
-    mid-quiz. It persists NOTHING (no `quiz_answers`, no Mastra, no thread) and is
-    **not metered** (`docs/usage-metering.md`): one content-free
-    `emitEvent("quiz.precheck", { verdict, latencyMs, code })` on success, and
-    `recordError(error, { "novedu.area": "quiz-precheck", stage: "jev" })` on a
-    failure — ids and durations only.
-  - **Constants** (`lib/quiz-precheck.ts`, shared by both sides so the rules cannot
-    drift): `PRECHECK_DEBOUNCE_MS` 1000, `PRECHECK_MIN_CONFIDENCE` 0.5,
-    `PRECHECK_MAX_ANSWER_CHARS` 4000.
-  - **The hook** `useAnswerPrecheck` (`app/[code]/_quiz/use-answer-precheck.ts`)
-    asks only after the text has been quiet for a full debounce window; dims the
-    current hint the moment the text moves on; shows the spinner only when there is
-    no hint to keep; restores the last hint without a call when the trimmed text is
-    unchanged; resets on a question/slot change; and stays **suspended while the
-    answer is being graded AND while its verdict card is on screen** — a hint is
-    never shown beside a verdict. Each call carries a sequence number, so a
-    response that is no longer current is **DROPPED, not cancelled**: a server
-    action has no cancellation channel, so the Jev request still completes
-    server-side and its answer is discarded.
-  - **Abuse surface, accepted for this iteration:** a signed-in student can call
-    the action at will for any active quiz code — the debounce is a client
-    courtesy, not a limit. At roughly $0.00003 per call, with OpenRouter rate
-    limiting upstream, there is no server-side limiter.
-  - `evaluation` **still never leaves the server**: it enters Jev's state and comes
-    back as one enum. Covered by `lib/quiz-precheck.unit.test.ts` (request shape
-    and the module's purity), `lib/quiz-actions.unit.test.ts` (the check order,
-    fail-quiet, no answer text in telemetry, and the standing "`lib/quiz-verify.ts`
-    carries no `use server`" guard) and
-    `tests/component/quiz-runner.browser.test.tsx` (debounce, dimming, sequencing,
-    suspension, reset).
 - **`evaluation` never reaches the browser.** `toPublicQuiz` strips it (and
   `model`, `anonymous`, `discussion`) before anything reaches the client; the
   runner ships only the `QuizPublic` projection. Verdict vocabulary is the internal
@@ -844,8 +775,12 @@ The overall approach (layers, the `@live` boundary, the no-infra patterns) is in
   persistence + `effectiveLlm` (`lib/code-store.unit.test.ts`), the save-time
   availability gate (`lib/code-service.unit.test.ts`), each apply point (the
   module descriptor tests, `app/mastra/tutor-agent.unit.test.ts`,
-  `lib/quiz-actions.unit.test.ts`, the coding route test), and the form round-trip
-  in the `@live-db` CRUD spec (preset fill → stored → shown → cleared).
+  `lib/quiz-actions.unit.test.ts`, the coding route test), the quick-pick list
+  (`lib/llm/presets.unit.test.ts`) and its Apply/Clear behaviour in the form
+  (`tests/component/code-form.browser.test.tsx`), the create page's untagged
+  smoke (`e2e/permissions.spec.ts`, "the New Code page is accessible" — no page
+  or console errors, quick pick shown, Apply disabled), and the form round-trip
+  in the `@live-db` CRUD spec (quick-pick apply → stored → shown → cleared).
 - The chat flows **through codes** live in `e2e/quiz.spec.ts`,
   `e2e/tutor-chat-reply.spec.ts` and `e2e/writing.spec.ts` — `@live-db` against the
   fake LLM in CI, except the per-provider tutor smokes (`@live-llm`, local-only).

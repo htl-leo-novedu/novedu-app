@@ -273,7 +273,7 @@ npm run cli --silent -- eval "./part-1/**/*.eval.yaml"                       # q
 npm run cli --silent -- eval ./x.eval.yaml --repeats 3                       # stability check
 npm run cli --silent -- eval ./x.eval.yaml --no-judge-feedback               # verdicts only, half the calls
 npm run cli --silent -- eval ./x.eval.yaml \
-  --judge-llm-provider "Azure Foundry" --judge-llm-model gpt-5.6-terra \
+  --judge-llm-provider OpenRouter --judge-llm-model openai/gpt-6.1-sol \
   --judge-llm-reasoning high                                                 # strong judge (recommended)
 npm run cli --silent -- eval ./x.eval.yaml --json --out eval-report.json     # for CI / drilling in
 npm run cli --silent -- eval ./x.eval.yaml --report eval-report.md           # readable report

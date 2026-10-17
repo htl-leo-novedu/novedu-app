@@ -104,7 +104,9 @@ id: simple-math-tutor
 name: "Simple Math Tutor"
 description: "A minimal, valid example tutor."
 llm:
-  model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
+  model: openai/gpt-6-luna
+  provider: OpenRouter
+  reasoning: medium
 prompt:
   fragment_files:
     - id: simple # the alias (no dots) you use in markers
@@ -253,9 +255,11 @@ partner), `Azure Foundry` or `OpenRouter`. With `provider: Azure Foundry` the
 tutor is served from an Azure OpenAI deployment and `llm.model` is the
 **deployment name** (e.g. `gpt-5.4-mini`) rather than an SCCH model id; with
 `provider: OpenRouter` it is served through OpenRouter and `llm.model` is its
-namespaced routing key (e.g. `z-ai/glm-5.3-flash`). Both are only usable if the
+namespaced routing key (e.g. `openai/gpt-6-luna`). Both are only usable if the
 server is configured for them — otherwise the activity is rejected with a
 readable reason.
+A server may also accept only some OpenRouter models: any other one fails when a
+student uses the activity, just like a wrong model name.
 
 The `llm:` values are the **default**: when a teacher mints a code for this
 activity, the code's create/edit form can **override the whole `llm:` block per
@@ -264,8 +268,8 @@ YAML file itself stays unchanged.
 
 ```yaml
 llm:
-  model: gpt-5.4-mini
-  provider: Azure Foundry
+  model: openai/gpt-6-luna
+  provider: OpenRouter
 ```
 
 ### `llm.reasoning`
@@ -286,9 +290,9 @@ out: left out, the model keeps its own default.
 
 ```yaml
 llm:
-  model: gpt-5.6-terra
-  provider: Azure Foundry
-  reasoning: low
+  model: openai/gpt-6-luna
+  provider: OpenRouter
+  reasoning: medium
 ```
 
 ### `tools`

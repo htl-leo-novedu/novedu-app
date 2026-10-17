@@ -22,19 +22,6 @@ export function verdictLabel(verdict: QuizVerdict): string {
   }
 }
 
-/**
- * The live pre-check hint shown while a student types (docs/codes.md, "Immediate
- * feedback"): the grader's vocabulary plus `unsure` for a low-confidence
- * classification. Distinct from the graded `QuizVerdict` by construction — a hint
- * is never a verdict.
- */
-export type PrecheckVerdict = QuizVerdict | "unsure";
-
-/** What `precheckAnswer` returns to the browser — the hint alone, never a confidence. */
-export interface PrecheckHint {
-  verdict: PrecheckVerdict;
-}
-
 /** A single question as shipped to the browser — NEVER carries the `evaluation` prompt. */
 export interface QuizQuestionPublic {
   id: string;
@@ -68,13 +55,6 @@ export interface QuizPublic {
    * grading stays per-question and stateless.
    */
   questionCount: number;
-  /**
-   * Whether the runner shows the live pre-check hint while typing — the EFFECTIVE
-   * flag (server feature gate AND the quiz's `immediate_feedback`), computed
-   * server-side and handed to `toPublicQuiz`. Carries no secret; `precheckAnswer`
-   * re-derives it on every call and never trusts this copy.
-   */
-  immediateFeedback: boolean;
   questions: QuizQuestionPublic[];
 }
 

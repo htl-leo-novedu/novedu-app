@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import type { LlmProvider } from "@/lib/llm/provider";
 import type { ModelTokens } from "@/lib/usage-cost";
 import {
   bucketKeyOf,
@@ -217,16 +218,18 @@ export async function getTokensByProvider(opts: {
 }
 
 /**
- * SCCH tokens per MODEL over the window, split into new input, cached input and
- * output — the input of the cost estimate (lib/usage-cost.ts). Filtered on the
- * app-level provider label the recorder stamps (`'SCCH'`, docs/usage-metering.md);
- * rows with a NULL provider stay out (negligible, and not attributable). A NULL
- * model comes back as `null`. Zero-token rows are dropped. Returns `undefined` on
- * a DB error. Never throws.
+ * One provider's tokens per MODEL over the window, split into new input, cached
+ * input and output — the input of the cost cards (lib/usage-cost.ts): SCCH for the
+ * market-value estimate, OpenRouter for the spend estimate. Filtered on the
+ * app-level provider label the recorder stamps (docs/usage-metering.md); rows with
+ * a NULL provider stay out (negligible, and not attributable). A NULL model comes
+ * back as `null`. Zero-token rows are dropped. Returns `undefined` on a DB error.
+ * Never throws.
  */
-export async function getScchTokensByModel(opts: {
+export async function getModelTokensForProvider(opts: {
   range: UsageRange;
   now: Date;
+  provider: LlmProvider;
 }): Promise<ModelTokens[] | undefined> {
   const { start } = resolveRange(opts.range, opts.now);
   try {
@@ -241,7 +244,7 @@ export async function getScchTokensByModel(opts: {
              SUM(u.input_tokens_cached) AS "inputCached",
              SUM(u.output_tokens) AS output
       FROM novedu_usage_by_code u
-      WHERE u.hour >= ${start} AND u.provider = 'SCCH'
+      WHERE u.hour >= ${start} AND u.provider = ${opts.provider}
       GROUP BY u.model
     `);
     return res.rows
@@ -253,7 +256,7 @@ export async function getScchTokensByModel(opts: {
       }))
       .filter((r) => r.inputNew + r.inputCached + r.output > 0);
   } catch (error) {
-    console.error("usage-stats-store: SCCH tokens by model failed", error);
+    console.error(`usage-stats-store: ${opts.provider} tokens by model failed`, error);
     return undefined;
   }
 }

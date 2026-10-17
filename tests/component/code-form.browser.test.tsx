@@ -181,3 +181,72 @@ test("edit: renders the server action's error message", async () => {
   await screen.getByRole("button", { name: "Save changes" }).click();
   await expect.element(screen.getByText(/no longer exists/i)).toBeVisible();
 });
+
+// The LLM override's quick picks: a dropdown + Apply that fills the free-text
+// pair and the reasoning select, which stay editable (docs/codes.md).
+test("override: choosing a quick pick fills nothing until Apply, which fills all three fields", async () => {
+  const screen = await render(<CodeForm mode="create" />);
+  const provider = screen.getByLabelText(/LLM provider override/);
+  const model = screen.getByLabelText(/LLM model override/);
+  const reasoning = screen.getByLabelText(/Reasoning/);
+  const quickPick = screen.getByLabelText("LLM quick pick", { exact: true });
+  const apply = screen.getByRole("button", { name: "Apply LLM quick pick" });
+
+  await expect.element(apply).toBeDisabled();
+
+  await quickPick.selectOptions("OpenRouter · GPT-6 Luna (medium)");
+  expect(inputValue(provider)).toBe("");
+  expect(inputValue(model)).toBe("");
+  expect(inputValue(reasoning)).toBe("");
+
+  await apply.click();
+  expect(inputValue(provider)).toBe("OpenRouter");
+  expect(inputValue(model)).toBe("openai/gpt-6-luna");
+  expect(inputValue(reasoning)).toBe("medium");
+  // Apply resets the dropdown: it never claims a pick the fields may no longer hold.
+  expect(inputValue(quickPick)).toBe("");
+  await expect.element(apply).toBeDisabled();
+
+  // The fields stay free text after Apply.
+  await model.fill("openai/gpt-6.1-sol");
+  expect(inputValue(model)).toBe("openai/gpt-6.1-sol");
+});
+
+test("override: an SCCH quick pick resets reasoning to Provider default; Clear empties all three", async () => {
+  created.length = 0;
+  const screen = await render(<CodeForm mode="create" />);
+  const quickPick = screen.getByLabelText("LLM quick pick", { exact: true });
+  const apply = screen.getByRole("button", { name: "Apply LLM quick pick" });
+  const reasoning = screen.getByLabelText(/Reasoning/);
+
+  await quickPick.selectOptions("OpenRouter · GPT-5.6 Terra (medium)");
+  await apply.click();
+  expect(inputValue(reasoning)).toBe("medium");
+
+  await quickPick.selectOptions("SCCH · Gemma 4");
+  await apply.click();
+  expect(inputValue(screen.getByLabelText(/LLM provider override/))).toBe("SCCH");
+  expect(inputValue(screen.getByLabelText(/LLM model override/))).toBe(
+    "RedHatAI/gemma-4-31B-it-FP8-Dynamic",
+  );
+  expect(inputValue(reasoning)).toBe("");
+
+  // The quick pick itself is never submitted — only the override fields are.
+  await screen.getByLabelText("Activity YAML URL").fill(FILE_URL);
+  await screen.getByRole("button", { name: "Create code" }).click();
+  await vi.waitFor(() => expect(created).toHaveLength(1));
+  const formData = created[0];
+  if (!formData) throw new Error("no FormData captured");
+  expect(formData.get("llmProvider")).toBe("SCCH");
+  expect(formData.get("llmModel")).toBe("RedHatAI/gemma-4-31B-it-FP8-Dynamic");
+  expect(formData.get("llmReasoning")).toBe("");
+  expect([...formData.values()]).not.toContain("SCCH · Gemma 4");
+
+  // Clear also resets a chosen but not yet applied pick.
+  await quickPick.selectOptions("SCCH · Qwen 3.8 27B");
+  await screen.getByRole("button", { name: "Clear LLM override" }).click();
+  expect(inputValue(quickPick)).toBe("");
+  expect(inputValue(screen.getByLabelText(/LLM provider override/))).toBe("");
+  expect(inputValue(screen.getByLabelText(/LLM model override/))).toBe("");
+  expect(inputValue(reasoning)).toBe("");
+});

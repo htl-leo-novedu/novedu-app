@@ -83,14 +83,19 @@ export function CodeForm({
   const [end, setEnd] = useState(
     initialEndSeconds ? unixSecondsToDatetimeLocal(initialEndSeconds) : "",
   );
-  // The LLM override pair — controlled so the preset buttons can fill/clear both
+  // The LLM override pair — controlled so a quick pick can fill/clear both
   // fields at once. Free text; the server action validates the provider.
   const [llmProvider, setLlmProvider] = useState(initialLlmProvider);
   const [llmModel, setLlmModel] = useState(initialLlmModel);
   // The pair's optional reasoning level — controlled for the same reason (a
-  // preset fills or clears it along with the pair). "" means "provider default"
-  // (the parameter is then not sent at all).
+  // quick pick fills or clears it along with the pair). "" means "provider
+  // default" (the parameter is then not sent at all).
   const [llmReasoning, setLlmReasoning] = useState(initialLlmReasoning);
+  // The quick pick chosen in the dropdown (its label; "" = none). Choosing one
+  // changes nothing until Apply; Apply and Clear reset it, so the dropdown never
+  // claims a pick the fields no longer hold.
+  const [quickPick, setQuickPick] = useState("");
+  const chosenPreset = LLM_OVERRIDE_PRESETS.find((preset) => preset.label === quickPick);
 
   // "+1h"/"+1d"/"+1w": extend the until time if set; otherwise start the window
   // length from the from time (or from now as a last resort).
@@ -211,7 +216,7 @@ export function CodeForm({
                 className="font-mono"
                 value={llmModel}
                 onChange={(event) => setLlmModel(event.target.value)}
-                placeholder="e.g. gpt-5.4-mini"
+                placeholder="e.g. openai/gpt-6-luna"
                 disabled={pending}
               />
             </Field>
@@ -234,31 +239,47 @@ export function CodeForm({
               </Select>
             </Field>
           </div>
+          {/* Quick picks: a convenience, never an allowlist. The select has no
+              `name`, so it is never submitted — only the fields above are. */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {LLM_OVERRIDE_PRESETS.map((preset) => (
-              <Button
-                key={preset.label}
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setLlmProvider(preset.provider);
-                  setLlmModel(preset.model);
-                  // A preset fills the WHOLE override — a preset without a level
-                  // clears one the teacher had picked.
-                  setLlmReasoning(preset.reasoning ?? "");
-                }}
-                disabled={pending}
-              >
-                {preset.label}
-              </Button>
-            ))}
+            <Select
+              aria-label="LLM quick pick"
+              className="w-80 max-w-full font-mono"
+              value={quickPick}
+              onChange={(event) => setQuickPick(event.target.value)}
+              disabled={pending}
+            >
+              <option value="">Quick pick…</option>
+              {LLM_OVERRIDE_PRESETS.map((preset) => (
+                <option key={preset.label} value={preset.label}>
+                  {preset.label}
+                </option>
+              ))}
+            </Select>
             <Button
               variant="outline"
-              size="sm"
+              onClick={() => {
+                if (!chosenPreset) return;
+                setLlmProvider(chosenPreset.provider);
+                setLlmModel(chosenPreset.model);
+                // A quick pick fills the WHOLE override — one without a level
+                // clears one the teacher had picked.
+                setLlmReasoning(chosenPreset.reasoning ?? "");
+                setQuickPick("");
+              }}
+              disabled={pending || !chosenPreset}
+              title="Fill the override fields with the chosen quick pick"
+              aria-label="Apply LLM quick pick"
+            >
+              Apply
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => {
                 setLlmProvider("");
                 setLlmModel("");
                 setLlmReasoning("");
+                setQuickPick("");
               }}
               disabled={pending || (!llmProvider && !llmModel && !llmReasoning)}
               title="Use the activity's LLM settings"

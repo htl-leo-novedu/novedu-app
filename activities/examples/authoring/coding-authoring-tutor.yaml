@@ -64,11 +64,13 @@ prompt:
     name: "My Coding Activity"  # optional label
     title: "Shown on /<code>"   # optional; student-facing label on the connection page
     llm:
-      model: RedHatAI/gemma-4-31B-it-FP8-Dynamic   # required; pinned server-side
-      provider: SCCH            # optional; one of "SCCH" (default), "Azure Foundry",
+      model: openai/gpt-6-luna  # required; pinned server-side
+      provider: OpenRouter      # optional; one of "SCCH" (default), "Azure Foundry",
                                 # "OpenRouter". Azure Foundry serves an Azure OpenAI
                                 # deployment (model = the deployment name); OpenRouter
-                                # takes a namespaced id like z-ai/glm-5.3-flash
+                                # takes a namespaced id like openai/gpt-6-luna
+      reasoning: medium         # optional; none, minimal, low, medium, high or xhigh;
+                                # omit to leave the effort to the model
     instructions: |             # required; the coding agent's system prompt. SERVER-ONLY
       ...
     ```

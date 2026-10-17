@@ -48,7 +48,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.setTimeout(180_000);
 
 /** The OpenRouter model the other `@live-llm` OpenRouter legs pin. */
-const JUDGE_LLM = { provider: "OpenRouter", model: "z-ai/glm-5.3-flash" };
+const JUDGE_LLM = { provider: "OpenRouter", model: "openai/gpt-6-luna" };
 
 /**
  * The probe set as DATA — one list per eval kind, both fed to the same assertion loop, so

@@ -21,7 +21,7 @@ prose carries everything an editor needs.
 - The **`00-introduction/**` chapters are concept level**: no YAML field names
   and no configuration steps, those belong to the later chapters.
 
-## 50-develop-and-evaluate (both chapters)
+## 50-develop-and-evaluate/01-trying-novedu-locally and 02-local-development
 
 - Readers: an evaluator (a teacher or school IT person trying Novedu before a
   school sets it up) and a contributor working on the code. They run commands,
@@ -73,6 +73,43 @@ prose carries everything an editor needs.
 - Reopening earlier conversations exists ONLY in per-user tutors, and only within
   the same tutor (code): a student never sees another code's conversations or
   anyone else's. Reopening adds no conversation to the statistics.
+
+## 50-develop-and-evaluate/03-azure-models-with-a-budget
+
+- Reader: the person who runs a school's Novedu (school IT), comfortable in the
+  Azure portal and with server secrets, who wants GPT models from the school's
+  own Azure subscription with a spending limit that actually stops requests.
+- Generic for any school: "if your school needs …", never "at our school we …".
+  No HTL-, stage- or resource-specific names (workspace, resource, key names,
+  amounts); the three GPT model ids appear only as examples, matching the
+  create-code quick picks.
+- Why OpenRouter in front of Azure: an Azure budget only alerts, it never stops
+  requests; the OpenRouter workspace budget refuses requests once spent. The
+  direct Azure Foundry provider has no spending limit of its own.
+- OpenRouter facts that are easy to get wrong (check its BYOK, guardrails and
+  spend-controls guides before editing; its labels change):
+  - BYOK for Azure is an **API key** only, no Entra ID / service principal.
+  - Without **Include BYOK spend** the budget never counts BYOK traffic, so it
+    would never stop anything; BYOK spend is counted at OpenRouter's recorded
+    price, not the Azure invoice.
+  - Without "never use shared capacity", OpenRouter may answer from its own
+    capacity, paid from OpenRouter credit.
+  - The workspace budget is ONE pool for all keys; a per-key budget needs a
+    guardrail assigned to that key. Allowlists of combined guardrails intersect.
+  - The allowlist stores dated model versions; an alias moving to a newer
+    version can be refused until the list (and the Azure deployment) follow.
+  - BYOK carries an OpenRouter fee taken from OpenRouter credit. No prices,
+    percentages or allowances as fixed numbers beyond "a percentage of list
+    price above a monthly free allowance".
+- Novedu side: the only setting is `OPENROUTER_API_KEY`, one key per server.
+  Health's OpenRouter line proves only that the key is accepted, not the
+  allowlist or BYOK routing; the check step proves those with a real chat, the
+  OpenRouter activity log, and a refused off-list model.
+- The quoted error texts are the upstream-error messages the CLI's `eval` runs
+  show; a failed CHAT turn does not show them, so the chat steps only say that
+  no answer comes back. OpenRouter documents guardrail refusals (a used-up
+  budget included) as 403, which Novedu words as "refused the request …
+  spending limit (budget)"; an off-list model answered 404 when tested.
 
 ## 00-introduction/07-environments
 
@@ -164,14 +201,6 @@ prose carries everything an editor needs.
   that just happens, never as a step anyone configures. HEIC is the one format
   worth naming: it is an iPhone default and the only common case that can fail
   outright.
-- The live hint while typing is **never the grade**, and the chapter must never let
-  it read as one: it is one icon plus a tooltip, it produces no written feedback,
-  nothing about it is stored, and the verdict still comes from `evaluation` on
-  Submit. It also reads only the typed text, so it says nothing about a photo.
-- Never name the classifier behind the hint, the AI service it runs on, or the
-  server setting that enables it. A teacher's whole view of the switch is "your
-  school's server has this turned on, or it doesn't"; `immediate_feedback` only
-  ever turns it off for one quiz, it can never turn it on.
 
 ## 20-building-activities/07-fragments
 

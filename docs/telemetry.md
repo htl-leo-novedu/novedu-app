@@ -216,10 +216,7 @@ Both backends run the HTTP and `pg` instrumentations; the standard OTLP path add
   `http.client.request.duration` (seconds; the stable semantic conventions).
 - **Exceptions** recorded by `recordError()` (including Next request errors) and
   **application events** emitted through the logs API. Both stay content-free by
-  the invariant below: an event carries ids, counts and durations only — e.g.
-  `quiz.precheck` (`{ verdict, latencyMs, code }`, the quiz pre-check hint,
-  `docs/codes.md`), whose classifier failures are reported under the
-  `"novedu.area": "quiz-precheck"` attribute and never carry the student's answer.
+  the invariant below: an event carries ids, counts and durations only.
 
 The baseline is useful signal coverage, not identical Azure and Aspire metric
 names, tables, or dashboards. Full prompt/agent tracing and capture of console

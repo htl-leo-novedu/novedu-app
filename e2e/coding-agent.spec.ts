@@ -123,7 +123,7 @@ test.describe("via OpenRouter", () => {
     const code = await mintCode({
       module: "coding",
       file: LIVE_CODING_URL,
-      llm: { provider: "OpenRouter", model: "z-ai/glm-5.3-flash" },
+      llm: { provider: "OpenRouter", model: "openai/gpt-6-luna" },
       note: "e2e pi agent (OpenRouter)",
     });
     const apiKey = await mintCodingKey({ code });
@@ -137,6 +137,6 @@ test.describe("via OpenRouter", () => {
     // `gemma…` — the test must fail loudly, not pass on the wrong upstream.
     const served = await fetchServedModel(apiKey);
     await attachServedCompletion(served.raw);
-    expect(served.model.toLowerCase()).toContain("glm-5.3-flash");
+    expect(served.model.toLowerCase()).toContain("gpt-6-luna");
   });
 });

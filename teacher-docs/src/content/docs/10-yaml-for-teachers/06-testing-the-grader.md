@@ -134,7 +134,7 @@ npx @novedu/cli eval ./sorting-quiz.eval.yaml --no-judge-feedback
 
 # Let a stronger model do the judging (recommended): both flags, always together
 npx @novedu/cli eval ./sorting-quiz.eval.yaml \
-  --judge-llm-provider "Azure Foundry" --judge-llm-model gpt-5.6-terra
+  --judge-llm-provider OpenRouter --judge-llm-model openai/gpt-6.1-sol
 
 # Let the judge think harder: this one works on its own, no pair needed
 npx @novedu/cli eval ./sorting-quiz.eval.yaml --judge-llm-reasoning high
@@ -159,7 +159,7 @@ Each answer is graded three times and the **majority** mark counts, so one odd r
 You can grade the same golden answers with a different model, without touching the quiz:
 
 ```bash
-npx @novedu/cli eval ./sorting-quiz.eval.yaml --llm-provider "Azure Foundry" --llm-model gpt-5-mini
+npx @novedu/cli eval ./sorting-quiz.eval.yaml --llm-provider OpenRouter --llm-model openai/gpt-6-luna
 ```
 
 The two model flags always go together. Run the eval once without them and once with, then compare the two reports: same criteria, same answers, different model.
@@ -174,7 +174,7 @@ There's one trap worth knowing. The model pair replaces your quiz's whole `llm:`
 
 ```bash
 npx @novedu/cli eval ./sorting-quiz.eval.yaml \
-  --llm-provider "Azure Foundry" --llm-model gpt-5.6-terra --llm-reasoning low
+  --llm-provider OpenRouter --llm-model openai/gpt-5.6-terra --llm-reasoning low
 ```
 
 All of this changes only the run itself. Your quiz file keeps its own settings, and any code you've already handed out is unaffected.

@@ -74,12 +74,13 @@ _Using Novedu together with AI assistants and agents: the CLI skill, and the gui
 | 03 | Learning from real conversations | `cli/README.md` (`codes export`), `.agents/skills/novedu-tutor-cli/SKILL.md` (the improve-from-conversations job), `docs/codes.md` |
 
 ## 50: Develop and evaluate
-_Running Novedu yourself: a local Novedu for evaluators, and a development setup for contributors. Written for a technical reader, so commands, settings, and file names are in scope here (see `docs/teacher-docs-notes.md`)._
+_Running Novedu yourself: a local Novedu for evaluators, a development setup for contributors, and server setups for the people who run a school's Novedu. Written for a technical reader, so commands, settings, and file names are in scope here (see `docs/teacher-docs-notes.md`)._
 
 | # | Chapter | Where to look (hints) |
 | --- | --- | --- |
 | 01 | Trying Novedu locally | `compose.yaml`, `README.md` ("Try Novedu locally"), `docs/auth.md` ("Demo mode"), `docs/testing.md` ("Fake LLM"), `lib/llm/presets.ts`, `https://openrouter.ai/docs` |
 | 02 | Local development | `README.md` (prerequisites, "Demo login and the `:demo` image", scripts), `docs/testing.md` (scripts, "Demo login `@demo`", CI), `.github/workflows/qa.yml` (what CI runs), `playwright.config.ts` |
+| 03 | Azure AI models with a hard budget | `docs/azure-runtime-env.md` (*OpenRouter*: the workspace, BYOK, guardrail, budget, per-stage keys), `docs/ai-models.md` (OpenRouter provider, the allowlist paragraph), `lib/llm/upstream-error.ts` (the messages teachers see), `lib/health.ts` (the OpenRouter probe), `lib/llm/presets.ts`, `https://openrouter.ai/docs/guides/overview/auth/byok`, `https://openrouter.ai/docs/guides/features/guardrails`, `https://openrouter.ai/docs/guides/best-practices/spend-controls` |
 
 > Scope reminder for every chapter: the "Where to look" entries are engineer
 > references. Document only teacher-facing behavior, not how the app works inside

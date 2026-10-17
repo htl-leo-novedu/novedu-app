@@ -113,7 +113,7 @@ OpenRouter is a paid service that gives you access to AI models from many vendor
 
 6. Sign in as a teacher and open **Health** in the menu. The **OpenRouter models** line shows **OK** and the number of models available. Health checks the key itself, so **OK** means OpenRouter accepted it.
 
-Now choose a real model for a code: on the create-code form, select the preset **OpenRouter · GLM 5.3 Flash**, or type `OpenRouter` as the provider and an OpenRouter model id as the model. In an activity file, the same choice is `provider: OpenRouter` and the model id in the `llm:` block. OpenRouter lists every model with its id and its price on its website.
+Now choose a real model for a code: on the create-code form, choose **OpenRouter · GPT-6 Luna (medium)** in the quick picks and select **Apply**, or type `OpenRouter` as the provider and an OpenRouter model id as the model. In an activity file, the same choice is `provider: OpenRouter` and the model id in the `llm:` block. OpenRouter lists every model with its id and its price on its website.
 
 Some OpenRouter models also come as a free version, marked by `:free` at the end of the model id. Free versions need no credit but allow only a limited number of requests per day, and which models have one changes over time.
 

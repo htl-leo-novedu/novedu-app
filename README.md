@@ -156,13 +156,6 @@ OPENROUTER_API_KEY=your-openrouter-api-key
 # gateway). It already includes /v1. Default: https://openrouter.ai/api/v1
 # OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
-# --- Quiz immediate feedback (optional, experimental) ---
-# A case-insensitive `true` turns on the live hint pill shown while a student types
-# a quiz answer. Requires OPENROUTER_API_KEY (the classifier rides that key): set
-# without it, the app logs one warning at boot and the feature stays off. Not
-# metered. See docs/codes.md, "Immediate feedback".
-# QUIZ_IMMEDIATE_FEEDBACK=true
-
 # --- Microsoft Entra ID sign-in (better-auth) ---
 AZURE_TENANT_ID=your-entra-tenant-id
 AZURE_CLIENT_ID=your-entra-app-client-id
@@ -257,11 +250,6 @@ Notes:
   authoring time and gated at runtime with a readable reason, never a raw
   missing-env error (`docs/ai-models.md`). `/health` shows a provider's rows only
   when it is configured.
-- `QUIZ_IMMEDIATE_FEEDBACK` is **optional and off by default**: only a
-  case-insensitive `true` together with `OPENROUTER_API_KEY` shows the live hint
-  pill (icon + label) beside a quiz answer box, and a quiz may still switch it off with
-  `immediate_feedback: false`. The hint is a quick check, never the grade, and its
-  calls are not metered. See `docs/codes.md` ("Immediate feedback").
 - Telemetry is **optional** and off unless a destination is set:
   `OTEL_EXPORTER_OTLP_ENDPOINT` selects standard OTLP export (Aspire locally, any
   receiver or Collector elsewhere), `APPLICATIONINSIGHTS_CONNECTION_STRING` selects

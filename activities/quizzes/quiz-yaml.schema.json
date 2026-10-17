@@ -33,11 +33,6 @@
       "description": "Present questions in a random order per attempt. Set to false to keep the authored order.",
       "type": "boolean"
     },
-    "immediate_feedback": {
-      "default": true,
-      "description": "Live hint (icon + label) while a student types an answer (looks correct / partly there / not yet / unsure) — a quick check, not the graded verdict. Only shown when the school's server has the feature enabled; set false to switch it off for this quiz (e.g. exams).",
-      "type": "boolean"
-    },
     "question_count": {
       "description": "How many questions one attempt asks (default: every question exactly once). May exceed the pool size — then questions repeat (drill mode). With shuffle off, fewer than the pool means the first N in authored order.",
       "type": "integer",

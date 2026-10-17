@@ -156,8 +156,8 @@ async function resolveInclude(
   }
 
   // ONLY the source's `questions` are lifted — every other include-level field
-  // (llm, anonymous, shuffle, immediate_feedback, discussion, title, description,
-  // question_count) is ignored and the compound quiz's own value governs.
+  // (llm, anonymous, shuffle, discussion, title, description, question_count) is
+  // ignored and the compound quiz's own value governs.
   const source = parsed.quiz;
   const questions = source.questions.map(
     (q): QuizQuestion => ({

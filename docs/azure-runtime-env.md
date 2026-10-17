@@ -10,8 +10,8 @@ them. Read it before running any `az` command against `rg-novedu-shared` /
 > ids, the separate `az` profile and how to get access. Do not run anything
 > here before reading it.
 >
-> Still open: Azure Foundry in this tenant — both stages run on SCCH only
-> (*Deliberately not set* below).
+> Still open: Azure Foundry in this tenant — both stages run on SCCH and on
+> OpenRouter's allowlisted, Azure-backed GPT models (*OpenRouter* below).
 
 ## The staging concept
 
@@ -410,7 +410,7 @@ at their custom domain (*The staging concept*).
 
 RBAC mode, soft delete 90 days, no purge protection. The `novedu-dev` group is
 Key Vault Secrets Officer, the stage's app identity is Key Vault Secrets User.
-It holds the four secrets of *Configuration* below; a secret value is never
+It holds the five secrets of *Configuration* below; a secret value is never
 displayed, logged or written to a file on its way in (*Access*, "What stays
 with a human").
 
@@ -500,7 +500,7 @@ app. Read `dev`/`prod` for `<stage>` throughout.
 
 ### Secrets
 
-Four secrets per stage, under **identical names in both vaults**. Each is wired
+Five secrets per stage, under **identical names in both vaults**. Each is wired
 into the container app as a Key Vault reference,
 `keyvaultref:<versionless secret URI>,identityref:system`, so the app resolves
 it when a revision starts, using its own system-assigned identity — which is
@@ -512,6 +512,7 @@ versionless, so a new secret version needs no change to the app.
 | `AUTH-SECRET` | `auth-secret` | `AUTH_SECRET` | each stage its own value; prod's randomly generated (32 bytes, base64) |
 | `AZURE-CLIENT-SECRET` | `azure-client-secret` | `AZURE_CLIENT_SECRET` | dev: the secret of the registration *Novedu Chat MVP*, expiring 2028-06-08. prod: the secret `novedu-prod` of *Novedu Chat (prod)*, expiring 2028-09-20. The vault secret's `expires` attribute carries the same date |
 | `SCCH-API-KEY` | `scch-api-key` | `SCCH_API_KEY` | the one SCCH key — the **only** secret that is identical in both stages |
+| `OPENROUTER-API-KEY` | `openrouter-api-key` | `OPENROUTER_API_KEY` | each stage its own key in the OpenRouter workspace `rs-htl-leonding` — dev `novedu-dev`, prod `novedu-prod` (*OpenRouter* below) |
 | `APPLICATIONINSIGHTS-CONNECTION-STRING` | `appinsights-connection-string` | `APPLICATIONINSIGHTS_CONNECTION_STRING` | the stage's own `appi-novedu-<stage>` |
 
 Apart from the SCCH key no secret is shared between the stages, so
@@ -526,7 +527,7 @@ app reads. The stages configure none (*Deliberately not set*).
 
 ### Environment variables
 
-Plain values on the container app, beside the four secret references:
+Plain values on the container app, beside the five secret references:
 
 | Variable | Value |
 |---|---|
@@ -555,18 +556,56 @@ stage*).
 ### Deliberately not set
 
 - **`AZURE_FOUNDRY_ENDPOINT` (and the `AZURE_FOUNDRY_*` service-principal
-  variables), `OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL`** —
-  these stages run on **SCCH only**. A provider's variables are its switch:
-  without them the app boots normally, `/health` reports the provider as
-  `Not configured (<variable> is missing)`, every default provider is SCCH,
-  and `providerUnavailableReason` rejects an activity, code or eval request
-  that names Azure Foundry or OpenRouter as unavailable on these stages
-  (`docs/ai-models.md`).
+  variables)** — these stages run on **SCCH and OpenRouter**, never on Foundry
+  directly. A provider's variables are its switch: without them the app boots
+  normally, `/health` reports Foundry as `Not configured (<variable> is
+  missing)`, and `providerUnavailableReason` rejects an activity, code or eval
+  request that names Azure Foundry as unavailable on these stages
+  (`docs/ai-models.md`). Every default provider is SCCH.
+- **`OPENROUTER_BASE_URL`** — the app talks to the public OpenRouter host; the
+  allowlist lives in the workspace, not in a proxy (*OpenRouter* below).
 - **`STORAGE_TENANT_ID`** — it only pins the tenant of a local `az` credential
   and means nothing to a managed identity.
 - **`OTEL_EXPORTER_OTLP_ENDPOINT`** — it would win over the Application
   Insights connection string; telemetry goes to Azure Monitor
   (`docs/telemetry.md`).
+
+### OpenRouter
+
+`OPENROUTER_API_KEY` reaches one OpenRouter workspace, **`rs-htl-leonding`**
+(`094e1664-2411-43a8-abf7-d895ddb0ab45`), configured outside Azure with
+OpenRouter's management API or website:
+
+- **BYOK, BYOK-only:** an Azure credential for the Azure OpenAI resource
+  `oai-rstropek-sweden` (resource group `oai`, Sweden; deployments
+  `gpt-6-luna`, `gpt-5.6-terra`, `gpt-6.1-sol`, GlobalStandard), with
+  OpenRouter's shared capacity switched off — every request is served by that
+  resource.
+- **Default guardrail** (applies to every key in the workspace): the three models
+  `openai/gpt-6-luna`, `openai/gpt-5.6-terra`, `openai/gpt-6.1-sol`, provider
+  Azure only. Any other model is refused at runtime with HTTP `404` ("… matching
+  your guardrail restrictions"). OpenRouter stores the allowlist as **dated**
+  model slugs, so when an alias moves to a newer snapshot, requests may be
+  refused until the guardrail lists the new slug and the Azure deployment is
+  upgraded to match.
+- **Budget:** the workspace's weekly budget, BYOK traffic included (counted at
+  OpenRouter's list price, not the Azure cost). The keys carry no limit and no
+  expiry of their own.
+- **Logging:** request/response logging and broadcast are off.
+
+A new or rotated stage key is created in that workspace and piped straight into
+the stage's vault (*Setting or rotating a secret*); the two stages never share a
+key. Local development has a third key of its own, `novedu-localhost`, in the
+developer's git-ignored `.env`, so the local `@live-llm` OpenRouter legs
+(docs/testing.md) run against the same allowlist as the stages.
+
+`oai-rstropek-sweden` is **not** part of the Novedu environment: it sits in the
+*Microsoft Azure Sponsorship* subscription, reached through the developer's
+default `az` profile, not `~/.htl-azure-novedu`, and no Novedu identity holds a
+role on it. OpenRouter BYOK for Azure takes an API key only (no Entra
+credential), so that resource keeps local (key) auth enabled. Rotating its key:
+put the resource's second key into the workspace's BYOK entry, verify a request
+still answers on Azure, then regenerate the first key.
 
 ### Sign-in app registrations
 

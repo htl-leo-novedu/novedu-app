@@ -238,7 +238,7 @@ describe("recordError sampling", () => {
     // whole message keeps it out of the exported frames.
     recordError(new TypeError("Failed query: select $1\n    at Hauptstrasse 5"));
     recordError("student wrote Hauptstrasse 5");
-    recordError(new Error("Jev pre-check failed"));
+    recordError(new Error("image-service: uncertain image insert outcome"));
 
     const [foreign, thrown, plain] = exporter.getFinishedSpans();
     assert(foreign && thrown && plain, "expected three exception spans");
@@ -251,7 +251,9 @@ describe("recordError sampling", () => {
     expect(foreignEvent?.["exception.stacktrace"]).toMatch(/^ {4}at /);
     expect(foreign.status.message).toBe("[message withheld]");
     expect(thrown.events[0]?.attributes?.["exception.type"]).toBe("string");
-    expect(plain.events[0]?.attributes?.["exception.message"]).toBe("Jev pre-check failed");
-    expect(plain.status.message).toBe("Jev pre-check failed");
+    expect(plain.events[0]?.attributes?.["exception.message"]).toBe(
+      "image-service: uncertain image insert outcome",
+    );
+    expect(plain.status.message).toBe("image-service: uncertain image insert outcome");
   });
 });

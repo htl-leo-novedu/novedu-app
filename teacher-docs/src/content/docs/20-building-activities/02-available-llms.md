@@ -9,6 +9,7 @@ related:
   - 30-sharing-activities/01-creating-codes
   - 30-sharing-activities/02-viewing-usage
   - 10-yaml-for-teachers/04-cli-validation
+  - 50-develop-and-evaluate/03-azure-models-with-a-budget
 ---
 
 Every activity tells Novedu which AI model should run it. You set that in the `llm:` block of the activity's YAML file. The block has three fields: a required `model`, an optional `provider`, and an optional `reasoning` level.
@@ -26,7 +27,7 @@ The provider decides where the AI runs. There are three choices:
 
 - **SCCH**, the school's Austrian LLM hosting partner: the default. If you leave out `provider`, your activity runs there. On SCCH, `model` is a raw model id, like the one in the sample above.
 - **Azure Foundry**: runs the activity on an Azure deployment your school has set up. With this provider, `model` names the Azure deployment, not a raw model id.
-- **OpenRouter**: a gateway that reaches models from many different vendors through a single account, so one provider opens a broad catalogue. With this provider, `model` is OpenRouter's own id for the model, always a vendor name and a model name with a slash between them, for example `z-ai/glm-5.3-flash`, `openai/gpt-5-mini`, or `anthropic/claude-sonnet-4.5`.
+- **OpenRouter**: a gateway that reaches models from many different vendors through a single account, so one provider opens a broad catalogue. With this provider, `model` is OpenRouter's own id for the model, always a vendor name and a model name with a slash between them, for example `openai/gpt-6-luna` or `anthropic/claude-sonnet-4.5`.
 
 An activity that runs on Azure looks like this:
 
@@ -40,13 +41,15 @@ And one that runs through OpenRouter looks like this:
 
 ```yaml
 llm:
-  model: z-ai/glm-5.3-flash
+  model: openai/gpt-6-luna
   provider: OpenRouter
 ```
 
 Write the provider name exactly as it appears here, capital letters included. `SCCH`, `Azure Foundry`, and `OpenRouter` are the three names Novedu accepts; anything else is rejected when you save.
 
 Azure Foundry and OpenRouter are both optional, and each school decides whether to set them up. If yours hasn't, all activities simply run at SCCH, the school's Austrian LLM hosting partner, and Novedu tells you in plain words that the provider isn't configured on this server when you try to save an activity or a code that asks for it.
+
+A school can also limit which OpenRouter models its server accepts, and a model outside that list fails when a student starts working, in the same way a wrong model name does.
 
 ## What each provider costs
 
@@ -97,10 +100,10 @@ At the school's hosting partner some models come as two separate entries instead
 
 ## Which model names can I use?
 
-There is no fixed list to print here: the available models are set up by your school and change over time. Two reliable places to look:
+There is no fixed list to print here: the available models are set up by your school and change over time. Two good places to look:
 
 - **The sample activities** your school shares (for example the ones under `activities/examples/` in the Novedu repository). They always name a model that works.
-- **The preset buttons on the create-code form.** When you create a code, the form offers one-click presets that fill in a known-good provider and model, and a level for the presets that name a reasoning model. There is a preset per provider, including **OpenRouter · GLM 5.3 Flash**, which is a quick way to see the shape of an OpenRouter model id.
+- **The quick picks on the create-code form.** When you create a code, the form offers a dropdown of quick picks, each a common provider and model, plus a level for the picks that name a reasoning model. Choose one and select **Apply** to see exactly how a provider and model id are written; a pick only works if your school's server has that provider set up and accepts that model.
 
 For OpenRouter there is a third place: OpenRouter publishes its whole catalogue on its own website, and the id shown there is exactly what goes into `model`.
 
@@ -117,6 +120,6 @@ A few things to know about the override:
 - **Provider and model are both or nothing.** You set the two together, or neither. A half-filled pair is rejected when you save.
 - **The reasoning level rides on top of them.** You can add a level to the pair, but you cannot set a level on its own; without a provider and a model, there is nothing for it to apply to.
 - **The override replaces the whole block.** It doesn't merge with the activity file. If the file sets `reasoning: high` and your override leaves the level on "Provider default", the code runs without any level at all. Repeat the level in the override whenever you want to keep it.
-- **Presets fill it in one click.** The form offers buttons for common combinations, and each button fills the whole override: a preset for a reasoning model also sets its level, a preset for a plain model clears the level again. **Clear** removes the override and returns the code to the activity's own `llm:` settings.
+- **Quick picks fill it for you.** The form offers a dropdown of common combinations. Choosing one changes nothing yet; select **Apply** and it fills the whole override: a pick for a reasoning model also sets its level, and a pick without a level puts the level back on "Provider default". The fields stay editable afterwards. **Clear** removes the override and returns the code to the activity's own `llm:` settings.
 - **You can change it later.** Unlike the activity file, the override isn't frozen; edit the code any time to switch models or effort.
 - **Only the AI settings change.** Everything else, such as the instructions and the anonymity setting, still comes from the YAML file. If your tutor lets students upload images, pick an override model that can read them.

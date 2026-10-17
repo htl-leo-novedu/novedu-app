@@ -68,15 +68,6 @@ export interface Quiz {
   anonymous: boolean;
   /** Random question order per attempt. Default `true`. */
   shuffle: boolean;
-  /**
-   * The AUTHORED opt-out for the live pre-check hint while a student types
-   * (`immediate_feedback`, default `true`). Only one half of what the student
-   * sees: the EFFECTIVE flag is this AND the server's feature gate, computed by
-   * the caller and handed to `toPublicQuiz`. Ignored on an INCLUDED quiz by
-   * construction — only its `questions` are lifted, so the compound quiz's own
-   * value governs.
-   */
-  immediateFeedback: boolean;
   /** The model id that grades answers AND drives the discussion chat. */
   model: string;
   /** The LLM provider serving `model` (`llm.provider`, default SCCH). */
@@ -182,8 +173,7 @@ function asImageRef(value: unknown): ImageRef | undefined {
 /**
  * Parses and lightly validates a quiz YAML. Returns a friendly error message
  * (not structured errors) when an essential field is missing — the student page
- * shows it as a notice. `anonymous`, `shuffle` and `immediate_feedback` default
- * to `true`.
+ * shows it as a notice. `anonymous` and `shuffle` default to `true`.
  */
 export function parseQuiz(content: string): QuizParseResult {
   let doc: unknown;
@@ -284,7 +274,6 @@ export function parseQuiz(content: string): QuizParseResult {
       description: asString(root.description),
       anonymous: asBool(root.anonymous, true),
       shuffle: asBool(root.shuffle, true),
-      immediateFeedback: asBool(root.immediate_feedback, true),
       model,
       provider,
       reasoning,
@@ -321,13 +310,8 @@ export function effectiveImageInput(quiz: Quiz, question: QuizQuestion): boolean
  * host text, the `fragmentBlock`/`quizFiles`, and the rendered `instructionsPreamble`,
  * before anything reaches the browser (it copies only the whitelisted public fields
  * below, so the server-only ones can never leak).
- *
- * `options.immediateFeedback` is the EFFECTIVE pre-check flag (the server's feature
- * gate AND the quiz's own `immediate_feedback`), passed in rather than read here so
- * this projection stays pure and env-free — the caller (`app/[code]/render-quiz.tsx`)
- * owns the gate, and `precheckAnswer` re-derives it on every call.
  */
-export function toPublicQuiz(quiz: Quiz, options: { immediateFeedback: boolean }): QuizPublic {
+export function toPublicQuiz(quiz: Quiz): QuizPublic {
   const questions: QuizQuestionPublic[] = quiz.questions.map((q) => ({
     id: q.id,
     title: q.title,
@@ -346,7 +330,6 @@ export function toPublicQuiz(quiz: Quiz, options: { immediateFeedback: boolean }
     // The EFFECTIVE attempt length: the authored `question_count`, defaulting to the
     // (resolved) pool size — the runner builds its sequence from this one number.
     questionCount: quiz.questionCount ?? quiz.questions.length,
-    immediateFeedback: options.immediateFeedback,
     questions,
   };
 }

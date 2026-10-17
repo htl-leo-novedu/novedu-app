@@ -37,10 +37,8 @@ import {
 import { buildRuntimeHeaders } from "@/lib/runtime-headers";
 import { cn } from "@/lib/utils";
 import { MarkdownRenderer } from "../../markdown-renderer";
-import { PrecheckIndicator } from "./precheck-indicator";
 import { QuizDiscussion } from "./quiz-discussion";
 import { SaveResult } from "./save-result";
-import { useAnswerPrecheck } from "./use-answer-precheck";
 
 // The quiz page column: centered and capped inside the PageBody canvas (which
 // owns the horizontal gutter).
@@ -162,20 +160,6 @@ export function QuizRunner({
   const total = order.length;
   const slot = currentSlot(attempt);
   const current = slot === undefined ? undefined : order[slot];
-
-  // The live pre-check hint while typing. A HOOK, so it mounts above every early
-  // return below — before `ready` the answer box is empty and the hook stays
-  // inert anyway. Suspended once the answer is on its way to the grader and while
-  // its verdict is on screen: the hint is never shown beside a verdict, so asking
-  // for one there would only spend a call.
-  const precheck = useAnswerPrecheck({
-    enabled: quiz.immediateFeedback,
-    code,
-    questionId: current?.id ?? "",
-    slot: slot ?? -1,
-    text: answer,
-    suspended: grading || verdict !== null,
-  });
 
   if (!ready) {
     return (
@@ -350,15 +334,9 @@ export function QuizRunner({
 
       {!verdict ? (
         <section className={CARD}>
-          {/* The hint sits BESIDE the label, never inside it: the textarea's
-              accessible name must stay exactly "Your answer". The row is as tall
-              as the hint pill from the start, so its appearing shifts nothing. */}
-          <div className="mb-1.5 flex min-h-7 items-center justify-between gap-2">
-            <label className={cn(LABEL, "mb-0")} htmlFor="quiz-answer">
-              Your answer
-            </label>
-            <PrecheckIndicator state={precheck} />
-          </div>
+          <label className={LABEL} htmlFor="quiz-answer">
+            Your answer
+          </label>
           <textarea
             id="quiz-answer"
             ref={answerRef}

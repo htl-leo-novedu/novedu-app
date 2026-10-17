@@ -149,14 +149,15 @@ npx @novedu/cli eval ./sorting-quiz.eval.yaml --repeats 3
 
 # How would this rubric do on another model? (both flags, always together)
 npx @novedu/cli eval ./sorting-quiz.eval.yaml \
-  --llm-provider "Azure Foundry" --llm-model gpt-5-mini
+  --llm-provider OpenRouter --llm-model openai/gpt-6-luna
 
 # Same model, more thinking: the level alone keeps the activity's provider/model
 npx @novedu/cli eval ./sorting-quiz.eval.yaml --llm-reasoning high
 
 # A strong judge over the quiz's own grader — the recommended pairing
 npx @novedu/cli eval ./sorting-quiz.eval.yaml \
-  --judge-llm-provider "Azure Foundry" --judge-llm-model gpt-5.6-terra
+  --judge-llm-provider OpenRouter --judge-llm-model openai/gpt-6.1-sol \
+  --judge-llm-reasoning high
 
 # Verdicts only: half the LLM calls, for a cheap smoke run
 npx @novedu/cli eval ./sorting-quiz.eval.yaml --no-judge-feedback

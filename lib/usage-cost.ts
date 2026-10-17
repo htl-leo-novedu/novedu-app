@@ -1,8 +1,10 @@
-// Pure core of the usage dashboard's cost estimate (docs/dashboard.md, "Cost
+// Pure core of the usage dashboard's two cost cards (docs/dashboard.md, "Cost
 // estimate"): what the SCCH tokens of a window would cost at OpenRouter's list
-// prices for the same models. Two matching steps over already-fetched JSON plus
-// the price math — no I/O, no `Date.now()`, so every rule is unit-testable. The
-// fetch layer is lib/usage-cost-lookup.ts.
+// prices for the same models (two matching steps), and what the OpenRouter tokens
+// of the window cost at those list prices (one step: the recorded id IS
+// OpenRouter's). Matching over already-fetched JSON plus the price math — no I/O,
+// no `Date.now()`, so every rule is unit-testable. The fetch layer is
+// lib/usage-cost-lookup.ts.
 //
 // The anti-goal is a GUESSED price: a model that cannot be matched with
 // confidence is never priced by a fuzzy name match. It is left out and listed as
@@ -92,11 +94,46 @@ export function openRouterPriceOf(openRouterModels: unknown, hfId: string): Mode
       !(typeof m.id === "string" && m.id.endsWith(":free")),
   );
   if (matches.length !== 1) return undefined;
-  const pricing = (matches[0] as { pricing?: Record<string, unknown> }).pricing ?? {};
+  return priceOfEntry(matches[0], "prompt");
+}
+
+/**
+ * The prices of one OpenRouter list entry; `newInput` names the field that prices
+ * new input. `undefined` when the entry lacks a usable prompt or completion price.
+ */
+function priceOfEntry(entry: unknown, newInput: "prompt" | "input_cache_write") {
+  const pricing = (entry as { pricing?: Record<string, unknown> }).pricing ?? {};
   const prompt = price(pricing.prompt);
   const completion = price(pricing.completion);
   if (prompt === undefined || completion === undefined) return undefined;
-  return { prompt, cacheRead: price(pricing.input_cache_read) ?? prompt, completion };
+  return {
+    prompt: (newInput === "prompt" ? undefined : price(pricing[newInput])) ?? prompt,
+    cacheRead: price(pricing.input_cache_read) ?? prompt,
+    completion,
+  } satisfies ModelPrice;
+}
+
+/**
+ * The price of a model Novedu ran THROUGH OpenRouter, for the spend card: the
+ * recorded model id is OpenRouter's own id (the activity's `llm.model`), so the
+ * entry is matched by `id`, case-insensitively — no Hugging Face step. New input
+ * is priced at `input_cache_write` when the model lists one: on OpenAI's models
+ * almost every prompt token that is not a cache read is a cache write (prompts of
+ * 1024+ tokens), and the metering does not split the two, so the write rate is
+ * the closer ballpark. `undefined` = unmatched.
+ */
+export function openRouterSpendPriceOf(
+  openRouterModels: unknown,
+  openRouterId: string,
+): ModelPrice | undefined {
+  const data = (openRouterModels as { data?: unknown } | null)?.data;
+  if (!Array.isArray(data)) return undefined;
+  const wanted = openRouterId.toLowerCase();
+  const matches = data.filter(
+    (m: { id?: unknown }) => typeof m?.id === "string" && m.id.toLowerCase() === wanted,
+  );
+  if (matches.length !== 1) return undefined;
+  return priceOfEntry(matches[0], "input_cache_write");
 }
 
 /**

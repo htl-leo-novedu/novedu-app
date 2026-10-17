@@ -14,18 +14,11 @@ import {
 } from "@/app/mastra/quiz-agents";
 import { validateAnswerImages } from "@/lib/answer-images";
 import { invalidateHome } from "@/lib/home-data";
-import { askJev } from "@/lib/llm/jev-client";
 import { buildQuestionSeed, buildVerdictSeed } from "@/lib/quiz-discussion-prompt";
 import { buildAnswerMessage, buildGradingPrompt } from "@/lib/quiz-grading-prompt";
-import { immediateFeedbackConfigured } from "@/lib/quiz-immediate-feedback";
-import {
-  buildPrecheckRequest,
-  mapPrecheckAnswer,
-  PRECHECK_MAX_ANSWER_CHARS,
-} from "@/lib/quiz-precheck";
 import { type SaveMode, saveQuizResult as storeQuizResult } from "@/lib/quiz-result-store";
 import { gradeWithTruncationRetry } from "@/lib/quiz-truncation-retry";
-import type { PrecheckHint, QuizVerdict } from "@/lib/quiz-types";
+import type { QuizVerdict } from "@/lib/quiz-types";
 import {
   attemptLength,
   effectiveImageInput,
@@ -33,7 +26,6 @@ import {
   verifyAndLoadQuestion,
   verifyAndLoadQuiz,
 } from "@/lib/quiz-verify";
-import { emitEvent, recordError } from "@/lib/telemetry";
 import { getThreadTokenSecret, signThreadToken } from "@/lib/thread-token";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
 import { recordQuizAnswer } from "@/lib/usage-store";
@@ -61,9 +53,6 @@ import { recordQuizAnswer } from "@/lib/usage-store";
 export type SubmitAnswerResult =
   | { ok: true; result: QuizVerdict; feedback: string }
   | { ok: false; message: string };
-
-/** The live hint, or nothing at all — the pre-check has no error UI to show. */
-export type PrecheckResult = { ok: true; hint: PrecheckHint } | { ok: false };
 
 /** `saved: false` = an automatic save found the setting off; the Finish page asks instead. */
 export type SaveQuizResultResult = { ok: true; saved: boolean } | { ok: false; message: string };
@@ -164,82 +153,6 @@ export async function submitAnswer(
   } catch (error) {
     console.error("quiz-actions: grading failed", error);
     return { ok: false, message: "The answer could not be graded right now. Please try again." };
-  }
-}
-
-// The live pre-check (docs/codes.md, "Immediate feedback"). It classifies the
-// answer a student is still typing into one hint icon — a quick check, never the
-// graded verdict, and never the grader's model: the classifier (Jev) returns one
-// enum, so it can neither be coaxed into revealing the `evaluation` prompt nor be
-// used as an oracle for the real grading prose.
-//
-// FAIL QUIET, ALWAYS. Every rejection — empty text, a code that just expired, the
-// gate being off, a Jev outage — returns the same bare `{ ok: false }`: the hint
-// has no error surface, and a classifier problem must never surface as a server-
-// action error in the middle of a quiz. The rejection MESSAGE from
-// `verifyAndLoadQuestion` is deliberately dropped for the same reason.
-//
-// NOT METERED (docs/usage-metering.md): the feature is an experiment, and the
-// `(code, hour)` buckets cannot separate pre-check tokens from grader tokens
-// without new columns. One content-free `quiz.precheck` event makes the
-// experiment's use and latency visible instead; revisit if the feature stays.
-//
-// ABUSE SURFACE, accepted for this iteration: a signed-in student can call this
-// at will for any active quiz code — the client's debounce is a courtesy, not a
-// limit. At roughly $0.00003 per call, with OpenRouter rate-limiting upstream,
-// no server-side limiter yet.
-//
-// A call in flight when the student submits or skips is DROPPED by the client
-// (sequence numbers), not cancelled: a server action has no cancellation channel,
-// so the Jev request still completes here and its answer is discarded.
-
-/**
- * Classifies the answer currently in the textarea. Re-verifies the code and
- * re-derives the feature gate on every call — the client's
- * `QuizPublic.immediateFeedback` copy is never trusted — and returns at most the
- * hint enum. Persists nothing, grades nothing, records no usage.
- */
-export async function precheckAnswer(
-  input: QuizCodeInput & { questionId: string; answer: string },
-): Promise<PrecheckResult> {
-  // Cheap checks before any I/O: an empty or absurdly long answer is never worth
-  // a database round trip, let alone a classifier call. The client applies the
-  // same two rules (the constants are shared), so this is the server's own copy.
-  const answer = typeof input.answer === "string" ? input.answer.trim() : "";
-  if (!answer || answer.length > PRECHECK_MAX_ANSWER_CHARS) return { ok: false };
-
-  // The server feature gate is a pure env read, so it sits BEFORE the code check
-  // and quiz reload: with the feature off, an unsolicited call costs nothing.
-  if (!immediateFeedbackConfigured()) return { ok: false };
-
-  const ctx = await verifyAndLoadQuestion(input);
-  if (!ctx.ok) return { ok: false };
-
-  // The quiz's own opt-out. Off ⇒ Jev is never touched.
-  if (!ctx.quiz.immediateFeedback) return { ok: false };
-
-  try {
-    const startedAt = performance.now();
-    const { answers } = await askJev(buildPrecheckRequest(ctx.question, answer));
-    const hint = mapPrecheckAnswer(answers.verdict.choice, answers.verdict.confidence);
-    // Content-free: the hint enum, a duration and the code — never the answer,
-    // the question or the confidence (docs/telemetry.md).
-    emitEvent("quiz.precheck", {
-      verdict: hint.verdict,
-      latencyMs: Math.round(performance.now() - startedAt),
-      code: ctx.code,
-    });
-    return { ok: true, hint };
-  } catch (error) {
-    // The SDK's message can quote the provider's response body, so report only
-    // the HTTP status (docs/telemetry.md: no user content in errors).
-    const status = (error as { status?: unknown } | null)?.status;
-    recordError(new Error("Jev pre-check failed"), {
-      "novedu.area": "quiz-precheck",
-      stage: "jev",
-      status: typeof status === "number" ? status : "none",
-    });
-    return { ok: false };
   }
 }
 

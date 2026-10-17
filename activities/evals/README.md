@@ -262,7 +262,7 @@ novedu-cli eval ./0010-welcome-quiz.eval.yaml --no-judge-feedback
 
 # A stronger model as the judge (recommended): both flags, always together
 novedu-cli eval ./0010-welcome-quiz.eval.yaml \
-  --judge-llm-provider "Azure Foundry" --judge-llm-model gpt-5.6-terra \
+  --judge-llm-provider OpenRouter --judge-llm-model openai/gpt-6.1-sol \
   --judge-llm-reasoning high
 ```
 
@@ -294,7 +294,7 @@ the same to your students. (Three repeats also cost three times as much.)
 
 ```bash
 novedu-cli eval ./welcome.eval.yaml                                        # your quiz's model
-novedu-cli eval ./welcome.eval.yaml --llm-provider "Azure Foundry" --llm-model gpt-5-mini
+novedu-cli eval ./welcome.eval.yaml --llm-provider OpenRouter --llm-model openai/gpt-6-luna
 novedu-cli eval ./welcome.eval.yaml --llm-reasoning high                   # same model, more thinking
 ```
 

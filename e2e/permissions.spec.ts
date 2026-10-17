@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { TEACHER_GUIDE_URL } from "../lib/teacher-guide";
 import { TEACHER_STORAGE_STATE } from "./auth.constants";
+import { watchErrors } from "./page.utils";
 
 // Authorization (not authentication) enforcement: signed-in students must be
 // kept out of the teacher-only surfaces, and teachers must get in. The two nav
@@ -76,11 +77,16 @@ test.describe("as a teacher", () => {
     await expect(page.getByRole("link", { name: "New file" })).toBeVisible();
   });
 
+  // Also the create page's smoke: it renders without errors, LLM quick picks included.
   test("the New Code page is accessible", async ({ page }) => {
+    const errors = watchErrors(page);
     await page.goto("/codes/new");
 
     await expect(page.getByLabel("Activity YAML URL")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create code" })).toBeVisible();
+    await expect(page.getByLabel("LLM quick pick", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply LLM quick pick" })).toBeDisabled();
+    expect(errors).toEqual([]);
   });
 
   test("the nav menu shows the teacher-only entries", async ({ page }) => {
