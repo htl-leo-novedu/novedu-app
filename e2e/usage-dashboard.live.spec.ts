@@ -17,6 +17,8 @@ import { watchErrors } from "./page.utils";
 // (test-fixtures/serve.mjs, wired in playwright.config.ts): every `e2e/<name>` model
 // is priced at $1 / $0.50 / $2 per 1M new / cached / output tokens, any other model
 // stays unmatched — so the seeded model's dollars are exact even on a busy local DB.
+// The spend card's OpenRouter seed uses `e2e/openrouter-model`, listed by id at the
+// same rates plus $1.25 per 1M cache writes, the rate the card puts on new input.
 
 test.use({ storageState: TEACHER_STORAGE_STATE });
 
@@ -38,6 +40,7 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
     file: "https://example.com/api/files/q",
   });
   const tutorCode = await mintCode({ module: "tutor", note: `${note} tutor` });
+  const spendCode = await mintCode({ module: "tutor", note: `${note} openrouter` });
 
   // A unique model id so the model-pie legend can be asserted unambiguously; the
   // provider/model columns are seeded like the LLM recorder writes them. The
@@ -57,6 +60,16 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
   try {
     await seedUsage(quizCode, "quiz", QUIZ_ANSWERS);
     await seedUsage(tutorCode, "tutor", 0);
+    // One OpenRouter bucket for the spend card: 4M new, 2M cached, 1M output.
+    await query(
+      `INSERT INTO novedu_usage_by_code
+           (code, hour, module, provider, model, input_tokens_new, input_tokens_cached,
+            output_tokens, tool_calls, user_messages, quiz_answers, writing_saves)
+         VALUES
+           ($1, date_trunc('hour', now()), 'tutor', 'OpenRouter', 'e2e/openrouter-model',
+            4000000, 2000000, 1000000, 0, 0, 0, 0)`,
+      [spendCode],
+    );
 
     await page.goto("/usage");
 
@@ -100,6 +113,14 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
     await expect(cost.getByRole("row", { name: /Output/ })).toContainText("$8.00");
     await expect(cost.getByText("Prices from OpenRouter", { exact: false })).toBeVisible();
 
+    // The spend card priced the OpenRouter seed by id, new input at the cache-write
+    // rate: 4M × $1.25 = $5 new input + 2M × $0.50 = $1 cached + 1M × $2 = $2 output.
+    const spend = page.getByTestId("usage-spend");
+    await expect(spend.getByRole("heading", { name: "OpenRouter spend (estimate)" })).toBeVisible();
+    await expect(spend.getByRole("row", { name: /New input/ })).toContainText("$5.00");
+    await expect(spend.getByRole("row", { name: /Cached input/ })).toContainText("$1.00");
+    await expect(spend.getByRole("row", { name: /Output/ })).toContainText("$2.00");
+
     // The breakdown query ran: the seeded code shows in the code-pie legend.
     await expect(page.getByText(note, { exact: true })).toBeVisible();
 
@@ -117,11 +138,8 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
 
     expect(errors).toEqual([]);
   } finally {
-    await query(`DELETE FROM novedu_usage_by_code WHERE code = ANY($1)`, [
-      [quizCode, tutorCode],
-    ]).catch(() => {});
-    await query(`DELETE FROM novedu_codes WHERE code = ANY($1)`, [[quizCode, tutorCode]]).catch(
-      () => {},
-    );
+    const codes = [quizCode, tutorCode, spendCode];
+    await query(`DELETE FROM novedu_usage_by_code WHERE code = ANY($1)`, [codes]).catch(() => {});
+    await query(`DELETE FROM novedu_codes WHERE code = ANY($1)`, [codes]).catch(() => {});
   }
 });

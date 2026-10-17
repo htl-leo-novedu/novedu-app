@@ -63,11 +63,12 @@
 // `limit`/`after` is captured on the returned `exportRequests` array.
 
 // `GET /prices/hf/api/models/<owner>/<name>` and `GET /prices/openrouter/models` fake
-// the two public price lookups behind the usage dashboard's cost card
+// the two public price lookups behind the usage dashboard's cost cards
 // (lib/usage-cost-lookup.ts; the e2e app server points its overridable base URLs
 // here). Any `e2e/<name>` model is a quantization of `e2e/base-model`, every other id
 // 404s (so it shows as unmatched); the OpenRouter list prices `e2e/base-model` at
-// fixed rates and also lists a `:free` variant the matcher must skip.
+// fixed rates and also lists a `:free` variant the matcher must skip, plus
+// `e2e/openrouter-model` (no Hugging Face id, a cache-write price) for the spend card.
 
 import { readFile } from "node:fs/promises";
 import http from "node:http";
@@ -321,6 +322,18 @@ function handlePrices(res, url) {
           id: "e2e/base-model:free",
           hugging_face_id: "e2e/base-model",
           pricing: { prompt: "0", completion: "0" },
+        },
+        {
+          id: "e2e/openrouter-model",
+          hugging_face_id: null,
+          // $1 / $2 / $0.50 per 1M, and $1.25 per 1M cache writes (the spend card's
+          // rate for new input).
+          pricing: {
+            prompt: "0.000001",
+            completion: "0.000002",
+            input_cache_read: "0.0000005",
+            input_cache_write: "0.00000125",
+          },
         },
       ],
     });

@@ -4,11 +4,12 @@ import {
   estimateCost,
   type ModelPrice,
   openRouterPriceOf,
+  openRouterSpendPriceOf,
   UNKNOWN_MODEL,
 } from "@/lib/usage-cost";
 
-// The pure core of the cost estimate: both matching steps over canned
-// Hugging Face / OpenRouter JSON, and the price math. No I/O.
+// The pure core of the cost cards: both SCCH matching steps and the OpenRouter
+// spend match over canned Hugging Face / OpenRouter JSON, and the price math. No I/O.
 
 describe("baseModelOf (step 1, Hugging Face)", () => {
   it("reads a string base_model", () => {
@@ -63,6 +64,21 @@ const LIST = {
       pricing: { prompt: "-1", completion: "-1" },
     },
     { id: "no/hf", hugging_face_id: null, pricing: { prompt: "1", completion: "1" } },
+    {
+      id: "openai/gpt-6-luna",
+      hugging_face_id: null,
+      pricing: {
+        prompt: "0.0000001",
+        completion: "0.0000005",
+        input_cache_read: "0.00000001",
+        input_cache_write: "0.000000125",
+      },
+    },
+    {
+      id: "e2e/cached-base",
+      hugging_face_id: "e2e/cached-base",
+      pricing: { prompt: "0.000001", completion: "0.000002", input_cache_write: "0.00000125" },
+    },
   ],
 };
 
@@ -92,6 +108,40 @@ describe("openRouterPriceOf (step 2, OpenRouter)", () => {
   it("treats a malformed list as unmatched", () => {
     expect(openRouterPriceOf({}, "google/gemma-4-31B-it")).toBeUndefined();
     expect(openRouterPriceOf(null, "google/gemma-4-31B-it")).toBeUndefined();
+  });
+});
+
+describe("openRouterSpendPriceOf (models run through OpenRouter)", () => {
+  it("matches the OpenRouter id case-insensitively and prices new input at the write rate", () => {
+    expect(openRouterSpendPriceOf(LIST, "OpenAI/GPT-6-Luna")).toEqual({
+      prompt: 0.000000125, // input_cache_write, not prompt
+      cacheRead: 0.00000001,
+      completion: 0.0000005,
+    });
+  });
+
+  it("falls back to the input price when the model lists no cache prices", () => {
+    expect(openRouterSpendPriceOf(LIST, "no/hf")).toEqual({
+      prompt: 1,
+      cacheRead: 1,
+      completion: 1,
+    });
+  });
+
+  it("matches the exact id, so a :free variant is its own entry", () => {
+    expect(openRouterSpendPriceOf(LIST, "google/gemma-4-31b-it:free")?.prompt).toBe(0);
+    expect(openRouterSpendPriceOf(LIST, "google/gemma-4-31b-it")?.prompt).toBe(0.0000002);
+  });
+
+  it("treats no match, unusable prices and a malformed list as unmatched", () => {
+    expect(openRouterSpendPriceOf(LIST, "nobody/model")).toBeUndefined();
+    expect(openRouterSpendPriceOf(LIST, "openrouter/auto")).toBeUndefined();
+    expect(openRouterSpendPriceOf({}, "openai/gpt-6-luna")).toBeUndefined();
+    expect(openRouterSpendPriceOf(null, "openai/gpt-6-luna")).toBeUndefined();
+  });
+
+  it("leaves the SCCH estimate at the plain input price even when a write price is listed", () => {
+    expect(openRouterPriceOf(LIST, "e2e/cached-base")?.prompt).toBe(0.000001);
   });
 });
 

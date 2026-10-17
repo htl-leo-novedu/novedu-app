@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // `app/usage/page.tsx` is the teacher gate + shell. Non-teachers (incl. a teacher in
 // student mode) must get "Access denied" WITHOUT any section rendering; a teacher
-// gets the range tabs + the three Suspense sections. The sections + client range
+// gets the range tabs + the Suspense sections, both cost cards among them. The sections + client range
 // tabs are stubbed — dispatch/gating is what this test asserts. No DB, runs in CI.
 
 const isEffectiveTeacher = vi.hoisted(() => vi.fn());
@@ -14,6 +14,12 @@ vi.mock("./kpi-section", () => ({ KpiSection: () => <div data-testid="kpi-sectio
 vi.mock("./token-section", () => ({ TokenSection: () => <div data-testid="token-section" /> }));
 vi.mock("./breakdown-section", () => ({
   BreakdownSection: () => <div data-testid="breakdown-section" />,
+}));
+vi.mock("./cost-section", () => ({
+  COST_TITLE: "Cost title",
+  SPEND_TITLE: "Spend title",
+  CostSection: () => <div data-testid="cost-section" />,
+  SpendSection: () => <div data-testid="spend-section" />,
 }));
 
 import UsagePage from "./page";
@@ -42,6 +48,10 @@ describe("teacher", () => {
     expect(html).toContain("kpi-section");
     expect(html).toContain("token-section");
     expect(html).toContain("breakdown-section");
+    // Both cost cards, the real spend first.
+    expect(html).toContain("spend-section");
+    expect(html).toContain("cost-section");
+    expect(html.indexOf("spend-section")).toBeLessThan(html.indexOf("cost-section"));
     expect(html).not.toContain("Access denied");
   });
 });

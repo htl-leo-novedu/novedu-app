@@ -21,7 +21,7 @@ vi.mock("@/lib/db", () => ({ getDb: () => fake.db }));
 import { OTHER_KEY, resolveRange } from "@/lib/usage-range";
 import {
   getDashboardKpis,
-  getScchTokensByModel,
+  getModelTokensForProvider,
   getTokensByModel,
   getTokensByProvider,
   getTokenTimeSeries,
@@ -184,14 +184,14 @@ describe("getTokensByProvider", () => {
   });
 });
 
-describe("getScchTokensByModel", () => {
+describe("getModelTokensForProvider", () => {
   it("maps each model's three sums, keeps a NULL model and drops zero rows", async () => {
     fake.state.rows = [
       { model: "Qwen/Qwen3.8-27B-FP8", inputNew: "10", inputCached: 20, output: "5" },
       { model: null, inputNew: 1, inputCached: 0, output: 0 },
       { model: "idle/model", inputNew: 0, inputCached: 0, output: 0 },
     ];
-    expect(await getScchTokensByModel({ range: "30d", now: NOW })).toEqual([
+    expect(await getModelTokensForProvider({ range: "30d", now: NOW, provider: "SCCH" })).toEqual([
       { model: "Qwen/Qwen3.8-27B-FP8", inputNew: 10, inputCached: 20, output: 5 },
       { model: null, inputNew: 1, inputCached: 0, output: 0 },
     ]);
@@ -199,7 +199,9 @@ describe("getScchTokensByModel", () => {
 
   it("returns undefined instead of throwing when the query fails", async () => {
     fake.state.executeError = new Error("db down");
-    await expect(getScchTokensByModel({ range: "30d", now: NOW })).resolves.toBeUndefined();
+    await expect(
+      getModelTokensForProvider({ range: "30d", now: NOW, provider: "OpenRouter" }),
+    ).resolves.toBeUndefined();
   });
 });
 

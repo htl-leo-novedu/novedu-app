@@ -79,7 +79,7 @@ From now on, a request for any other model is refused, whichever key in the work
 
 **Include BYOK spend** is the switch that makes the budget work. By default, OpenRouter counts only what it charges to your OpenRouter credit, and BYOK requests are billed by Azure, so without the switch your budget would never stop anything.
 
-OpenRouter counts each BYOK request at its own recorded price for that model, which can differ from what Azure actually invoices. Treat the budget as a close estimate: during the first weeks, compare it with the cost view of your Azure subscription and adjust the amount.
+OpenRouter counts each BYOK request at its own recorded price for that model, which can differ from what Azure actually invoices. Treat the budget as a close estimate: during the first weeks, compare it with the cost view of your Azure subscription and adjust the amount. Novedu's **Usage** page shows a third figure, **OpenRouter spend (estimate)**: that one server's tokens at OpenRouter's list prices, without OpenRouter's fee.
 
 The workspace budget is one shared pool for every key in the workspace. If several Novedu servers share the workspace, each one can use up the budget for the others (see "Step 5: Create one OpenRouter key per Novedu server").
 
