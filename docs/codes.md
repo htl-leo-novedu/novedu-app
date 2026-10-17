@@ -315,7 +315,7 @@ The **LLM override** section is two free-text fields (provider + model) plus a
 `REASONING_LEVELS`, of which `none` explicitly sends `reasoning_effort: "none"`)
 and a **quick-pick** row: a select ("LLM quick pick", no `name`, so it is never
 submitted) over `LLM_OVERRIDE_PRESETS` (`lib/llm/presets.ts` — OpenRouter
-`openai/gpt-6-luna`, `openai/gpt-5.6-terra` and `openai/gpt-6.1-sol`, each at
+`openai/gpt-6-luna` and `openai/gpt-6.1-sol`, each at
 reasoning `medium`, then SCCH Gemma 4 and SCCH Qwen 3.8 27B with no level), an
 **Apply** button and a **Clear** button. Choosing a pick changes nothing; Apply
 (disabled until a pick is chosen) fills all three fields — a pick without a level

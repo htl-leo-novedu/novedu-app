@@ -49,8 +49,7 @@ environment-free.
 
 **OpenRouter on the stages** (`dev.novedu.at`, `app.novedu.at`) is an allowlist,
 not the whole catalogue: each stage's key belongs to an OpenRouter workspace whose
-guardrail accepts only `openai/gpt-6-luna`, `openai/gpt-5.6-terra` and
-`openai/gpt-6.1-sol`, served BYOK-only by an Azure OpenAI resource
+guardrail accepts only `openai/gpt-6-luna` and `openai/gpt-6.1-sol`, served BYOK-only by an Azure OpenAI resource
 (`docs/azure-runtime-env.md`). The app knows nothing of that list — authoring and
 the save-time gate accept any OpenRouter id, and a model outside it fails at
 runtime with OpenRouter's `404` ("… matching your guardrail restrictions"), like a

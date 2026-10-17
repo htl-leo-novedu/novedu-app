@@ -581,9 +581,8 @@ OpenRouter's management API or website:
   `gpt-6-luna`, `gpt-5.6-terra`, `gpt-6.1-sol`, GlobalStandard), with
   OpenRouter's shared capacity switched off — every request is served by that
   resource.
-- **Default guardrail** (applies to every key in the workspace): the three models
-  `openai/gpt-6-luna`, `openai/gpt-5.6-terra`, `openai/gpt-6.1-sol`, provider
-  Azure only. Any other model is refused at runtime with HTTP `404` ("… matching
+- **Default guardrail** (applies to every key in the workspace): the two models
+  `openai/gpt-6-luna` and `openai/gpt-6.1-sol`, provider Azure only. Any other model is refused at runtime with HTTP `404` ("… matching
   your guardrail restrictions"). OpenRouter stores the allowlist as **dated**
   model slugs, so when an alias moves to a newer snapshot, requests may be
   refused until the guardrail lists the new slug and the Azure deployment is
