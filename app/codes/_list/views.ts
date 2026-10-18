@@ -9,7 +9,7 @@ import type { CodeColumnId } from "./columns";
 export interface CodeView {
   id: string;
   label: string;
-  /** One line under the toolbar saying what the view is for. */
+  /** One line in the view picker saying what the view is for. */
   description: string;
   columns: CodeColumnId[];
   /** The order without a `?sort=`; `undefined` = the store's newest first. */
@@ -22,11 +22,16 @@ export const CODE_VIEWS: CodeView[] = [
   {
     id: "overview",
     label: "Overview",
-    description:
-      "Your codes with their availability window and how often they were used. Expired codes stay so you can review their stats.",
+    description: "Your codes with their availability window and how often they were used.",
     columns: ["kind", "note", "owner", "from", "until", "interactions"],
     defaultSortLabel: "Newest first",
   },
 ];
 
 export const DEFAULT_CODE_VIEW = CODE_VIEWS[0] as CodeView;
+
+/** Views still to be built: the picker lists them greyed out as "Coming soon". */
+export const PLANNED_CODE_VIEWS = [
+  { label: "Compact", description: "Just the note, the code and the status." },
+  { label: "Models & cost", description: "Which model each code runs on and what it costs." },
+];

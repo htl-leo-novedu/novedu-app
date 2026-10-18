@@ -363,3 +363,12 @@ export const ArrowUpDownIcon = (props: SVGProps<SVGSVGElement>) => (
     <path d="M7 4v16" />
   </Icon>
 );
+
+/** A table's columns — a list's view (which columns it shows). */
+export const ColumnsIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+    <line x1="15" y1="3" x2="15" y2="21" />
+  </Icon>
+);

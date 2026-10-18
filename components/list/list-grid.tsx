@@ -168,7 +168,9 @@ export function ListGrid<T>({
                     <span className="flex h-6 items-center">
                       <RowCheckbox id={key} label={label} />
                     </span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    {/* Breaks a long word anywhere: an auto-layout table would
+                        otherwise widen to fit it, past the phone's edge. */}
+                    <div className="wrap-anywhere flex min-w-0 flex-1 flex-col gap-1">
                       <div className="min-w-0 font-medium">{folded.title(row)}</div>
                       <div className="flex flex-wrap items-center gap-2">{folded.meta(row)}</div>
                       <Facts row={row} columns={columns} />

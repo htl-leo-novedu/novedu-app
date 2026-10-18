@@ -2,14 +2,14 @@ import Link from "next/link";
 import { ArrowUpDownIcon, TrashIcon } from "@/components/icons";
 import { ActionMenu } from "@/components/list/action-menu";
 import { EngineSwitch } from "@/components/list/engine-switch";
-import { FilterChips } from "@/components/list/filters";
+import { FilterSummary } from "@/components/list/filters";
 import { ListControls } from "@/components/list/list-controls";
 import { ListGrid } from "@/components/list/list-grid";
 import { ListPager } from "@/components/list/list-pager";
-import { SearchBox } from "@/components/list/search-box";
 import { ListSelection } from "@/components/list/selection";
 import { describeSort, sortMenuItems } from "@/components/list/sorting";
 import { listHref } from "@/components/list/url";
+import { ViewPicker } from "@/components/list/view-picker";
 import { Notice } from "@/components/notice";
 import { Main, PageBody } from "@/components/page-main";
 import { RememberListFilter } from "@/components/remember-list-filter";
@@ -21,6 +21,7 @@ import { windowStatus } from "@/lib/code-window";
 import { carryParams, type ParamRecord, parsePaging } from "@/lib/db/paging";
 import { parseSort } from "@/lib/db/sorting";
 import { getSession } from "@/lib/session";
+import { cn } from "@/lib/utils";
 import {
   CODE_COLUMNS,
   CodeRowMenu,
@@ -30,13 +31,16 @@ import {
   toCodeRow,
 } from "./columns";
 import {
+  appliedCodeFilters,
   CODES_PATH,
   CodeFilterGroups,
+  CodeSearch,
   clearFiltersHref,
-  codeFilterChips,
+  codeFilterCount,
+  codeFilterSummary,
   parseCodeFilters,
 } from "./filters";
-import { DEFAULT_CODE_VIEW } from "./views";
+import { CODE_VIEWS, DEFAULT_CODE_VIEW, PLANNED_CODE_VIEWS } from "./views";
 
 // `/codes` on the new list engine (see `docs/filtered-lists.md`, "The new list
 // engine"). The page (`app/codes/page.tsx`) has already gated the teacher and
@@ -90,8 +94,7 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
     toCodeRow(entry, windowStatus(entry, now), counts ? (counts.get(entry.code) ?? 0) : null),
   );
 
-  const chips = codeFilterChips(sp, filters, owners, currentUserId);
-  const isFiltered = filters.q !== "" || chips.length > 0;
+  const filterCount = codeFilterCount(filters, currentUserId);
   const sorting = { pathname: CODES_PATH, params: sp, sort };
 
   return (
@@ -101,48 +104,53 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
           {/* Remembers the applied view for the burger and back links, never the page. */}
           <RememberListFilter pathname={CODES_PATH} search={carryParams(sp, ["page"]).toString()} />
 
-          <div className="flex w-0 min-w-full flex-wrap items-center justify-between gap-3">
-            <p className="text-foreground/70 text-sm">
-              {result.total} {result.total === 1 ? "code" : "codes"}
-            </p>
-            <div className="flex items-center gap-2">
-              <EngineSwitch list={CODES_PATH} current="new" />
-              <Link href="/codes/new" className={buttonVariants()}>
-                New code
-              </Link>
-            </div>
-          </div>
-
           <ListControls
-            search={
-              <SearchBox
-                pathname={CODES_PATH}
-                params={sp}
-                label="Search codes"
-                placeholder="Search note or code"
+            viewPicker={
+              <ViewPicker
+                views={CODE_VIEWS.map((v) => ({
+                  label: v.label,
+                  description: v.description,
+                  href: listHref(CODES_PATH, sp, {}),
+                  current: v.id === view.id,
+                }))}
+                planned={PLANNED_CODE_VIEWS}
               />
             }
             sortMenu={
               <ActionMenu
                 label="Sort"
                 items={sortMenuItems(columns, sorting, view.defaultSortLabel)}
-                triggerClassName={buttonVariants({ variant: "outline" })}
+                triggerClassName={cn(buttonVariants({ variant: "outline" }), "w-9 px-0")}
               >
                 <ArrowUpDownIcon />
-                Sort
+                <span className="sr-only">Sort</span>
               </ActionMenu>
             }
-            filterCount={chips.length}
-            drawer={
-              <CodeFilterGroups
-                sp={sp}
-                filters={filters}
-                owners={owners}
-                currentUserId={currentUserId}
+            actions={
+              <>
+                <EngineSwitch list={CODES_PATH} current="new" />
+                <Link href="/codes/new" className={buttonVariants()}>
+                  New code
+                </Link>
+              </>
+            }
+            filterCount={filterCount}
+            filters={{
+              pathname: CODES_PATH,
+              params: sp,
+              applied: appliedCodeFilters(filters, currentUserId),
+            }}
+            search={<CodeSearch />}
+            groups={
+              <CodeFilterGroups filters={filters} owners={owners} currentUserId={currentUserId} />
+            }
+            summary={
+              <FilterSummary
+                count={`${result.total} ${result.total === 1 ? "code" : "codes"}`}
+                parts={codeFilterSummary(filters, owners, currentUserId)}
+                clearHref={filterCount > 0 ? clearFiltersHref(sp) : undefined}
               />
             }
-            chips={<FilterChips chips={chips} clearHref={clearFiltersHref(sp)} />}
-            clearHref={clearFiltersHref(sp)}
             itemNoun="code"
             bulkActions={[
               {
@@ -156,11 +164,9 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
             ]}
           />
 
-          <p className="w-0 min-w-full text-foreground/65 text-sm">{view.description}</p>
-
           {rows.length === 0 ? (
             <p className="w-0 min-w-full">
-              {isFiltered ? (
+              {filterCount > 0 ? (
                 "No codes match your filter."
               ) : (
                 <>

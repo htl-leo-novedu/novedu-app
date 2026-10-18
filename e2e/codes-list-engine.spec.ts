@@ -5,9 +5,10 @@ import { watchErrors } from "./page.utils";
 
 // `/codes` on both list engines (see `docs/filtered-lists.md`, "The new list
 // engine"): each opens error-free, the Classic/New switch round-trips through
-// its cookie, and — against the real database — the new list's search, filter
-// pills, sort header and pager drive ONE URL the server filters on, and its bulk
-// bar deletes. Minted codes belong to the e2e creator, hence `owner=all`.
+// its cookie, and — against the real database — the new list's filter panel
+// (applied on Apply or Enter), sort header and pager drive ONE URL the server
+// filters on, the summary line names the applied filters, and its bulk bar
+// deletes. Minted codes belong to the e2e creator, hence `owner=all`.
 
 test.use({ storageState: TEACHER_STORAGE_STATE });
 
@@ -20,6 +21,8 @@ async function useNewEngine(context: BrowserContext, baseURL: string | undefined
 const newEngine = (page: Page) => page.getByRole("button", { name: /^Filters/ });
 const classicEngine = (page: Page) => page.getByRole("button", { name: "Apply" });
 const codeRows = (page: Page, tag: string) => page.getByRole("row").filter({ hasText: tag });
+// The line under the toolbar: the row count, then the applied filters.
+const summary = (page: Page) => page.getByText(/^\d+ codes?$/).locator("..");
 
 test("the classic list opens without errors and offers the switch", async ({ page }) => {
   const errors = watchErrors(page);
@@ -62,7 +65,7 @@ test("the switch flips the engine for this device and back", async ({ page, cont
   await expect(classicEngine(page)).toBeVisible();
 });
 
-test("search, filters, sort and pager build one URL the database filters on", {
+test("the filter panel, sort and pager build one URL the database filters on", {
   tag: ["@live", "@live-db"],
 }, async ({ page, context, baseURL }) => {
   const tag = `e2e-list-${Date.now()}`;
@@ -73,16 +76,22 @@ test("search, filters, sort and pager build one URL the database filters on", {
   await useNewEngine(context, baseURL);
 
   await page.goto("/codes?owner=all&size=1");
+  // The panel is a draft: Enter in its search field applies it...
+  await newEngine(page).click();
   await page.getByRole("searchbox", { name: "Search codes" }).fill(tag);
   await page.keyboard.press("Enter");
   await expect(page.getByText("4 codes")).toBeVisible();
 
+  // ...and pill clicks load nothing until Apply.
   await newEngine(page).click();
-  await page.getByRole("link", { name: "Tutor", exact: true }).click();
-  await expect(page.getByText("3 codes")).toBeVisible();
-  await page.getByRole("link", { name: "Active", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Active", exact: true }).click();
+  await expect(page.getByText("4 codes")).toBeVisible();
+  await page.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText("2 codes")).toBeVisible();
-  await page.getByRole("button", { name: "Done" }).click();
+  await expect(summary(page)).toContainText(
+    `Owner: all owners·Activity: Tutor·Status: Active·Search: “${tag}”`,
+  );
 
   await page.getByRole("columnheader", { name: /Note/ }).getByRole("link").click();
   await expect(page).toHaveURL(/sort=note/);
@@ -103,10 +112,13 @@ test("search, filters, sort and pager build one URL the database filters on", {
   await expect(codeRows(page, tag)).toHaveText([new RegExp(`${tag} b`)]);
   await expect(page).toHaveURL(/page=2/);
 
-  // A chip removes its one value and drops the page.
-  await page.getByRole("link", { name: "Remove filter Active" }).click();
+  // Dropping a filter in the panel keeps the sort and drops the page.
+  await newEngine(page).click();
+  await page.getByRole("button", { name: "Active", exact: true }).click();
+  await page.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText("3 codes")).toBeVisible();
   await expect(page).not.toHaveURL(/page=/);
+  await expect(page).toHaveURL(/sort=note/);
   await expect(page.getByText("Showing 1–1 of 3")).toBeVisible();
 });
 

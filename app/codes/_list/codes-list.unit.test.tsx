@@ -4,7 +4,7 @@ import type { CodeListRow } from "@/lib/code-store";
 
 // `/codes` on the new list engine, rendered on the server with the stores
 // mocked: the URL reaches the store as SQL filters (never filtered here), the
-// empty and no-match states differ, a failed interaction count shows "—" rather
+// summary line names them, the empty and no-match states differ, a failed interaction count shows "—" rather
 // than a wrong zero, and an unavailable store shows the notice.
 
 const listCodes = vi.hoisted(() => vi.fn());
@@ -90,6 +90,18 @@ describe("CodesList", () => {
     expect(getInteractionCounts).toHaveBeenCalledWith([ROW.code]);
     expect(html).toMatch(/>7</);
     expect(html).toContain("7 interactions");
+  });
+
+  it("sums up the applied filters under the toolbar and offers the views", async () => {
+    const text = (html: string) => html.replace(/<[^>]+>/g, "");
+    const plain = text(await render());
+    expect(plain).toContain("1 code·Owner: mine");
+    expect(plain).not.toContain("Clear all");
+
+    const filtered = text(await render({ owner: "all", status: "active,expired" }));
+    expect(filtered).toContain("1 code·Owner: all owners·Status: Active, Expired·Clear all");
+    expect(filtered).toContain("Overview");
+    expect(filtered).toContain("Coming soon");
   });
 
   it("shows — when the interaction count fails, never a wrong zero", async () => {

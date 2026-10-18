@@ -4,7 +4,7 @@ import { carryParams, type ParamRecord } from "@/lib/db/paging";
 // "The new list engine"). The URL stays the ONE filter state the server reads, so
 // every filter control is a link (or a form) that builds the next URL from the
 // current one. Directive-free and DB-free like `lib/db/paging.ts`: the server
-// pages build their pill and chip hrefs here, the client search box its submit.
+// pages build their links here, the client filter panel its Apply.
 
 /** A param's first value, trimmed — `""` when absent. First-wins, as everywhere. */
 export function paramValue(sp: ParamRecord, key: string): string {
@@ -26,16 +26,6 @@ export function parseMultiParam<T extends string>(
 ): T[] {
   const picked = new Set(paramValue(sp, key).split(","));
   return allowed.filter((value) => picked.has(value));
-}
-
-/** The param string for `values` with `value` toggled, in `allowed`'s order. */
-export function toggleMultiValue<T extends string>(
-  values: readonly T[],
-  value: T,
-  allowed: readonly T[],
-): string {
-  const next = values.includes(value) ? values.filter((v) => v !== value) : [...values, value];
-  return allowed.filter((v) => next.includes(v)).join(",");
 }
 
 /**

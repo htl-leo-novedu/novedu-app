@@ -8,7 +8,7 @@ vi.mock("next/link", () => import("@/tests/mocks/next-link"));
 // the native popover opens on the trigger, focuses its first item, moves with
 // the arrow keys (skipping a disabled item), closes on Escape; it sits in the
 // top layer, so a clipping card cannot cut it off; from `md` up it drops from
-// the trigger, on a phone it is a full-width bottom sheet.
+// the trigger (right- or left-aligned), on a phone it is a full-width bottom sheet.
 import "@/app/globals.css";
 import { ActionMenu, type ActionMenuItem } from "./action-menu";
 
@@ -83,6 +83,23 @@ describe("ActionMenu", () => {
     expect(menu.contains(hit)).toBe(true);
     expect(Math.abs(rect.right - anchor.right)).toBeLessThanOrEqual(1);
     expect(rect.top).toBeGreaterThanOrEqual(anchor.bottom);
+  });
+
+  test("align=start lines it up with the trigger's left edge instead", async () => {
+    const screen = await render(
+      <div style={{ marginLeft: 400 }}>
+        <ActionMenu label="View" items={ITEMS} align="start">
+          View
+        </ActionMenu>
+      </div>,
+    );
+    const trigger = screen.getByRole("button", { name: "View" });
+    await trigger.click();
+    await expect.poll(isOpen).toBe(true);
+    const rect = (panel() as HTMLElement).getBoundingClientRect();
+    expect(
+      Math.abs(rect.left - trigger.element().getBoundingClientRect().left),
+    ).toBeLessThanOrEqual(1);
   });
 
   test("is a full-width bottom sheet on a phone", async () => {

@@ -548,27 +548,28 @@ frame gets the plain list: a miss, never a wrong filter.
 
 `/codes` has a second engine next to the classic one. It keeps every rule above —
 filter, sort and page in SQL, state in the URL, select-all page-scoped, delete
-bulk-only — and changes the screen: one "…" menu per row instead of a row of
-buttons, a filter drawer with removable chips, a bulk bar that appears while rows
-are ticked, and rows that fold into three lines on a phone. It is deliberately
+bulk-only — and changes the screen: one toolbar row with a view picker, one "…"
+menu per row instead of a row of buttons, a filter panel whose changes load only
+on Apply, a summary line naming the applied filters, a bulk bar that appears
+while rows are ticked, and rows that fold into three lines on a phone. It is deliberately
 Novedu-sized: a small core plus per-list files, no generic grid framework.
 
 | Piece | Where | Role |
 | --- | --- | --- |
 | `ListGrid<T>` | `components/list/list-grid.tsx` (**server**) | the table: checkbox column, sortable header links, row "…" menu; plus each row's folded phone cell (below) |
 | `GridColumn<T>` | same file | `{ id, header, render, sortKey?, kind?, className?, fact? }` — `fact` is the column's short text on a folded row |
-| `ListControls` | `components/list/list-controls.tsx` (**client**) | toolbar (search, phone Sort, Filters button with a count badge), the drawer, the chips; swaps in the bulk bar while rows are ticked |
-| `FilterGroup` / `FilterPill` / `FilterChips` | `components/list/filters.tsx` (**server-safe**) | the drawer's groups and pills and the active-filter chips — every one a `<Link>` |
-| `SearchBox` | `components/list/search-box.tsx` (**client**) | Enter submits; builds its URL like every other control |
-| `LinkSelect` | `components/list/link-select.tsx` (**client**) | a `<select>` whose options are hrefs (the "Other owner…" picker) |
-| `ActionMenu` | `components/list/action-menu.tsx` (**client**) | the one menu: row "…" menus, the phone Sort menu, the phone bulk "Actions" |
+| `ListControls` | `components/list/list-controls.tsx` (**client**) | the toolbar row (view picker, phone Sort, Filters button with a count badge, the page's actions), the filter panel, the summary line; swaps in the bulk bar while rows are ticked |
+| `FilterPanel` / `FilterToggle` / `FilterSelect` / `FilterSearch` | `components/list/filter-panel.tsx` (**client**) | the panel holding the draft and its Apply / Cancel / Clear all, and the controls that edit the draft: toggle pills, a select for long lists (the "Other owner…" picker), the search field |
+| `FilterGroup` / `FilterSummary` | `components/list/filters.tsx` (**server-safe**) | a labelled group of the panel; the summary line under the toolbar |
+| `ViewPicker` | `components/list/view-picker.tsx` (**server-safe**) | the toolbar button naming the view; its menu lists every view with its description |
+| `ActionMenu` | `components/list/action-menu.tsx` (**client**) | the one menu: the view picker, row "…" menus, the phone Sort menu, the phone bulk "Actions" |
 | `ListSelection` / `RowCheckbox` / `SelectAllCheckbox` | `components/list/selection.tsx` (**client**) | the page-scoped selection and the one way a bulk action runs |
 | `BulkBar` | `components/list/bulk-bar.tsx` (**client**) | "N selected" + one button per bulk action; floats at the bottom on a phone |
 | `ListPager` | `components/list/list-pager.tsx` (**server**) | "Showing 21–40 of 137" + previous/next |
-| `listHref` / `parseMultiParam` / `toggleMultiValue` | `components/list/url.ts` (**no DB import**) | the URL grammar of every filter control |
+| `listHref` / `parseMultiParam` / `paramValue` | `components/list/url.ts` (**no DB import**) | the URL grammar: every link the server builds, and the panel's Apply |
 | `describeSort` / `sortMenuItems` | `components/list/sorting.ts` (**no DB import**) | the folded list's Sort menu and its "Note ↑" line |
 | `EngineSwitch` | `components/list/engine-switch.tsx` (**server**) | the Classic/New switch both engines render |
-| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, drawer groups, chips), `codes-list.tsx` (the list body) |
+| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `codes-list.tsx` (the list body) |
 
 The engine does not import the classic pieces (`components/data-list.tsx`,
 `components/list-filter-bar.tsx`, `components/list-selection.tsx`,
@@ -576,17 +577,32 @@ The engine does not import the classic pieces (`components/data-list.tsx`,
 duplication with `components/list-selection.tsx` is deliberate, so either engine
 can be changed without touching the other.
 
-### Filters are links, applied on click
+### The filter panel: a draft, applied on Apply
 
-There is no Apply button. Every pill, chip and "Clear all" is a `<Link>` to the
-current URL with one value changed, built on the server by `listHref`, so a click
-is a plain navigation and the server re-queries. `listHref` drops `page` (a
-changed filter is a different set) and carries everything else, `sort` and `size`
-included; an empty value removes its param. The drawer's open state is the only
-client state and survives the soft navigation, so a teacher can tick several
-values in a row; "Done" only closes it. Search submits on Enter. A filter group
-knows nothing about the drawer, so the groups can move into another container
-without change.
+The toolbar's Filters button opens the panel under it: the search field across the
+top, then the filter groups. Nothing in the panel loads the list on its own — a
+pill click, a pick from "Other owner…" or typing only edits the panel's **draft**
+(client state in `FilterPanel`, started from the filters the URL applies), and a
+"Not applied yet" hint shows while the draft differs. **Apply** — or Enter in the
+search field — builds the next URL with `listHref` and navigates, so the server
+re-queries; the panel stays open with "Applying…" until the filtered page arrives,
+then closes. **Cancel** (or the Filters button) closes the panel and throws the
+draft away; "Clear all" in the panel only empties the draft. `listHref` drops
+`page` (a changed filter is a different set) and carries everything else, `sort`
+and `size` included; an empty value removes its param.
+
+The controls (`FilterToggle`, `FilterSelect`, `FilterSearch`) edit the draft
+through context, each naming its URL param, so a filter group renders them
+anywhere inside the panel and knows nothing about the panel itself — the groups
+can move into another container without change. A param is either multi-value
+(toggle pills, `multi`) or one choice (pills and a select taking turns; the value
+`""` stands for the param's default).
+
+Under the toolbar, the **summary line** says what the list shows: the row count,
+then the applied filters in the list's fixed order, then "Clear all" while
+anything is filtered. It is built on the server from the same parsed URL the query
+uses, so it can never disagree with the rows; its "Clear all" is a link and
+applies at once.
 
 A **multi-value filter is ONE comma-separated param** — `?module=tutor,quiz`,
 never `?module=tutor&module=quiz` — because `carryParams` keeps only a repeated
@@ -600,14 +616,18 @@ id — "The owner filter" above), `module` and `status` (both comma lists), plus
 `active`, `upcoming`, `expired` — a SQL condition over `valid_from`/`valid_until`
 (`windowStatusCondition` in `lib/code-store.ts`); the page passes the store the
 same `now` it uses for the status badges, so filter and badge always agree. The
-chips show every active value except the default owner; the Filters button's badge
-counts them.
+summary line always names the owner — "mine" is a filter too — and adds activity,
+status and the search term only when set; the Filters button's badge counts the
+applied values, the search term included and the default owner not.
 
 ### Views, query columns and page columns
 
 A **view** is a use-case column set with its default order, defined in code
-(`app/codes/_list/views.ts`); `/codes` has one, Overview. The view's columns pick
-from the list's column catalogue (`CODE_COLUMNS` in `app/codes/_list/columns.tsx`).
+(`app/codes/_list/views.ts`); `/codes` has one, Overview, so there is no `view`
+param. The view's columns pick from the list's column catalogue (`CODE_COLUMNS` in
+`app/codes/_list/columns.tsx`). The toolbar's view picker lists every view with
+its one-line description, the current one ticked; the views still to be built
+(`PLANNED_CODE_VIEWS`) show greyed out as "Coming soon".
 
 - A **query column** is read by the list's own SQL query; it gets a `sortKey` from
   the store's `*_SORT_COLUMNS`, and the view's sortable columns are the allow-list
@@ -622,15 +642,16 @@ from the list's column catalogue (`CODE_COLUMNS` in `app/codes/_list/columns.tsx
 `ActionMenu` is a button plus a native `popover` panel. The popover lives in the
 top layer, so it escapes the table card's `overflow-x-auto` clipping, and the
 platform supplies light dismiss and Escape. From `md` up it drops from its
-trigger, right-aligned (the position is computed on open and handed to static
+trigger, right-aligned (left-aligned with `align="start"`, as the view picker; the position is computed on open and handed to static
 `md:` utilities through CSS variables, the `docs/styling.md` pattern); below `md`
 it is a bottom sheet with 48px rows. Arrow keys, Home and End move between the
-items; a scroll or resize closes it. Items are plain data — `link`, `copy-link`,
-`disabled` (with its reason), `button` — so a server page builds a row's menu.
+items; a scroll or resize closes it. Items are plain data — `link` (optionally
+with a description line and a tick), `copy-link`, `disabled` (with its reason),
+`button` — so a server page builds a row's menu.
 The row menu never holds Delete: delete stays bulk-only.
 
-The bulk bar replaces the toolbar while rows are ticked (same height, so the table
-does not move) and lists one button per bulk action; `confirm: "delete"` asks with
+The bulk bar replaces the whole toolbar row while rows are ticked (same height, so
+the table does not move) and lists one button per bulk action; `confirm: "delete"` asks with
 the count first. On a phone the toolbar stays and the bar floats at the bottom of
 the screen, its actions behind an "Actions" sheet. Success clears the selection
 and refreshes the page; a failure keeps the selection and shows the message.
@@ -642,7 +663,9 @@ folded cell — line 1 the row's title, line 2 its meta badges, line 3 every col
 `fact` joined by " · " — and CSS shows either the desktop cells or that cell. One
 server render, no client-side shaping. The folded list has its own header row with
 a visible "Select all" and the current order in words; the toolbar's Sort button
-takes the place of the column headers.
+takes the place of the column headers. The toolbar wraps: the page's actions (the
+Classic/New switch, "New code") take the top row, the view picker, Sort and
+Filters the row under it.
 
 ### The Classic/New switch
 
@@ -662,14 +685,16 @@ gets `DEFAULT_LIST_ENGINE`.
    (multi-value filters as `inArray`), as in "Store: dynamic query" above.
 2. Under `app/<list>/_list/`, write the column catalogue (`GridColumn`s with
    `sortKey`s from the store's sort map, `fact`s for the folded rows), the views,
-   the filter file (parse, drawer groups, chips, clear href), the row menu and the
+   the filter file (parse, the panel's search and groups, its starting draft, the
+   summary parts, the clear href), the row menu and the
    list body; render it from the page behind the engine cookie and add the route
    to `LIST_ENGINE_ROUTES`.
 3. Compute page columns only when the view shows them.
 
-The fast tests are `components/list/*.browser.test.tsx` (the menu, the drawer and
-chips, the bulk bar and the phone layout, against the real stylesheet) and the
+The fast tests are `components/list/*.browser.test.tsx` (the menu, the toolbar, the
+filter panel's draft and Apply, the bulk bar and the phone layout, against the
+real stylesheet) and the
 unit tests next to `components/list/url.ts`, `components/list/sorting.ts` and the
 `app/codes/_list/` files; `e2e/codes-list-engine.spec.ts` opens both engines,
-round-trips the switch and — `@live-db` — drives filters, sort, pager and the bulk
-delete against the database.
+round-trips the switch and — `@live-db` — drives the filter panel, sort, pager and
+the bulk delete against the database.

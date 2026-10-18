@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { clearFiltersHref, codeFilterChips, parseCodeFilters } from "./filters";
+import {
+  appliedCodeFilters,
+  clearFiltersHref,
+  codeFilterCount,
+  codeFilterSummary,
+  parseCodeFilters,
+} from "./filters";
 
 // The `/codes` filters on the new list engine: the URL parses into the store's
-// filter (unknown values drop out), each active value becomes one removable chip
-// whose link removes exactly that value, and "Clear all" keeps the sort and size.
+// filter (unknown values drop out) and into the filter panel's starting draft,
+// the summary line names the applied filters in a fixed order, and "Clear all"
+// keeps the sort and size.
 
 const ME = "user-me";
 const OWNERS = [
@@ -35,27 +42,45 @@ describe("parseCodeFilters", () => {
   });
 });
 
-describe("codeFilterChips", () => {
-  const chips = (sp: Record<string, string>) =>
-    codeFilterChips(sp, parseCodeFilters(sp, ME), OWNERS, ME);
+describe("appliedCodeFilters / codeFilterCount", () => {
+  const applied = (sp: Record<string, string>) => appliedCodeFilters(parseCodeFilters(sp, ME), ME);
 
-  it("has no chip for the default owner, me — named or implied", () => {
-    expect(chips({})).toEqual([]);
-    expect(chips({ owner: ME })).toEqual([]);
+  it("starts the panel's draft from the URL; my own codes are the unset owner", () => {
+    expect(applied({})).toEqual({ q: [], owner: [], module: [], status: [] });
+    expect(applied({ owner: ME })).toEqual({ q: [], owner: [], module: [], status: [] });
+    expect(applied({ q: "frac", owner: "all", module: "quiz,tutor", status: "active" })).toEqual({
+      q: ["frac"],
+      owner: ["all"],
+      module: ["tutor", "quiz"],
+      status: ["active"],
+    });
   });
 
-  it("names the owner: all, a known teacher, or the raw id of an unknown one", () => {
-    expect(chips({ owner: "all" })).toEqual([{ label: "All owners", removeHref: "/codes" }]);
-    expect(chips({ owner: "user-ada" })[0]?.label).toBe("Owner: Ada Lovelace");
-    expect(chips({ owner: "user-gone" })[0]?.label).toBe("Owner: user-gone");
+  it("counts every applied value, the search term included", () => {
+    const count = (sp: Record<string, string>) => codeFilterCount(parseCodeFilters(sp, ME), ME);
+    expect(count({ owner: ME })).toBe(0);
+    expect(count({ q: "x", owner: "user-ada", module: "tutor,quiz", status: "active" })).toBe(5);
+  });
+});
+
+describe("codeFilterSummary", () => {
+  const summary = (sp: Record<string, string>) =>
+    codeFilterSummary(parseCodeFilters(sp, ME), OWNERS, ME);
+
+  it("always names the owner, even the default — my own codes are a filter too", () => {
+    expect(summary({})).toEqual([{ label: "Owner", value: "mine" }]);
+    expect(summary({ owner: ME })).toEqual([{ label: "Owner", value: "mine" }]);
+    expect(summary({ owner: "all" })[0]?.value).toBe("all owners");
+    expect(summary({ owner: "user-ada" })[0]?.value).toBe("Ada Lovelace");
+    expect(summary({ owner: "user-gone" })[0]?.value).toBe("user-gone");
   });
 
-  it("gives each activity and status value its own chip that removes only that value", () => {
-    const sp = { module: "tutor,quiz", status: "active", sort: "note", page: "2" };
-    expect(chips(sp)).toEqual([
-      { label: "Tutor", removeHref: "/codes?status=active&sort=note&module=quiz" },
-      { label: "Quiz", removeHref: "/codes?status=active&sort=note&module=tutor" },
-      { label: "Active", removeHref: "/codes?module=tutor,quiz&sort=note" },
+  it("adds activity, status and search in a fixed order, only when set", () => {
+    expect(summary({ q: "frac", status: "expired,active", module: "quiz,tutor" })).toEqual([
+      { label: "Owner", value: "mine" },
+      { label: "Activity", value: "Tutor, Quiz" },
+      { label: "Status", value: "Active, Expired" },
+      { label: "Search", value: "“frac”" },
     ]);
   });
 });
