@@ -8,6 +8,12 @@ page's `searchParams` handling. Styling follows `docs/styling.md` — the list
 chrome (container, toolbar, table) lives INSIDE `DataList`/`ListFilterBar` as
 Tailwind utilities; pages never restate it.
 
+Two list engines render these screens. The **classic engine** (`DataList` +
+`ListFilterBar`, most of this doc) renders every list. `/codes` also has the
+**new engine** (`components/list/`, see "The new list engine" at the end), and a
+per-device Classic/New switch on the page picks one — classic by default. The firm
+rule, paging, sorting and the filter memory below hold for both.
+
 ## The one firm rule: filter in the database, never in memory
 
 Filtering is a **SQL `WHERE`**, not a `Array.filter`/`useMemo`. The filter state
@@ -509,7 +515,12 @@ string. Five things are load-bearing:
 - **`DataList` writes, guarded by its `url`.** So the write sites are exactly the four
   routes that pass `pathname` + `params` (`/codes`, `/files`, `/images`, `/reports`);
   an embedded list — the writing module's savers list, the per-code conversation
-  stats — has no route of its own and never writes. Nothing to wire per page.
+  stats — has no route of its own and never writes. Nothing to wire per page. On
+  the new engine the list body mounts `RememberListFilter` itself
+  (`app/codes/_list/codes-list.tsx`), under the same `/codes` key, so both engines
+  share one remembered filter. The new engine's URL grammar extends the classic one;
+  what the classic list does not understand (a comma list, `status`) reads as no
+  filter there.
 - **`page` is dropped** (`carryParams(params, ["page"])`), so a remembered list reopens
   on page one. Everything else rides along, `sort` and a non-default `size` included.
 - **An empty query REMOVES the entry**, so "Clear" — a bare `router.push(pathname)` —
@@ -532,3 +543,133 @@ plain href and upgrades in an effect — which keeps the href real, so middle-cl
 frame gets the plain list: a miss, never a wrong filter.
 
 `tests/component/list-filter-memory.browser.test.tsx` is the guard for both halves.
+
+## The new list engine
+
+`/codes` has a second engine next to the classic one. It keeps every rule above —
+filter, sort and page in SQL, state in the URL, select-all page-scoped, delete
+bulk-only — and changes the screen: one "…" menu per row instead of a row of
+buttons, a filter drawer with removable chips, a bulk bar that appears while rows
+are ticked, and rows that fold into three lines on a phone. It is deliberately
+Novedu-sized: a small core plus per-list files, no generic grid framework.
+
+| Piece | Where | Role |
+| --- | --- | --- |
+| `ListGrid<T>` | `components/list/list-grid.tsx` (**server**) | the table: checkbox column, sortable header links, row "…" menu; plus each row's folded phone cell (below) |
+| `GridColumn<T>` | same file | `{ id, header, render, sortKey?, kind?, className?, fact? }` — `fact` is the column's short text on a folded row |
+| `ListControls` | `components/list/list-controls.tsx` (**client**) | toolbar (search, phone Sort, Filters button with a count badge), the drawer, the chips; swaps in the bulk bar while rows are ticked |
+| `FilterGroup` / `FilterPill` / `FilterChips` | `components/list/filters.tsx` (**server-safe**) | the drawer's groups and pills and the active-filter chips — every one a `<Link>` |
+| `SearchBox` | `components/list/search-box.tsx` (**client**) | Enter submits; builds its URL like every other control |
+| `LinkSelect` | `components/list/link-select.tsx` (**client**) | a `<select>` whose options are hrefs (the "Other owner…" picker) |
+| `ActionMenu` | `components/list/action-menu.tsx` (**client**) | the one menu: row "…" menus, the phone Sort menu, the phone bulk "Actions" |
+| `ListSelection` / `RowCheckbox` / `SelectAllCheckbox` | `components/list/selection.tsx` (**client**) | the page-scoped selection and the one way a bulk action runs |
+| `BulkBar` | `components/list/bulk-bar.tsx` (**client**) | "N selected" + one button per bulk action; floats at the bottom on a phone |
+| `ListPager` | `components/list/list-pager.tsx` (**server**) | "Showing 21–40 of 137" + previous/next |
+| `listHref` / `parseMultiParam` / `toggleMultiValue` | `components/list/url.ts` (**no DB import**) | the URL grammar of every filter control |
+| `describeSort` / `sortMenuItems` | `components/list/sorting.ts` (**no DB import**) | the folded list's Sort menu and its "Note ↑" line |
+| `EngineSwitch` | `components/list/engine-switch.tsx` (**server**) | the Classic/New switch both engines render |
+| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, drawer groups, chips), `codes-list.tsx` (the list body) |
+
+The engine does not import the classic pieces (`components/data-list.tsx`,
+`components/list-filter-bar.tsx`, `components/list-selection.tsx`,
+`components/selection-column.tsx`, `components/owner-column.tsx`); the small
+duplication with `components/list-selection.tsx` is deliberate, so either engine
+can be changed without touching the other.
+
+### Filters are links, applied on click
+
+There is no Apply button. Every pill, chip and "Clear all" is a `<Link>` to the
+current URL with one value changed, built on the server by `listHref`, so a click
+is a plain navigation and the server re-queries. `listHref` drops `page` (a
+changed filter is a different set) and carries everything else, `sort` and `size`
+included; an empty value removes its param. The drawer's open state is the only
+client state and survives the soft navigation, so a teacher can tick several
+values in a row; "Done" only closes it. Search submits on Enter. A filter group
+knows nothing about the drawer, so the groups can move into another container
+without change.
+
+A **multi-value filter is ONE comma-separated param** — `?module=tutor,quiz`,
+never `?module=tutor&module=quiz` — because `carryParams` keeps only a repeated
+key's first value and the pager, sort links and filter memory all build on it.
+`parseMultiParam` drops unknown values (a stale bookmark degrades to "no filter")
+and returns them in the allowed order; the commas stay unescaped in the URL.
+
+`/codes` reads `q` (note or code contains), `owner` (absent = me, `all`, or a user
+id — "The owner filter" above), `module` and `status` (both comma lists), plus
+`sort`, `page` and `size`. `status` is the code's window at the request's "now" —
+`active`, `upcoming`, `expired` — a SQL condition over `valid_from`/`valid_until`
+(`windowStatusCondition` in `lib/code-store.ts`); the page passes the store the
+same `now` it uses for the status badges, so filter and badge always agree. The
+chips show every active value except the default owner; the Filters button's badge
+counts them.
+
+### Views, query columns and page columns
+
+A **view** is a use-case column set with its default order, defined in code
+(`app/codes/_list/views.ts`); `/codes` has one, Overview. The view's columns pick
+from the list's column catalogue (`CODE_COLUMNS` in `app/codes/_list/columns.tsx`).
+
+- A **query column** is read by the list's own SQL query; it gets a `sortKey` from
+  the store's `*_SORT_COLUMNS`, and the view's sortable columns are the allow-list
+  the page hands `parseSort`.
+- A **page column** is computed after the page is read, for the visible rows only —
+  `/codes`' Interactions, one aggregate over the page's codes. It is computed only
+  when the active view shows it, is never sortable, and shows "—" when its
+  computation fails, never a wrong zero.
+
+### The row menu and the bulk bar
+
+`ActionMenu` is a button plus a native `popover` panel. The popover lives in the
+top layer, so it escapes the table card's `overflow-x-auto` clipping, and the
+platform supplies light dismiss and Escape. From `md` up it drops from its
+trigger, right-aligned (the position is computed on open and handed to static
+`md:` utilities through CSS variables, the `docs/styling.md` pattern); below `md`
+it is a bottom sheet with 48px rows. Arrow keys, Home and End move between the
+items; a scroll or resize closes it. Items are plain data — `link`, `copy-link`,
+`disabled` (with its reason), `button` — so a server page builds a row's menu.
+The row menu never holds Delete: delete stays bulk-only.
+
+The bulk bar replaces the toolbar while rows are ticked (same height, so the table
+does not move) and lists one button per bulk action; `confirm: "delete"` asks with
+the count first. On a phone the toolbar stays and the bar floats at the bottom of
+the screen, its actions behind an "Actions" sheet. Success clears the selection
+and refreshes the page; a failure keeps the selection and shows the message.
+
+### Phones: folded rows
+
+Below `md` there is no sideways-scrolling table. Each row also renders a second,
+folded cell — line 1 the row's title, line 2 its meta badges, line 3 every column's
+`fact` joined by " · " — and CSS shows either the desktop cells or that cell. One
+server render, no client-side shaping. The folded list has its own header row with
+a visible "Select all" and the current order in words; the toolbar's Sort button
+takes the place of the column headers.
+
+### The Classic/New switch
+
+The cookie `novedu-list-engine` (`classic` | `new`, `lib/list-engine.ts`) picks the
+engine per device; `app/codes/page.tsx` gates the teacher first, then renders
+the chosen engine. The switch posts to `switchListEngineAction`
+(`lib/list-engine-actions.ts`), which sets the cookie (httpOnly, one year) and
+redirects to the bare list route from `LIST_ENGINE_ROUTES` — never to a URL from
+the form, and without the old filter, since neither engine has to understand the
+other's params. The action is deliberately ungated: it only stores a display
+preference, and the page it leads to gates itself. Absent the cookie, a device
+gets `DEFAULT_LIST_ENGINE`.
+
+### Adding a list to the new engine
+
+1. In the store, take the list's filters as SQL conditions inside `listConditions`
+   (multi-value filters as `inArray`), as in "Store: dynamic query" above.
+2. Under `app/<list>/_list/`, write the column catalogue (`GridColumn`s with
+   `sortKey`s from the store's sort map, `fact`s for the folded rows), the views,
+   the filter file (parse, drawer groups, chips, clear href), the row menu and the
+   list body; render it from the page behind the engine cookie and add the route
+   to `LIST_ENGINE_ROUTES`.
+3. Compute page columns only when the view shows them.
+
+The fast tests are `components/list/*.browser.test.tsx` (the menu, the drawer and
+chips, the bulk bar and the phone layout, against the real stylesheet) and the
+unit tests next to `components/list/url.ts`, `components/list/sorting.ts` and the
+`app/codes/_list/` files; `e2e/codes-list-engine.spec.ts` opens both engines,
+round-trips the switch and — `@live-db` — drives filters, sort, pager and the bulk
+delete against the database.
