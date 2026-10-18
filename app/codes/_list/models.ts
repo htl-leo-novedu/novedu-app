@@ -1,14 +1,14 @@
 import { type ActivityLlm, parseActivityYaml } from "@/lib/activity-load";
 import { serverYamlFetcher } from "@/lib/app-hosted-fetcher";
-import type { CodeListRow } from "@/lib/code-store";
 import { withTimeout } from "@/lib/promise-timeout";
 
-// The `/codes` list's "Model" page column (see `docs/filtered-lists.md`, "The new
-// list engine"): the model each visible code runs on — its override when it holds
-// one, else the activity YAML's `llm:` block. Computed only when the view shows the
-// column. App-hosted YAML is read from the database; any other URL is fetched live
-// (uncached on purpose, `lib/app-hosted-yaml.ts`), so each load is capped and a
-// failure reads as `null` ("—"), never as a wrong model. SERVER-ONLY.
+// The `/codes` list's "YAML model" page column (see `docs/filtered-lists.md`, "The
+// new list engine"): the activity YAML's `llm:` block of each visible code — an
+// overridden code's too, so the list shows what its override replaces. Computed
+// only when the view shows the column. App-hosted YAML is read from the database;
+// any other URL is fetched live (uncached on purpose, `lib/app-hosted-yaml.ts`), so
+// each load is capped and a failure reads as `null` ("—"), never as a wrong model.
+// SERVER-ONLY.
 
 /** How long one YAML load (fetch AND body) may take before the cell gives up. */
 export const MODEL_LOAD_TIMEOUT_MS = 10_000;
@@ -34,17 +34,10 @@ export async function loadActivityLlm(fileUrl: string): Promise<ActivityLlm | nu
   }
 }
 
-/**
- * The effective model of each code (keyed by code): the override as stored, else
- * its YAML's. Each distinct YAML is loaded once, all in parallel; overrides load
- * nothing.
- */
-export async function effectiveModels(
-  entries: Pick<CodeListRow, "code" | "fileUrl" | "llm">[],
-): Promise<Map<string, ActivityLlm | null>> {
-  const urls = [...new Set(entries.filter((e) => !e.llm).map((e) => e.fileUrl))];
-  const loaded = new Map(
+/** The `llm:` block of each distinct file among `fileUrls` (keyed by URL), all loaded in parallel. */
+export async function yamlModels(fileUrls: string[]): Promise<Map<string, ActivityLlm | null>> {
+  const urls = [...new Set(fileUrls)];
+  return new Map(
     await Promise.all(urls.map(async (url) => [url, await loadActivityLlm(url)] as const)),
   );
-  return new Map(entries.map((e) => [e.code, e.llm ?? loaded.get(e.fileUrl) ?? null]));
 }

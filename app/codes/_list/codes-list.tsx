@@ -40,10 +40,11 @@ import {
   codeFilterSummary,
   parseCodeFilters,
 } from "./filters";
-import { effectiveModels } from "./models";
+import { yamlModels } from "./models";
 import { CODE_VIEWS, DEFAULT_CODE_VIEW, pickCodeView } from "./views";
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+/** The store's order without a `?sort=`, in words (the Sort menu, the phone header). */
+const DEFAULT_ORDER = "Newest first";
 
 // `/codes` on the new list engine (see `docs/filtered-lists.md`, "The new list
 // engine"). The page (`app/codes/page.tsx`) has already gated the teacher and
@@ -74,9 +75,7 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
       statuses: filters.statuses,
       now,
       paging: parsePaging(sp),
-      sort: sort ?? view.defaultSort,
-      // A query column with a subquery: only when the view shows it.
-      billedTokensSince: shows("tokens") ? new Date(now.getTime() - THIRTY_DAYS_MS) : undefined,
+      sort,
     }),
     listCodeOwners(),
   ]);
@@ -98,12 +97,12 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
     shows("interactions")
       ? getInteractionCounts(result.rows.map((entry) => entry.code))
       : undefined,
-    shows("model") ? effectiveModels(result.rows) : undefined,
+    shows("yamlModel") ? yamlModels(result.rows.map((entry) => entry.fileUrl)) : undefined,
   ]);
   const rows = result.rows.map((entry) =>
     toCodeRow(entry, windowStatus(entry, now), {
       interactionCount: counts ? (counts.get(entry.code) ?? 0) : null,
-      model: models?.get(entry.code) ?? null,
+      yamlModel: models?.get(entry.fileUrl) ?? null,
     }),
   );
 
@@ -135,7 +134,7 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
             sortMenu={
               <ActionMenu
                 label="Sort"
-                items={sortMenuItems(columns, sorting, view.defaultSortLabel)}
+                items={sortMenuItems(columns, sorting, DEFAULT_ORDER)}
                 triggerClassName={cn(buttonVariants({ variant: "outline" }), "w-9 px-0")}
               >
                 <ArrowUpDownIcon />
@@ -203,7 +202,7 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
               rowMenu={(row) => <CodeRowMenu row={row} />}
               folded={codeFolded}
               sorting={sorting}
-              sortLabel={describeSort(columns, sort, view.defaultSortLabel)}
+              sortLabel={describeSort(columns, sort, DEFAULT_ORDER)}
             />
           )}
 

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { formatCompact, formatCount } from "@/components/charts/format";
 import { CopyIcon, EditIcon, ExternalLinkIcon, StatsIcon } from "@/components/icons";
 import { ActionMenu, type ActionMenuItem } from "@/components/list/action-menu";
 import type { GridColumn } from "@/components/list/list-grid";
@@ -15,7 +14,7 @@ import { LocalTime } from "../../local-time";
 // `docs/filtered-lists.md`, "The new list engine"): every column a view may
 // show, keyed by id. A column with a `sortKey` is a QUERY column — it orders by
 // the store's `CODE_SORT_COLUMNS` entry of that key; one without is display-only
-// (Interactions and Model are PAGE columns, computed after the page is read).
+// (Interactions and YAML model are PAGE columns, computed after the page is read).
 
 /** One `/codes` row as the new list renders it — plain values, dates as unix seconds. */
 export interface CodeRow {
@@ -30,20 +29,18 @@ export interface CodeRow {
   status: WindowStatus;
   /** Qualifying-interaction count; `null` when the count failed or the view doesn't show it. */
   interactionCount: number | null;
-  /** Whether the code holds a usable LLM override (else the YAML's `llm:` applies). */
-  override: boolean;
-  /** The model the code runs on; `null` when it couldn't be read or the view doesn't show it. */
-  model: ActivityLlm | null;
-  /** OpenRouter tokens over the last 30 days; `null` when the view doesn't show them. */
-  billedTokens: number | null;
+  /** The code's usable LLM override; `null` = the YAML's `llm:` applies. */
+  override: ActivityLlm | null;
+  /** The activity YAML's model; `null` when it couldn't be read or the view doesn't show it. */
+  yamlModel: ActivityLlm | null;
 }
 
 const seconds = (date: Date | null) => (date ? Math.floor(date.getTime() / 1000) : null);
 
 /** The page columns' values for one row; each `null` unless the view shows it. */
-export interface CodePageValues {
+interface CodePageValues {
   interactionCount: number | null;
-  model: ActivityLlm | null;
+  yamlModel: ActivityLlm | null;
 }
 
 export function toCodeRow(entry: CodeListRow, status: WindowStatus, page: CodePageValues): CodeRow {
@@ -58,16 +55,15 @@ export function toCodeRow(entry: CodeListRow, status: WindowStatus, page: CodePa
     validUntilSeconds: seconds(entry.validUntil),
     status,
     interactionCount: page.interactionCount,
-    override: entry.llm !== null,
-    model: page.model,
-    billedTokens: entry.billedTokens ?? null,
+    override: entry.llm,
+    yamlModel: page.yamlModel,
   };
 }
 
 /** The row's name wherever one is needed (checkbox, menu): the note, else the code. */
 export const codeRowLabel = (row: CodeRow) => row.note || row.code;
 
-export function StatusBadge({ status }: { status: WindowStatus }) {
+function StatusBadge({ status }: { status: WindowStatus }) {
   if (status === "expired")
     return (
       <Badge tone="red" caps>
@@ -107,9 +103,16 @@ function NoteLink({ row }: { row: CodeRow }) {
   );
 }
 
-/** The model as one line of text: provider, model id, and the reasoning effort when pinned. */
-const modelText = (llm: ActivityLlm) =>
-  [llm.provider, llm.model, llm.reasoning].filter(Boolean).join(" · ");
+/** A model on one line: the provider (muted), the model id, and the reasoning effort when pinned. */
+function ModelText({ llm, title }: { llm: ActivityLlm; title?: string }) {
+  return (
+    <span title={title ?? [llm.provider, llm.model, llm.reasoning].filter(Boolean).join(" · ")}>
+      <span className="text-foreground/55">{llm.provider} · </span>
+      {llm.model}
+      {llm.reasoning ? <span className="text-foreground/55"> · {llm.reasoning}</span> : null}
+    </span>
+  );
+}
 
 export type CodeColumnId =
   | "kind"
@@ -118,9 +121,8 @@ export type CodeColumnId =
   | "from"
   | "until"
   | "interactions"
-  | "model"
-  | "source"
-  | "tokens";
+  | "yamlModel"
+  | "override";
 
 export const CODE_COLUMNS: Record<CodeColumnId, GridColumn<CodeRow> & { sortKey?: CodeSortKey }> = {
   kind: {
@@ -185,52 +187,40 @@ export const CODE_COLUMNS: Record<CodeColumnId, GridColumn<CodeRow> & { sortKey?
         ? null
         : `${row.interactionCount} interaction${row.interactionCount === 1 ? "" : "s"}`,
   },
-  model: {
-    id: "model",
-    header: "Model",
+  yamlModel: {
+    id: "yamlModel",
+    header: "YAML model",
     className: "max-w-80 overflow-hidden text-ellipsis whitespace-nowrap",
     render: (row) =>
-      row.model ? (
-        <span title={modelText(row.model)}>
-          <span className="text-foreground/55">{row.model.provider} · </span>
-          {row.model.model}
-          {row.model.reasoning ? (
-            <span className="text-foreground/55"> · {row.model.reasoning}</span>
-          ) : null}
+      !row.yamlModel ? (
+        "—"
+      ) : row.override ? (
+        // Struck through: the code's override runs instead.
+        <span className="text-foreground/55 line-through">
+          <ModelText llm={row.yamlModel} title="Replaced by this code's override" />
+          <span className="sr-only"> (replaced by the override)</span>
         </span>
       ) : (
-        "—"
-      ),
-    fact: (row) => row.model?.model ?? null,
-  },
-  source: {
-    id: "source",
-    header: "Source",
-    sortKey: "source",
-    className: "whitespace-nowrap",
-    render: (row) =>
-      row.override ? (
-        <Badge tone="blue">Override</Badge>
-      ) : (
-        <span className="text-foreground/55">YAML default</span>
-      ),
-    fact: (row) => (row.override ? "override" : null),
-  },
-  tokens: {
-    id: "tokens",
-    header: "Billed tokens · 30 d",
-    sortKey: "tokens",
-    kind: "numeric",
-    render: (row) =>
-      row.billedTokens === null ? (
-        "—"
-      ) : (
-        <span title={`${formatCount(row.billedTokens)} tokens`}>
-          {formatCompact(row.billedTokens)}
-        </span>
+        <ModelText llm={row.yamlModel} />
       ),
     fact: (row) =>
-      row.billedTokens === null ? null : `${formatCompact(row.billedTokens)} tokens · 30 d`,
+      row.yamlModel && row.override ? (
+        <span className="line-through">
+          {row.yamlModel.model}
+          <span className="sr-only"> (replaced by the override)</span>
+        </span>
+      ) : (
+        (row.yamlModel?.model ?? null)
+      ),
+  },
+  override: {
+    id: "override",
+    header: "Override model",
+    sortKey: "override",
+    className: "max-w-80 overflow-hidden text-ellipsis whitespace-nowrap",
+    // Empty without one, so the overrides stand out.
+    render: (row) => (row.override ? <ModelText llm={row.override} /> : null),
+    fact: (row) => (row.override ? `override ${row.override.model}` : null),
   },
 };
 

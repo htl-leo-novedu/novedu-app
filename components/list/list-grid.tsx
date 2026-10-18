@@ -106,7 +106,7 @@ export function ListGrid<T>({
   /** Lines 1 and 2 of a folded phone row. */
   folded: { title: (row: T) => ReactNode; meta: (row: T) => ReactNode };
   sorting: GridSorting;
-  /** The current order in words, for the folded list's header ("Default order"). */
+  /** The current order in words, for the folded list's header ("Newest first"). */
   sortLabel: string;
 }) {
   return (

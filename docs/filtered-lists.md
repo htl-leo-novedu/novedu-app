@@ -419,7 +419,7 @@ bad URL degrades to the default order instead of failing.
 | Piece | Where | Role |
 | --- | --- | --- |
 | `lib/db/sorting.ts` | shared, **no DB or drizzle import** | `Sort`, `SortDirection`, `SortParams`, `parseSort`, `nextSort`, `formatSort`, `sortHref` |
-| `lib/db/sort-order.ts` | shared, server-only | `SortColumns`, `sortOrder(sort, columns, fallback)` — the one ORDER BY builder |
+| `lib/db/sort-order.ts` | shared, server-only | `SortColumns`, `sortOrder(sort, columns, fallback, tiebreaker)` — the one ORDER BY builder |
 | store | `lib/*-store.ts` | exports its `*_SORT_COLUMNS` map and takes an optional `sort` |
 | `ListColumn.sortKey` | `components/data-list.tsx` | opts one column into click-to-sort |
 | `DataList` | `components/data-list.tsx` (**server**) | `pathname`/`params` (shared with the pager) + `sorting={sort}`, the active sort |
@@ -505,15 +505,15 @@ still the only filter state the app reads, and the database still does the filte
 | --- | --- | --- |
 | `components/list-filter-memory.ts` | shared, **no `"use client"`** (like `use-popover.ts`) | `listFilterKey`, `rememberListFilter`, `rememberedListHref` |
 | `RememberListFilter` | `components/remember-list-filter.tsx` (**client**) | the write: an effect, renders `null` |
-| `DataList` | `components/data-list.tsx` (**server**) | mounts it — the ONE write site |
+| `DataList` | `components/data-list.tsx` (**server**) | mounts it on the classic lists; the new `/codes` list body mounts it itself |
 | `NavMenu` | `components/nav-menu.tsx` (**client**) | the burger's list items, resolved when the menu opens |
 | `BackLink` | `components/back-link.tsx` (**client**) | the "← Back to …" links, resolved in an effect after mount |
 
 One entry per list route (`novedu:list-filter:/codes`), holding the applied query
 string. Five things are load-bearing:
 
-- **`DataList` writes, guarded by its `url`.** So the write sites are exactly the four
-  routes that pass `pathname` + `params` (`/codes`, `/files`, `/images`, `/reports`);
+- **`DataList` writes, guarded by its `url`.** So the classic write sites are exactly
+  the four routes that pass `pathname` + `params` (`/codes`, `/files`, `/images`, `/reports`);
   an embedded list — the writing module's savers list, the per-code conversation
   stats — has no route of its own and never writes. Nothing to wire per page. On
   the new engine the list body mounts `RememberListFilter` itself
@@ -569,7 +569,7 @@ Novedu-sized: a small core plus per-list files, no generic grid framework.
 | `listHref` / `parseMultiParam` / `paramValue` | `components/list/url.ts` (**no DB import**) | the URL grammar: every link the server builds, and the panel's Apply |
 | `describeSort` / `sortMenuItems` | `components/list/sorting.ts` (**no DB import**) | the folded list's Sort menu and its "Note ↑" line |
 | `EngineSwitch` | `components/list/engine-switch.tsx` (**server**) | the Classic/New switch both engines render |
-| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `models.ts` (the Model page column), `codes-list.tsx` (the list body) |
+| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `models.ts` (the YAML model page column), `codes-list.tsx` (the list body) |
 
 The engine does not import the classic pieces (`components/data-list.tsx`,
 `components/list-filter-bar.tsx`, `components/list-selection.tsx`,
@@ -608,7 +608,7 @@ A **multi-value filter is ONE comma-separated param** — `?module=tutor,quiz`,
 never `?module=tutor&module=quiz` — because `carryParams` keeps only a repeated
 key's first value and the pager, sort links and filter memory all build on it.
 `parseMultiParam` drops unknown values (a stale bookmark degrades to "no filter")
-and returns them in the allowed order; the commas stay unescaped in the URL.
+and returns them in the allowed order; `listHref` leaves the commas unescaped.
 
 `/codes` reads `q` (note or code contains), `owner` (absent = me, `all`, or a user
 id — "The owner filter" above), `module` and `status` (both comma lists), plus
@@ -622,9 +622,9 @@ applied values, the search term included and the default owner not.
 
 ### Views, query columns and page columns
 
-A **view** is a use-case column set with its default order, defined in code
+A **view** is a use-case column set, defined in code
 (`app/codes/_list/views.ts`) and picked by `?view=` (absent or unknown = the
-list's first view). The view's columns pick from the list's column catalogue
+list's first view); unsorted, every view lists the newest codes first. The view's columns pick from the list's column catalogue
 (`CODE_COLUMNS` in `app/codes/_list/columns.tsx`). The toolbar's view picker lists
 every view with its one-line description, the current one ticked; its links keep
 the filters and drop `sort` and `page`, since another view has other sortable
@@ -633,33 +633,29 @@ memory reopens the last view on this device.
 
 `/codes` has two views:
 
-- **Overview** (default): activity, note, owner, the window, interactions; newest
-  first.
-- **Models & usage** (`view=models`): activity, note, the model each code runs on,
-  its source (the code's override or the YAML default), interactions, and the
-  OpenRouter tokens billed in the last 30 days; most billed tokens first. SCCH
-  tokens are free and never count.
+- **Overview** (default): activity, note, owner, the window, interactions.
+- **Models** (`view=models`): activity, note, the activity YAML's model and the
+  code's override model. The override replaces the YAML's model
+  wholesale (`effectiveLlm`), so an overridden code's YAML model is struck
+  through, and a code without an override leaves that cell empty.
 
 Every column is one of two kinds:
 
 - A **query column** is read by the list's own SQL query; it gets a `sortKey` from
   the store's `*_SORT_COLUMNS`, and the view's sortable columns are the allow-list
-  the page hands `parseSort`. A query column that reads another table joins the
-  query only when the view shows it: `listCodes` selects "Billed tokens · 30 d"
-  (`billedTokensSince` in `lib/code-store.ts`, a correlated subquery over
-  `novedu_usage_by_code`, so the COUNT stays join-free) and accepts its `tokens`
-  sort key only when the page passes a `billedTokensSince` instant. "Source" sorts
-  by `LLM_SOURCE_ORDER`, the SQL twin of the store's override check, so it orders
-  by exactly what the cell shows.
+  the page hands `parseSort`. "Override model" sorts by `LLM_OVERRIDE_MODEL` in
+  `lib/code-store.ts`: the model of a usable override (the SQL twin of the
+  store's override check), else NULL, so ascending lists the overridden codes
+  first, A–Z.
 - A **page column** is computed after the page is read, for the visible rows only.
   It is computed only when the active view shows it, is never sortable, and shows
   "—" when its computation fails, never a wrong value. `/codes` has two:
   - Interactions: one aggregate over the page's codes.
-  - Model: `effectiveModels` in `app/codes/_list/models.ts`. An override is taken
-    as stored. Otherwise each distinct activity file is loaded once, in parallel,
-    through the same server fetcher the activities use, and its `llm:` block is
-    read. Each load is capped at 10 seconds, so a slow outside host holds this
-    view for at most that long and no other view at all.
+  - YAML model: `yamlModels` in `app/codes/_list/models.ts`, for every row on
+    the page, overridden ones included. Each distinct activity file is loaded
+    once, in parallel, through the same server fetcher the activities use, and
+    its `llm:` block is read. Each load is capped at 10 seconds, so a slow
+    outside host holds this view for at most that long and no other view at all.
 
 ### The row menu and the bulk bar
 
@@ -721,4 +717,4 @@ real stylesheet) and the
 unit tests next to `components/list/url.ts`, `components/list/sorting.ts` and the
 `app/codes/_list/` files; `e2e/codes-list-engine.spec.ts` opens both engines,
 round-trips the switch and — `@live-db` — drives the filter panel, sort, pager,
-the bulk delete and the Models & usage view against the database.
+the bulk delete and the Models view against the database.

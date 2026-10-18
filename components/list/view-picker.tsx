@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // view with its one-line description, the current one ticked. Server-safe: the
 // menu items are data.
 
-export interface PickerView {
+interface PickerView {
   label: string;
   description: string;
   /** The list URL showing this view. */

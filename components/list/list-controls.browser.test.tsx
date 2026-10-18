@@ -52,7 +52,7 @@ function Harness({ action, applied = ACTIVE }: { action: BulkAction; applied?: F
             views={[
               { label: "Overview", description: "Everything.", href: "/codes", current: true },
               {
-                label: "Models & usage",
+                label: "Models",
                 description: "The models.",
                 href: "/codes?view=models",
                 current: false,
@@ -184,7 +184,7 @@ describe("desktop", () => {
       .element(screen.getByRole("menuitem", { name: /Overview/ }))
       .toHaveAttribute("aria-current", "true");
     await expect.element(screen.getByText("Everything.")).toBeVisible();
-    const models = screen.getByRole("menuitem", { name: /Models & usage/ });
+    const models = screen.getByRole("menuitem", { name: /Models/ });
     await expect.element(models).toHaveAttribute("href", "/codes?view=models");
     await expect.element(models).not.toHaveAttribute("aria-current");
     await expect.element(screen.getByText("The models.")).toBeVisible();
