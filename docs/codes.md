@@ -163,7 +163,8 @@ so the compiler names it; the rest are lists to extend by hand):
 - **Kind and module:** `FILE_KINDS` (`lib/file-name.ts`); `CODE_MODULES` +
   `codeModuleLabels` ✱ (`lib/code-modules/types.ts`; a new badge tone also in
   `components/ui/badge.tsx`); `MODULE_ICONS` ✱ (`components/module-badge.tsx`),
-  `MODULE_ROW_ACCENT` ✱ (`app/codes/page.tsx`), `KIND_TONES` ✱ (`app/files/page.tsx`)
+  `MODULE_ROW_ACCENT` ✱ (`app/codes/_list/columns.tsx`, and its classic-list copy in
+  `app/codes/_classic/classic-codes-list.tsx`), `KIND_TONES` ✱ (`app/files/page.tsx`)
   and the `/files/new` kind options (`app/files/new/create-file-form.tsx`).
 - **Descriptor and render:** `lib/code-modules/<kind>.ts` + its `codeModules` line ✱
   (`renderDetail`, and `runtime` when it has an in-app chat); the student render case

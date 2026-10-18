@@ -1,6 +1,21 @@
 import { randomInt } from "node:crypto";
-import { and, asc, desc, eq, getTableColumns, inArray, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import { CODE_MODULES, type CodeModule, isCodeModule } from "@/lib/code-modules/types";
+import { WINDOW_STATUSES, type WindowStatus } from "@/lib/code-window";
 import { getDb } from "@/lib/db";
 import { authUsers } from "@/lib/db/auth-schema";
 import { countRows } from "@/lib/db/count";
@@ -440,11 +455,43 @@ export async function checkCode(code: string, now: Date = new Date()): Promise<C
 
 // The list's WHERE, built once and shared by the COUNT and the row query — they
 // must never drift, or a page's total would describe a different set than its rows.
-function listConditions(opts?: {
+/** The `/codes` list's filters — every one a SQL condition (see `listConditions`). */
+export interface CodeListFilter {
   search?: string;
   createdBy?: string;
+  /** One activity — the classic list's dropdown and the bearer API. */
   module?: CodeModule;
-}): SQL[] {
+  /** Any of these activities — the new list's multi-select; empty = no filter. */
+  modules?: readonly CodeModule[];
+  /** Any of these window states, judged against `now`; empty = no filter. */
+  statuses?: readonly WindowStatus[];
+  /** The request's "now" — the same instant the page's status badges use. */
+  now?: Date;
+}
+
+/**
+ * The SQL twin of `windowStatus` (`lib/code-window.ts`): a code is in ANY of
+ * `statuses` at `now`. Bounds are inclusive and a NULL bound is open, exactly as
+ * the badge reads them. `undefined` when the set filters nothing (none or all
+ * three). Exported for the SQL-text tests.
+ */
+export function windowStatusCondition(
+  statuses: readonly WindowStatus[],
+  now: Date,
+): SQL | undefined {
+  if (statuses.length === 0 || statuses.length >= WINDOW_STATUSES.length) return undefined;
+  // "Started" is the complement of upcoming, so upcoming wins over expired here
+  // just as in `windowStatus`. A NULL `valid_from` makes `gt` NULL, i.e. false.
+  const started = or(isNull(codes.validFrom), lte(codes.validFrom, now));
+  const byStatus: Record<WindowStatus, SQL | undefined> = {
+    upcoming: gt(codes.validFrom, now),
+    expired: and(started, lt(codes.validUntil, now)),
+    active: and(started, or(isNull(codes.validUntil), gte(codes.validUntil, now))),
+  };
+  return or(...statuses.map((status) => byStatus[status]));
+}
+
+function listConditions(opts?: CodeListFilter): SQL[] {
   // A row whose `module` the app doesn't know is not a usable code (see
   // `toEntry`). Filtering it out HERE rather than after the query is what keeps a
   // page's row count and its total in agreement.
@@ -456,6 +503,11 @@ function listConditions(opts?: {
   }
   if (opts?.createdBy) conditions.push(eq(codes.createdBy, opts.createdBy));
   if (opts?.module) conditions.push(eq(codes.module, opts.module));
+  if (opts?.modules?.length) conditions.push(inArray(codes.module, [...opts.modules]));
+  if (opts?.statuses?.length) {
+    const inWindow = windowStatusCondition(opts.statuses, opts.now ?? new Date());
+    if (inWindow) conditions.push(inWindow);
+  }
   return conditions;
 }
 
@@ -494,22 +546,19 @@ export async function listCodeOwners(): Promise<OwnerOption[]> {
  * otherwise, including not-yet-started and expired ones. Filtering happens IN THE DATABASE (see
  * `docs/filtered-lists.md`), never in memory: an optional `search` term is a
  * case-insensitive contains-match over note/code, `createdBy` narrows to one
- * teacher's codes (the owner dropdown), and `module` narrows to one
- * activity. Never throws — an unreachable database reads as `undefined`, which
- * the page notes.
+ * teacher's codes (the owner filter), `module` / `modules` narrow to one or any
+ * of several activities, and `statuses` to codes whose window is active /
+ * upcoming / expired at `now`. Never throws — an unreachable database reads as
+ * `undefined`, which the page notes.
  *
  * `paging` makes the SKIP and the LIMIT part of the SQL too (`LIMIT/OFFSET`,
  * with a COUNT for the total), and `sort` the ORDER BY — so a sort spans the whole
  * filtered set, not one page. Omitting both returns every match in the default
  * order, which is what the bearer API route wants.
  */
-export async function listCodes(opts?: {
-  search?: string;
-  createdBy?: string;
-  module?: CodeModule;
-  paging?: Paging;
-  sort?: Sort;
-}): Promise<PagedResult<CodeListRow> | undefined> {
+export async function listCodes(
+  opts?: CodeListFilter & { paging?: Paging; sort?: Sort },
+): Promise<PagedResult<CodeListRow> | undefined> {
   const conditions = listConditions(opts);
   try {
     return await paginate({

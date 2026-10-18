@@ -175,7 +175,7 @@ test("CRUD on a hosted file and a tutor link, with DB-side filtering", {
   await expect(page.getByPlaceholder("Type a message...")).toBeVisible({ timeout: 60_000 });
 
   // TUTOR LINK — delete (via the shared "Delete Selected" multi-delete; the codes
-  // list has no per-row delete button — see app/codes/page.tsx).
+  // list has no per-row delete button — see app/codes/_classic/classic-codes-list.tsx).
   await page.goto("/codes");
   await applyFilter(page, "Filter codes", editedNote);
   const codeRow = page.getByRole("row").filter({ hasText: editedNote });

@@ -150,7 +150,7 @@ Read before touching: `app/globals.css`, `components/ui/**`, `lib/utils.ts`, `li
 
 ### Filtered lists → `docs/filtered-lists.md`
 
-Read before touching: `components/data-list.tsx`, `components/list-*.tsx`, `lib/db/text-filter.ts`, or a list page's `searchParams`.
+Read before touching: `components/data-list.tsx`, `components/list-*.tsx`, the new list engine (`components/list/**`, `app/codes/_list/**`, `lib/list-engine*.ts`), `lib/db/text-filter.ts`, or a list page's `searchParams`.
 
 - Filtering happens in the database via URL search params — never in memory. Delete is bulk-only; no per-row or edit-page delete anywhere.
 
