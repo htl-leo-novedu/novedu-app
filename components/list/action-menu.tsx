@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 // The new list engine's one menu: a trigger button plus a native `popover`
 // panel (see `docs/filtered-lists.md`, "The new list engine"). The row "…" menus,
-// the phone Sort menu and the phone bulk "Actions" all use it.
+// the view picker, the Sort menu and the phone bulk "Actions" all use it.
 //
 // - The popover lives in the TOP LAYER, so it escapes the table card's
 //   `overflow-x-auto` clipping, and the platform supplies light dismiss and Escape.
@@ -40,7 +40,7 @@ export type ActionMenuItem =
       newTab?: boolean;
       /** A second, muted line under the label. */
       description?: string;
-      /** The current choice (the view picker's view): a tick, `aria-current`. */
+      /** The current choice (the view picker's view, the Sort menu's order): a tick, `aria-current`. */
       checked?: boolean;
     }
   /** Copies this app's origin + `path` (e.g. a code's share link). */
@@ -183,7 +183,13 @@ export function ActionMenu({
         onToggle={onToggle}
         onKeyDown={onKeyDown}
       >
-        <p className="px-3 pt-1 pb-2 font-semibold text-foreground/65 text-xs md:hidden">{label}</p>
+        {/* Visual only: the menu's `aria-label` already names it. */}
+        <p
+          aria-hidden="true"
+          className="px-3 pt-1 pb-2 font-semibold text-foreground/65 text-xs md:hidden"
+        >
+          {label}
+        </p>
         {items.map((item) => (
           <MenuItem key={item.label} item={item} close={close} />
         ))}

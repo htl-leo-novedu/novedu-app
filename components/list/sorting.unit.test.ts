@@ -3,8 +3,8 @@ import type { GridColumn } from "./list-grid";
 import { describeSort, sortMenuItems } from "./sorting";
 
 // The folded phone list's Sort menu and its one-line order description: the
-// default order first (ticked while no column sorts), then each sortable column
-// of the view — picking one sorts ascending, picking the active one flips it.
+// default order first, then each sortable column of the view — the current order
+// ticked; picking a column sorts ascending, picking the active one flips it.
 // Every link keeps the filters and drops the page.
 
 type Row = { id: string };
@@ -22,8 +22,10 @@ const sorting = (sort?: { key: string; dir: "asc" | "desc" }) => ({
 
 describe("describeSort", () => {
   it("names the sorted column with its arrow", () => {
-    expect(describeSort(COLUMNS, { key: "note", dir: "asc" })).toBe("Note ↑");
-    expect(describeSort(COLUMNS, { key: "until", dir: "desc" })).toBe("Valid until ↓");
+    expect(describeSort(COLUMNS, { key: "note", dir: "asc" }, "Newest first")).toBe("Note ↑");
+    expect(describeSort(COLUMNS, { key: "until", dir: "desc" }, "Newest first")).toBe(
+      "Valid until ↓",
+    );
   });
 
   it("falls back to the default label when unsorted or the key is not in the view", () => {
@@ -37,7 +39,8 @@ describe("describeSort", () => {
 describe("sortMenuItems", () => {
   it("lists the default order (ticked) and only the sortable columns", () => {
     const items = sortMenuItems(COLUMNS, sorting(), "Newest first");
-    expect(items.map((item) => item.label)).toEqual(["Newest first ✓", "Note", "Valid until"]);
+    expect(items.map((item) => item.label)).toEqual(["Newest first", "Note", "Valid until"]);
+    expect(items.map((item) => item.kind === "link" && item.checked)).toEqual([true, false, false]);
   });
 
   it("sorts a column ascending and keeps the filters, never the page", () => {
@@ -51,11 +54,23 @@ describe("sortMenuItems", () => {
       sorting({ key: "note", dir: "asc" }),
       "Newest first",
     );
-    expect(first).toMatchObject({ label: "Newest first", href: "/codes?q=math" });
-    expect(note).toMatchObject({ label: "Note ↑", href: "/codes?q=math&sort=-note" });
-    expect(until).toMatchObject({ label: "Valid until", href: "/codes?q=math&sort=until" });
+    expect(first).toMatchObject({ label: "Newest first", href: "/codes?q=math", checked: false });
+    expect(note).toMatchObject({
+      label: "Note ↑",
+      href: "/codes?q=math&sort=-note",
+      checked: true,
+    });
+    expect(until).toMatchObject({
+      label: "Valid until",
+      href: "/codes?q=math&sort=until",
+      checked: false,
+    });
 
-    const [, descending] = sortMenuItems(COLUMNS, sorting({ key: "note", dir: "desc" }));
+    const [, descending] = sortMenuItems(
+      COLUMNS,
+      sorting({ key: "note", dir: "desc" }),
+      "Newest first",
+    );
     expect(descending).toMatchObject({ label: "Note ↓", href: "/codes?q=math&sort=note" });
   });
 });

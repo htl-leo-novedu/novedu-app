@@ -6,16 +6,16 @@ import type { CodeListRow } from "@/lib/code-store";
 // mocked: the URL reaches the store as SQL filters (never filtered here), the
 // summary line names them, the empty and no-match states differ, a failed interaction count shows "—" rather
 // than a wrong zero, and an unavailable store shows the notice. `?view=` picks the
-// columns, and a view computes only the page and query columns it shows.
+// columns, and a view computes only the page columns it shows.
 
 const listCodes = vi.hoisted(() => vi.fn());
 const listCodeOwners = vi.hoisted(() => vi.fn());
 const getInteractionCounts = vi.hoisted(() => vi.fn());
-const effectiveModels = vi.hoisted(() => vi.fn());
+const yamlModels = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/code-store", () => ({ listCodes, listCodeOwners }));
 vi.mock("@/lib/code-stats-store", () => ({ getInteractionCounts }));
-vi.mock("./models", () => ({ effectiveModels }));
+vi.mock("./models", () => ({ yamlModels }));
 vi.mock("@/lib/session", () => ({ getSession: async () => ({ user: { id: "user-me" } }) }));
 vi.mock("@/lib/code-actions", () => ({ deleteSelectedCodesAction: vi.fn() }));
 vi.mock("@/lib/list-engine-actions", () => ({ switchListEngineAction: vi.fn() }));
@@ -51,7 +51,7 @@ beforeEach(() => {
   listCodes.mockReset().mockResolvedValue(page([ROW]));
   listCodeOwners.mockReset().mockResolvedValue([]);
   getInteractionCounts.mockReset().mockResolvedValue(new Map([[ROW.code, 7]]));
-  effectiveModels.mockReset().mockResolvedValue(new Map());
+  yamlModels.mockReset().mockResolvedValue(new Map());
 });
 
 describe("CodesList", () => {
@@ -106,7 +106,7 @@ describe("CodesList", () => {
     const filtered = text(await render({ owner: "all", status: "active,expired" }));
     expect(filtered).toContain("1 code·Owner: all owners·Status: Active, Expired·Clear all");
     expect(filtered).toContain("Overview");
-    expect(filtered).toContain("Models &amp; usage");
+    expect(filtered).toContain("Which model each code runs on");
   });
 
   it("shows — when the interaction count fails, never a wrong zero", async () => {
@@ -134,78 +134,80 @@ describe("CodesList", () => {
     expect(html).toContain('href="/codes?q=frac"');
   });
 
-  it("the Overview reads no model and no usage", async () => {
+  it("the Overview reads no YAML", async () => {
     const text = (await render()).replace(/<[^>]+>/g, "");
-    expect(effectiveModels).not.toHaveBeenCalled();
-    expect(listCodes.mock.calls[0]?.[0].billedTokensSince).toBeUndefined();
+    expect(yamlModels).not.toHaveBeenCalled();
     expect(text).toContain("Owner↕");
-    expect(text).not.toContain("Billed tokens");
+    expect(text).not.toContain("YAML model");
   });
 
   it("an unknown view is the Overview", async () => {
     await render({ view: "nope" });
-    expect(effectiveModels).not.toHaveBeenCalled();
-    expect(listCodes.mock.calls[0]?.[0].billedTokensSince).toBeUndefined();
+    expect(yamlModels).not.toHaveBeenCalled();
+    expect(getInteractionCounts).toHaveBeenCalled();
   });
 
   describe("the models view", () => {
+    const QUIZ_URL = "https://example.test/quiz.yaml";
     const OVERRIDE: CodeListRow = {
       ...ROW,
       code: "over123456",
       note: "Overridden tutor",
       llm: { provider: "OpenRouter", model: "openai/gpt-6.1-sol", reasoning: "high" },
-      billedTokens: 1_240_000,
     };
-    const YAML: CodeListRow = { ...ROW, billedTokens: 0 };
     const BROKEN: CodeListRow = {
       ...ROW,
       code: "broken1234",
       note: "Broken YAML",
-      billedTokens: 0,
+      fileUrl: QUIZ_URL,
     };
 
     beforeEach(() => {
-      listCodes.mockResolvedValue(page([OVERRIDE, YAML, BROKEN]));
-      effectiveModels.mockResolvedValue(
+      listCodes.mockResolvedValue(page([OVERRIDE, ROW, BROKEN]));
+      yamlModels.mockResolvedValue(
         new Map([
-          [OVERRIDE.code, OVERRIDE.llm],
-          [YAML.code, { provider: "SCCH", model: "qwen3-coder" }],
-          [BROKEN.code, null],
+          [ROW.fileUrl, { provider: "SCCH", model: "qwen3-coder" }],
+          [QUIZ_URL, null],
         ]),
       );
     });
 
-    it("asks for 30 days of billed tokens, sorted by them unless the URL sorts", async () => {
+    it("loads the page's YAMLs, overridden codes' too, and keeps the newest-first order", async () => {
       await render({ view: "models" });
-      const opts = listCodes.mock.calls[0]?.[0];
-      expect(opts.sort).toEqual({ key: "tokens", dir: "desc" });
-      expect(opts.now.getTime() - opts.billedTokensSince.getTime()).toBe(30 * 24 * 60 * 60 * 1000);
-      expect(effectiveModels).toHaveBeenCalledWith([OVERRIDE, YAML, BROKEN]);
+      expect(yamlModels).toHaveBeenCalledWith([ROW.fileUrl, ROW.fileUrl, QUIZ_URL]);
+      expect(getInteractionCounts).not.toHaveBeenCalled();
+      expect(listCodes.mock.calls[0]?.[0].sort).toBeUndefined();
 
-      await render({ view: "models", sort: "source" });
-      expect(listCodes.mock.calls[1]?.[0].sort).toEqual({ key: "source", dir: "asc" });
+      await render({ view: "models", sort: "override" });
+      expect(listCodes.mock.calls[1]?.[0].sort).toEqual({ key: "override", dir: "asc" });
     });
 
     it("drops a sort on a column the view doesn't show", async () => {
       await render({ view: "models", sort: "owner" });
-      expect(listCodes.mock.calls[0]?.[0].sort).toEqual({ key: "tokens", dir: "desc" });
+      expect(listCodes.mock.calls[0]?.[0].sort).toBeUndefined();
     });
 
-    it("shows each code's model, its source and its billed tokens", async () => {
-      const text = (await render({ view: "models" })).replace(/<[^>]+>/g, "");
+    it("shows each code's YAML model, struck through under an override", async () => {
+      const html = await render({ view: "models" });
+      const text = html.replace(/<[^>]+>/g, "");
+      expect(text).toContain("YAML model");
+      expect(text).toContain("Override model");
       expect(text).toContain("OpenRouter · openai/gpt-6.1-sol · high");
       expect(text).toContain("SCCH · qwen3-coder");
-      expect(text).toContain("Override");
-      expect(text).toContain("YAML default");
-      expect(text).toContain("1.2M");
-      expect(text).toContain("1.2M tokens · 30 d");
+      expect(text).toContain("override openai/gpt-6.1-sol");
       expect(text).not.toContain("Owner↕");
+      // Only the overridden code's YAML model is struck — in its cell and its phone
+      // fact, both also saying so to a screen reader. The other row's runs.
+      expect(html.match(/line-through/g)).toHaveLength(2);
+      expect(html.match(/\(replaced by the override\)/g)).toHaveLength(2);
+      expect(html).toContain('title="Replaced by this code&#x27;s override"');
     });
 
-    it("shows — for a model that can't be read", async () => {
+    it("shows — for a YAML that can't be read and nothing without an override", async () => {
       listCodes.mockResolvedValue(page([BROKEN]));
       const html = await render({ view: "models" });
       expect(html).toMatch(/<td[^>]*>—<\/td>/);
+      expect(html).toMatch(/<td[^>]*><\/td>/);
     });
   });
 

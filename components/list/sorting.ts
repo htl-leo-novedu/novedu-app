@@ -12,7 +12,7 @@ const ARROWS = { asc: "↑", desc: "↓" } as const;
 export function describeSort<T>(
   columns: GridColumn<T>[],
   sort: Sort | undefined,
-  defaultLabel = "Default order",
+  defaultLabel: string,
 ): string {
   const column = sort && columns.find((c) => c.sortKey === sort.key);
   return column && sort ? `${column.header} ${ARROWS[sort.dir]}` : defaultLabel;
@@ -25,13 +25,14 @@ export function describeSort<T>(
 export function sortMenuItems<T>(
   columns: GridColumn<T>[],
   { pathname, params, sort }: GridSorting,
-  defaultLabel = "Default order",
+  defaultLabel: string,
 ): ActionMenuItem[] {
   const items: ActionMenuItem[] = [
     {
       kind: "link",
-      label: sort ? defaultLabel : `${defaultLabel} ✓`,
+      label: defaultLabel,
       href: listHref(pathname, params, { sort: undefined }),
+      checked: !sort,
     },
   ];
   for (const column of columns) {
@@ -45,6 +46,7 @@ export function sortMenuItems<T>(
       kind: "link",
       label: active ? `${column.header} ${ARROWS[active.dir]}` : column.header,
       href: listHref(pathname, params, { sort: formatSort(next) }),
+      checked: Boolean(active),
     });
   }
   return items;

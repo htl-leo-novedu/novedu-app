@@ -12,7 +12,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import { cn } from "@/lib/utils";
 
 // Row selection for the new list engine (see `docs/filtered-lists.md`, "The new
 // list engine"): the selected-id set, page-scoped, plus the one way a bulk action
@@ -128,13 +127,7 @@ export function RowCheckbox({ id, label }: { id: string; label: string }) {
  * mixed when some are. With `showLabel` it carries a visible "Select all" (the
  * folded phone list's header row); otherwise the label is for screen readers.
  */
-export function SelectAllCheckbox({
-  showLabel,
-  className,
-}: {
-  showLabel?: boolean;
-  className?: string;
-}) {
+export function SelectAllCheckbox({ showLabel }: { showLabel?: boolean }) {
   const { selectedIds, allSelected, selectAll, clear, pending } = useListSelection();
   const ref = useRef<HTMLInputElement>(null);
   const id = useId();
@@ -144,7 +137,7 @@ export function SelectAllCheckbox({
   }, [some]);
 
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
+    <span className="inline-flex items-center gap-2">
       <input
         ref={ref}
         id={id}

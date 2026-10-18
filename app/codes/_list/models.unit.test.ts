@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The `/codes` "Model" page column: an override is taken as stored (no YAML load),
-// every other code reads its YAML's `llm:` block — each distinct file once — and
-// anything that goes wrong (HTTP, YAML, a host that never answers) is `null`.
+// The `/codes` "YAML model" page column: each code reads its YAML's `llm:` block —
+// each distinct file once — and anything that goes wrong (HTTP, YAML, a host that
+// never answers) is `null`.
 
 const fetcher = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/app-hosted-fetcher", () => ({ serverYamlFetcher: async () => fetcher }));
 
-import { effectiveModels, loadActivityLlm, MODEL_LOAD_TIMEOUT_MS } from "./models";
+import { loadActivityLlm, MODEL_LOAD_TIMEOUT_MS, yamlModels } from "./models";
 
 const TUTOR_URL = "https://example.test/tutor.yaml";
 const yaml = (text: string) => ({ ok: true, status: 200, text: async () => text });
@@ -67,29 +67,24 @@ describe("loadActivityLlm", () => {
   });
 });
 
-describe("effectiveModels", () => {
-  const override = { provider: "SCCH" as const, model: "override-model" };
+describe("yamlModels", () => {
+  const OTHER_URL = "https://example.test/quiz.yaml";
 
-  it("takes an override as stored and loads each other file once", async () => {
-    const models = await effectiveModels([
-      { code: "a", fileUrl: TUTOR_URL, llm: override },
-      { code: "b", fileUrl: TUTOR_URL, llm: null },
-      { code: "c", fileUrl: TUTOR_URL, llm: null },
-    ]);
-    expect(fetcher).toHaveBeenCalledOnce();
-    expect(models.get("a")).toBe(override);
-    expect(models.get("b")).toMatchObject({ model: "openai/gpt-6-luna" });
-    expect(models.get("c")).toMatchObject({ model: "openai/gpt-6-luna" });
+  it("loads each distinct file once, keyed by URL", async () => {
+    const models = await yamlModels([TUTOR_URL, TUTOR_URL, OTHER_URL]);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(models.get(TUTOR_URL)).toMatchObject({ model: "openai/gpt-6-luna" });
+    expect(models.get(OTHER_URL)).toMatchObject({ model: "openai/gpt-6-luna" });
   });
 
-  it("loads nothing when every code overrides", async () => {
-    await effectiveModels([{ code: "a", fileUrl: TUTOR_URL, llm: override }]);
+  it("loads nothing for no rows", async () => {
+    await expect(yamlModels([])).resolves.toEqual(new Map());
     expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it("is null for a code whose file can't be read", async () => {
+  it("is null for a file that can't be read", async () => {
     fetcher.mockResolvedValue({ ok: false, status: 500, text: async () => "" });
-    const models = await effectiveModels([{ code: "b", fileUrl: TUTOR_URL, llm: null }]);
-    expect(models.get("b")).toBeNull();
+    const models = await yamlModels([TUTOR_URL]);
+    expect(models.get(TUTOR_URL)).toBeNull();
   });
 });
