@@ -569,7 +569,7 @@ Novedu-sized: a small core plus per-list files, no generic grid framework.
 | `listHref` / `parseMultiParam` / `paramValue` | `components/list/url.ts` (**no DB import**) | the URL grammar: every link the server builds, and the panel's Apply |
 | `describeSort` / `sortMenuItems` | `components/list/sorting.ts` (**no DB import**) | the folded list's Sort menu and its "Note ↑" line |
 | `EngineSwitch` | `components/list/engine-switch.tsx` (**server**) | the Classic/New switch both engines render |
-| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `codes-list.tsx` (the list body) |
+| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `models.ts` (the Model page column), `codes-list.tsx` (the list body) |
 
 The engine does not import the classic pieces (`components/data-list.tsx`,
 `components/list-filter-bar.tsx`, `components/list-selection.tsx`,
@@ -612,7 +612,7 @@ and returns them in the allowed order; the commas stay unescaped in the URL.
 
 `/codes` reads `q` (note or code contains), `owner` (absent = me, `all`, or a user
 id — "The owner filter" above), `module` and `status` (both comma lists), plus
-`sort`, `page` and `size`. `status` is the code's window at the request's "now" —
+`view`, `sort`, `page` and `size`. `status` is the code's window at the request's "now" —
 `active`, `upcoming`, `expired` — a SQL condition over `valid_from`/`valid_until`
 (`windowStatusCondition` in `lib/code-store.ts`); the page passes the store the
 same `now` it uses for the status badges, so filter and badge always agree. The
@@ -623,19 +623,43 @@ applied values, the search term included and the default owner not.
 ### Views, query columns and page columns
 
 A **view** is a use-case column set with its default order, defined in code
-(`app/codes/_list/views.ts`); `/codes` has one, Overview, so there is no `view`
-param. The view's columns pick from the list's column catalogue (`CODE_COLUMNS` in
-`app/codes/_list/columns.tsx`). The toolbar's view picker lists every view with
-its one-line description, the current one ticked; the views still to be built
-(`PLANNED_CODE_VIEWS`) show greyed out as "Coming soon".
+(`app/codes/_list/views.ts`) and picked by `?view=` (absent or unknown = the
+list's first view). The view's columns pick from the list's column catalogue
+(`CODE_COLUMNS` in `app/codes/_list/columns.tsx`). The toolbar's view picker lists
+every view with its one-line description, the current one ticked; its links keep
+the filters and drop `sort` and `page`, since another view has other sortable
+columns. Everything else carries `view` along like any param, so the filter
+memory reopens the last view on this device.
+
+`/codes` has two views:
+
+- **Overview** (default): activity, note, owner, the window, interactions; newest
+  first.
+- **Models & usage** (`view=models`): activity, note, the model each code runs on,
+  its source (the code's override or the YAML default), interactions, and the
+  OpenRouter tokens billed in the last 30 days; most billed tokens first. SCCH
+  tokens are free and never count.
+
+Every column is one of two kinds:
 
 - A **query column** is read by the list's own SQL query; it gets a `sortKey` from
   the store's `*_SORT_COLUMNS`, and the view's sortable columns are the allow-list
-  the page hands `parseSort`.
-- A **page column** is computed after the page is read, for the visible rows only —
-  `/codes`' Interactions, one aggregate over the page's codes. It is computed only
-  when the active view shows it, is never sortable, and shows "—" when its
-  computation fails, never a wrong zero.
+  the page hands `parseSort`. A query column that reads another table joins the
+  query only when the view shows it: `listCodes` selects "Billed tokens · 30 d"
+  (`billedTokensSince` in `lib/code-store.ts`, a correlated subquery over
+  `novedu_usage_by_code`, so the COUNT stays join-free) and accepts its `tokens`
+  sort key only when the page passes a `billedTokensSince` instant. "Source" sorts
+  by `LLM_SOURCE_ORDER`, the SQL twin of the store's override check, so it orders
+  by exactly what the cell shows.
+- A **page column** is computed after the page is read, for the visible rows only.
+  It is computed only when the active view shows it, is never sortable, and shows
+  "—" when its computation fails, never a wrong value. `/codes` has two:
+  - Interactions: one aggregate over the page's codes.
+  - Model: `effectiveModels` in `app/codes/_list/models.ts`. An override is taken
+    as stored. Otherwise each distinct activity file is loaded once, in parallel,
+    through the same server fetcher the activities use, and its `llm:` block is
+    read. Each load is capped at 10 seconds, so a slow outside host holds this
+    view for at most that long and no other view at all.
 
 ### The row menu and the bulk bar
 
@@ -696,5 +720,5 @@ filter panel's draft and Apply, the bulk bar and the phone layout, against the
 real stylesheet) and the
 unit tests next to `components/list/url.ts`, `components/list/sorting.ts` and the
 `app/codes/_list/` files; `e2e/codes-list-engine.spec.ts` opens both engines,
-round-trips the switch and — `@live-db` — drives the filter panel, sort, pager and
-the bulk delete against the database.
+round-trips the switch and — `@live-db` — drives the filter panel, sort, pager,
+the bulk delete and the Models & usage view against the database.

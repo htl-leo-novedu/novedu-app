@@ -46,7 +46,7 @@ export type ActionMenuItem =
   /** Copies this app's origin + `path` (e.g. a code's share link). */
   | { kind: "copy-link"; label: string; path: string; icon?: ReactNode }
   /** Shown but not actionable, with the reason next to it. */
-  | { kind: "disabled"; label: string; reason: string; icon?: ReactNode; description?: string }
+  | { kind: "disabled"; label: string; reason: string; icon?: ReactNode }
   | {
       kind: "button";
       label: string;
@@ -233,7 +233,7 @@ function MenuItem({ item, close }: { item: ActionMenuItem; close: () => void }) 
           className={cn(ITEM, "cursor-default text-foreground/45 hover:bg-transparent")}
         >
           {item.icon}
-          <ItemText label={item.label} description={item.description} />
+          {item.label}
           <span className="ml-auto shrink-0 pl-3 text-foreground/55 text-xs">{item.reason}</span>
         </div>
       );

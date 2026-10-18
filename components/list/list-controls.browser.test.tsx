@@ -51,8 +51,13 @@ function Harness({ action, applied = ACTIVE }: { action: BulkAction; applied?: F
           <ViewPicker
             views={[
               { label: "Overview", description: "Everything.", href: "/codes", current: true },
+              {
+                label: "Models & usage",
+                description: "The models.",
+                href: "/codes?view=models",
+                current: false,
+              },
             ]}
-            planned={[{ label: "Compact", description: "Less of it." }]}
           />
         }
         sortMenu={
@@ -170,16 +175,19 @@ describe("desktop", () => {
       .toHaveAttribute("href", "/codes?sort=note");
   });
 
-  test("the view picker ticks the current view and greys out the planned ones", async () => {
+  test("the view picker names the current view and lists every view, the current one ticked", async () => {
     const screen = await render(<Harness action={ok} />);
-    await screen.getByRole("button", { name: /^View/ }).click();
+    const trigger = screen.getByRole("button", { name: /^View/ });
+    await expect.element(trigger).toHaveTextContent("Overview");
+    await trigger.click();
     await expect
       .element(screen.getByRole("menuitem", { name: /Overview/ }))
       .toHaveAttribute("aria-current", "true");
     await expect.element(screen.getByText("Everything.")).toBeVisible();
-    const compact = screen.getByRole("menuitem", { name: /Compact/ });
-    await expect.element(compact).toHaveAttribute("aria-disabled", "true");
-    await expect.element(compact).toHaveTextContent("Coming soon");
+    const models = screen.getByRole("menuitem", { name: /Models & usage/ });
+    await expect.element(models).toHaveAttribute("href", "/codes?view=models");
+    await expect.element(models).not.toHaveAttribute("aria-current");
+    await expect.element(screen.getByText("The models.")).toBeVisible();
   });
 
   test("the panel edits a draft; only Apply loads, as one URL without the page", async () => {

@@ -128,7 +128,7 @@ export function ListGrid<T>({
                 key={column.id}
                 scope="col"
                 aria-sort={ariaSort(column, sorting.sort)}
-                className={cn(TH, column.kind === "numeric" && "text-right")}
+                className={cn(TH, column.kind === "numeric" && "whitespace-nowrap text-right")}
               >
                 <HeaderCell column={column} sorting={sorting} />
               </th>

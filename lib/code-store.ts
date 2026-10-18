@@ -13,6 +13,7 @@ import {
   lte,
   or,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import { CODE_MODULES, type CodeModule, isCodeModule } from "@/lib/code-modules/types";
 import { WINDOW_STATUSES, type WindowStatus } from "@/lib/code-window";
@@ -24,11 +25,12 @@ import type { OwnerOption } from "@/lib/db/owner-filter";
 import { listOwners, ownerJoin, ownerLabel } from "@/lib/db/owners";
 import { type PagedResult, type Paging, paginate } from "@/lib/db/paging";
 import { affectedRows } from "@/lib/db/result";
-import { codes } from "@/lib/db/schema";
+import { codes, usageByCode } from "@/lib/db/schema";
 import { type SortColumns, sortOrder } from "@/lib/db/sort-order";
 import type { Sort } from "@/lib/db/sorting";
 import { containsAny } from "@/lib/db/text-filter";
 import {
+  LLM_PROVIDERS,
   type LlmProvider,
   parseLenientProvider,
   parseLenientReasoningLevel,
@@ -287,7 +289,11 @@ export interface CodeEntry {
  * `createdBy` user id. A superset of `CodeEntry`, so every `CodeEntry` consumer (the
  * bearer route's wire shape included) is unaffected.
  */
-export type CodeListRow = CodeEntry & { ownerName: string | null };
+export type CodeListRow = CodeEntry & {
+  ownerName: string | null;
+  /** OpenRouter tokens since `billedTokensSince` — only when `listCodes` was asked for them. */
+  billedTokens?: number;
+};
 
 // Row shape from the DB has `module` as a plain string column; narrow it to the
 // CodeModule union on read. A row whose module is not a known module — a corrupt
@@ -518,11 +524,34 @@ const JOIN_OWNER = ownerJoin(codes.createdBy);
 const OWNER_LABEL = ownerLabel(codes.createdBy);
 
 /**
+ * The SQL twin of `toLlmOverride`: 0 when the row holds a usable override pair (a
+ * known provider AND a non-empty model), else 1 — the same reading the list's
+ * "Source" column shows, so sorting by it ascending lists "Override" before
+ * "YAML default". Exported for the SQL-text tests.
+ */
+export const LLM_SOURCE_ORDER = sql<number>`CASE WHEN ${inArray(codes.llmProvider, [...LLM_PROVIDERS])} AND ${codes.llmModel} IS NOT NULL AND ${codes.llmModel} <> '' THEN 0 ELSE 1 END`;
+
+/**
+ * A code's OpenRouter tokens (new + cached input + output) since `since`, 0 without
+ * usage — a correlated subquery over `novedu_usage_by_code`, so it yields one value
+ * per code and the COUNT stays join-free. Only OpenRouter tokens are billed (SCCH
+ * is free); the bucket's provider is the label the metering stores. Exported for
+ * the SQL-text tests.
+ */
+export function billedTokensSince(since: Date): SQL<number> {
+  const openRouter: LlmProvider = "OpenRouter";
+  return sql<number>`(SELECT COALESCE(SUM(${usageByCode.inputTokensNew} + ${usageByCode.inputTokensCached} + ${usageByCode.outputTokens}), 0) FROM ${usageByCode} WHERE ${usageByCode.code} = ${codes.code} AND ${usageByCode.provider} = ${openRouter} AND ${usageByCode.hour} >= ${since})`.mapWith(
+    Number,
+  );
+}
+
+/**
  * The `/codes` list's sortable columns (ORDER BY map + `parseSort` allow-list).
  * `module` sorts by the STORED value (coding, quiz, tutor, writing alphabetically),
  * not by the badge label the row renders. The list's "Interactions" column is
  * deliberately absent: it is a separate aggregate over the Mastra-owned tables,
- * computed for the page AFTER it is read, so it cannot be an ORDER BY term of this query.
+ * computed for the page AFTER it is read, so it cannot be an ORDER BY term of this
+ * query. `tokens` joins the map only for a `listCodes` call that selects them.
  */
 export const CODE_SORT_COLUMNS = {
   module: codes.module,
@@ -530,7 +559,11 @@ export const CODE_SORT_COLUMNS = {
   owner: OWNER_LABEL,
   from: codes.validFrom,
   until: codes.validUntil,
+  source: LLM_SOURCE_ORDER,
 } satisfies SortColumns;
+
+/** Every `/codes` sort key, `tokens` included (see `billedTokensSince`). */
+export type CodeSortKey = keyof typeof CODE_SORT_COLUMNS | "tokens";
 
 /**
  * The distinct owners (creating teachers) of the listed codes, for the `/codes`
@@ -554,12 +587,18 @@ export async function listCodeOwners(): Promise<OwnerOption[]> {
  * `paging` makes the SKIP and the LIMIT part of the SQL too (`LIMIT/OFFSET`,
  * with a COUNT for the total), and `sort` the ORDER BY — so a sort spans the whole
  * filtered set, not one page. Omitting both returns every match in the default
- * order, which is what the bearer API route wants.
+ * order, which is what the bearer API route wants. `billedTokensSince` adds each
+ * row's `billedTokens` and the `tokens` sort key; without it the query reads no
+ * usage at all.
  */
 export async function listCodes(
-  opts?: CodeListFilter & { paging?: Paging; sort?: Sort },
+  opts?: CodeListFilter & { paging?: Paging; sort?: Sort; billedTokensSince?: Date },
 ): Promise<PagedResult<CodeListRow> | undefined> {
   const conditions = listConditions(opts);
+  const billedTokens = opts?.billedTokensSince && billedTokensSince(opts.billedTokensSince);
+  const sortColumns = billedTokens
+    ? { ...CODE_SORT_COLUMNS, tokens: billedTokens }
+    : CODE_SORT_COLUMNS;
   try {
     return await paginate({
       paging: opts?.paging,
@@ -570,22 +609,30 @@ export async function listCodes(
         const query = getDb()
           // The stored columns spread rather than restated, plus the joined owner
           // name — so a schema change reaches the list without an edit here.
-          .select({ ...getTableColumns(codes), ownerName: authUsers.name })
+          .select({
+            ...getTableColumns(codes),
+            ownerName: authUsers.name,
+            ...(billedTokens ? { billedTokens } : {}),
+          })
           .from(codes)
           .leftJoin(authUsers, JOIN_OWNER)
           .where(and(...conditions))
-          .orderBy(
-            ...sortOrder(opts?.sort, CODE_SORT_COLUMNS, [desc(codes.createdAt)], asc(codes.code)),
-          );
+          .orderBy(...sortOrder(opts?.sort, sortColumns, [desc(codes.createdAt)], asc(codes.code)));
         const rows = await (window ? query.limit(window.limit).offset(window.offset) : query);
         // Unreachable now that the module check is a WHERE condition (a dropped
         // row would make a page short and disagree with the COUNT) — kept so a
         // future condition change can't silently reintroduce that mismatch.
         // `getCode`/`checkCode` still exercise toEntry's corrupt-row logging.
         return rows
-          .map(({ ownerName, ...row }) => {
+          .map(({ ownerName, billedTokens, ...row }) => {
             const entry = toEntry(row);
-            return entry && { ...entry, ownerName };
+            return (
+              entry && {
+                ...entry,
+                ownerName,
+                ...(billedTokens === undefined ? {} : { billedTokens }),
+              }
+            );
           })
           .filter((entry): entry is CodeListRow => entry !== null);
       },

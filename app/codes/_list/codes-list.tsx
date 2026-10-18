@@ -8,7 +8,7 @@ import { ListGrid } from "@/components/list/list-grid";
 import { ListPager } from "@/components/list/list-pager";
 import { ListSelection } from "@/components/list/selection";
 import { describeSort, sortMenuItems } from "@/components/list/sorting";
-import { listHref } from "@/components/list/url";
+import { listHref, paramValue } from "@/components/list/url";
 import { ViewPicker } from "@/components/list/view-picker";
 import { Notice } from "@/components/notice";
 import { Main, PageBody } from "@/components/page-main";
@@ -40,7 +40,10 @@ import {
   codeFilterSummary,
   parseCodeFilters,
 } from "./filters";
-import { CODE_VIEWS, DEFAULT_CODE_VIEW, PLANNED_CODE_VIEWS } from "./views";
+import { effectiveModels } from "./models";
+import { CODE_VIEWS, DEFAULT_CODE_VIEW, pickCodeView } from "./views";
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 // `/codes` on the new list engine (see `docs/filtered-lists.md`, "The new list
 // engine"). The page (`app/codes/page.tsx`) has already gated the teacher and
@@ -51,7 +54,8 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
   const session = await getSession();
   const currentUserId = session?.user?.id ?? "";
 
-  const view = DEFAULT_CODE_VIEW;
+  const view = pickCodeView(paramValue(sp, "view"));
+  const shows = (id: (typeof view.columns)[number]) => view.columns.includes(id);
   const columns = view.columns.map((id) => CODE_COLUMNS[id]);
   // The sort allow-list is the view's sortable columns.
   const sortable = Object.fromEntries(
@@ -71,6 +75,8 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
       now,
       paging: parsePaging(sp),
       sort: sort ?? view.defaultSort,
+      // A query column with a subquery: only when the view shows it.
+      billedTokensSince: shows("tokens") ? new Date(now.getTime() - THIRTY_DAYS_MS) : undefined,
     }),
     listCodeOwners(),
   ]);
@@ -85,13 +91,20 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
     );
   }
 
-  // A page column: one aggregate over this page's codes, and only when the view
-  // shows it. `undefined` = the count failed, which shows "—", never a wrong zero.
-  const counts = view.columns.includes("interactions")
-    ? await getInteractionCounts(result.rows.map((entry) => entry.code))
-    : undefined;
+  // Page columns: computed over this page's codes, and only when the view shows
+  // them. A failed count is `undefined` and a model that can't be read `null` —
+  // both show "—", never a wrong value.
+  const [counts, models] = await Promise.all([
+    shows("interactions")
+      ? getInteractionCounts(result.rows.map((entry) => entry.code))
+      : undefined,
+    shows("model") ? effectiveModels(result.rows) : undefined,
+  ]);
   const rows = result.rows.map((entry) =>
-    toCodeRow(entry, windowStatus(entry, now), counts ? (counts.get(entry.code) ?? 0) : null),
+    toCodeRow(entry, windowStatus(entry, now), {
+      interactionCount: counts ? (counts.get(entry.code) ?? 0) : null,
+      model: models?.get(entry.code) ?? null,
+    }),
   );
 
   const filterCount = codeFilterCount(filters, currentUserId);
@@ -110,10 +123,13 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
                 views={CODE_VIEWS.map((v) => ({
                   label: v.label,
                   description: v.description,
-                  href: listHref(CODES_PATH, sp, {}),
+                  // Another view has other sortable columns: the sort goes, the filters stay.
+                  href: listHref(CODES_PATH, sp, {
+                    view: v.id === DEFAULT_CODE_VIEW.id ? undefined : v.id,
+                    sort: undefined,
+                  }),
                   current: v.id === view.id,
                 }))}
-                planned={PLANNED_CODE_VIEWS}
               />
             }
             sortMenu={

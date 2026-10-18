@@ -26,12 +26,20 @@ export const CODE_VIEWS: CodeView[] = [
     columns: ["kind", "note", "owner", "from", "until", "interactions"],
     defaultSortLabel: "Newest first",
   },
+  {
+    id: "models",
+    label: "Models & usage",
+    description:
+      "Which model each code runs on and how many OpenRouter tokens it was billed for in the last 30 days.",
+    columns: ["kind", "note", "model", "source", "interactions", "tokens"],
+    defaultSort: { key: "tokens", dir: "desc" },
+    defaultSortLabel: "Most billed tokens first",
+  },
 ];
 
 export const DEFAULT_CODE_VIEW = CODE_VIEWS[0] as CodeView;
 
-/** Views still to be built: the picker lists them greyed out as "Coming soon". */
-export const PLANNED_CODE_VIEWS = [
-  { label: "Compact", description: "Just the note, the code and the status." },
-  { label: "Models & cost", description: "Which model each code runs on and what it costs." },
-];
+/** The view `?view=` names; an absent or unknown id is the default view. */
+export function pickCodeView(id: string): CodeView {
+  return CODE_VIEWS.find((view) => view.id === id) ?? DEFAULT_CODE_VIEW;
+}
