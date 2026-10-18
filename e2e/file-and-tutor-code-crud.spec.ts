@@ -111,6 +111,9 @@ test("CRUD on a hosted file and a tutor link, with DB-side filtering", {
   await page.goto("/codes/new");
   await page.getByLabel("Activity YAML URL").fill(VALID_TUTOR_URL);
   await page.getByLabel(/Note/).fill(note);
+  // Leaving the URL field read the activity's own LLM (display only; the fixture
+  // names just a model, so SCCH and no pinned reasoning).
+  await expect(page.getByText("SCCH · test-model · provider default")).toBeVisible();
   await page.getByLabel(/Available from/).fill(unixSecondsToDatetimeLocal(now - 3600));
   await page.getByLabel(/Available until/).fill(unixSecondsToDatetimeLocal(now + 3600));
   // The LLM override: a quick pick + Apply fills both free-text fields at once.
@@ -151,6 +154,8 @@ test("CRUD on a hosted file and a tutor link, with DB-side filtering", {
   // the LLM override (editable in edit mode, cleared as a whole pair).
   await page.goto(`/codes/edit/${codeId}`);
   await expect(page.getByLabel(/Activity YAML URL/)).toHaveAttribute("readonly", "");
+  // The edit form reads the frozen URL's LLM on open.
+  await expect(page.getByText("SCCH · test-model · provider default")).toBeVisible();
   const editedNote = `${note} edited`;
   await page.getByLabel(/Note/).fill(editedNote);
   await page.getByRole("button", { name: "Clear LLM override" }).click();

@@ -14,6 +14,7 @@ import { Notice } from "@/components/notice";
 import { Main, PageBody } from "@/components/page-main";
 import { RememberListFilter } from "@/components/remember-list-filter";
 import { buttonVariants } from "@/components/ui/button";
+import { yamlModels } from "@/lib/activity-llm";
 import { deleteSelectedCodesAction } from "@/lib/code-actions";
 import { getInteractionCounts } from "@/lib/code-stats-store";
 import { listCodeOwners, listCodes } from "@/lib/code-store";
@@ -40,7 +41,6 @@ import {
   codeFilterSummary,
   parseCodeFilters,
 } from "./filters";
-import { yamlModels } from "./models";
 import { CODE_VIEWS, DEFAULT_CODE_VIEW, pickCodeView } from "./views";
 
 /** The store's order without a `?sort=`, in words (the Sort menu, the phone header). */

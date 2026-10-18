@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   getCode: vi.fn(),
   updateCode: vi.fn(),
   deleteCodesAndData: vi.fn(),
+  loadActivityLlm: vi.fn(),
   revalidatePath: vi.fn(),
   redirect: vi.fn(),
 }));
@@ -45,11 +46,18 @@ vi.mock("@/lib/code-store", async (importOriginal) => {
 vi.mock("@/lib/code-stats-store", () => ({
   deleteCodesAndData: mocks.deleteCodesAndData,
 }));
+// The display-only YAML read (covered by activity-llm.unit.test.ts).
+vi.mock("@/lib/activity-llm", () => ({ loadActivityLlm: mocks.loadActivityLlm }));
 // validateCodeRequest (imported for real above) pulls in @/lib/db, which must not
 // try to talk to a database in unit tests.
 vi.mock("@/lib/db", () => ({ getDb: () => ({}) }));
 
-import { createCodeAction, deleteSelectedCodesAction, updateCodeAction } from "@/lib/code-actions";
+import {
+  createCodeAction,
+  deleteSelectedCodesAction,
+  readActivityLlmAction,
+  updateCodeAction,
+} from "@/lib/code-actions";
 
 const FILE = "https://example.com/tutor.yaml";
 const START = 1_700_000_000;
@@ -294,5 +302,39 @@ describe("deleteSelectedCodesAction", () => {
     const result = await deleteSelectedCodesAction(["a1b2c3d4e5"]);
     expect(result).toMatchObject({ ok: false, message: expect.stringMatching(/repeat/i) });
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+// The code form's read-only "Activity's LLM" line: teacher-gated, http(s) only, and
+// whatever goes wrong is `null` (one generic warning in the form).
+describe("readActivityLlmAction", () => {
+  const LLM = { provider: "OpenRouter", model: "google/gemma-4", reasoning: "high" };
+
+  beforeEach(() => {
+    mocks.loadActivityLlm.mockReset().mockResolvedValue(LLM);
+  });
+
+  it("reads the YAML's llm block at the trimmed, normalized URL", async () => {
+    await expect(readActivityLlmAction(`  ${FILE}  `)).resolves.toEqual(LLM);
+    expect(mocks.loadActivityLlm).toHaveBeenCalledWith(FILE);
+  });
+
+  it("is null when the file can't be read", async () => {
+    mocks.loadActivityLlm.mockResolvedValue(null);
+    await expect(readActivityLlmAction(FILE)).resolves.toBeNull();
+  });
+
+  it("rejects non-teachers without reading anything", async () => {
+    mocks.requireTeacherUserId.mockResolvedValue({ ok: false });
+    await expect(readActivityLlmAction(FILE)).resolves.toBeNull();
+    expect(mocks.loadActivityLlm).not.toHaveBeenCalled();
+  });
+
+  it("reads nothing for a blank, malformed or non-http(s) URL", async () => {
+    for (const url of ["", "not a url", "file:///etc/passwd", "ftp://example.com/a.yaml"]) {
+      await expect(readActivityLlmAction(url)).resolves.toBeNull();
+    }
+    await expect(readActivityLlmAction(42 as unknown as string)).resolves.toBeNull();
+    expect(mocks.loadActivityLlm).not.toHaveBeenCalled();
   });
 });

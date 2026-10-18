@@ -2,15 +2,16 @@ import { type ActivityLlm, parseActivityYaml } from "@/lib/activity-load";
 import { serverYamlFetcher } from "@/lib/app-hosted-fetcher";
 import { withTimeout } from "@/lib/promise-timeout";
 
-// The `/codes` list's "YAML model" page column (see `docs/filtered-lists.md`, "The
-// new list engine"): the activity YAML's `llm:` block of each visible code — an
-// overridden code's too, so the list shows what its override replaces. Computed
-// only when the view shows the column. App-hosted YAML is read from the database;
-// any other URL is fetched live (uncached on purpose, `lib/app-hosted-yaml.ts`), so
-// each load is capped and a failure reads as `null` ("—"), never as a wrong model.
+// The activity YAML's `llm:` block (provider, model, reasoning), read for display
+// only: the `/codes` list's "YAML model" page column (`docs/filtered-lists.md`, "The
+// new list engine") — an overridden code's too, so the list shows what its override
+// replaces — and the code form's "Activity's LLM" line (`readActivityLlmAction`,
+// `docs/codes.md`). App-hosted YAML is read from the database; any other URL is
+// fetched live (uncached on purpose, `lib/app-hosted-yaml.ts`), so each load is
+// capped and a failure reads as `null`, never as a wrong model.
 // SERVER-ONLY.
 
-/** How long one YAML load (fetch AND body) may take before the cell gives up. */
+/** How long one YAML load (fetch AND body) may take before it gives up. */
 export const MODEL_LOAD_TIMEOUT_MS = 10_000;
 
 /** The `llm:` block of the activity at `fileUrl`, or `null` when it can't be read. Never throws. */
@@ -29,7 +30,7 @@ export async function loadActivityLlm(fileUrl: string): Promise<ActivityLlm | nu
       MODEL_LOAD_TIMEOUT_MS,
     );
   } catch (error) {
-    console.warn(`codes list: could not read the model of ${fileUrl}`, error);
+    console.warn(`activity llm: could not read the model of ${fileUrl}`, error);
     return null;
   }
 }

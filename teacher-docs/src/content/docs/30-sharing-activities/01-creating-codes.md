@@ -4,7 +4,7 @@ description: Turn an activity into a short link for your class, with a note, an 
 sidebar:
   order: 1
 audience: teacher
-keywords: [code, share link, create code, note, availability window, model override, reasoning, codes create, owner]
+keywords: [code, share link, create code, note, availability window, model override, activity model, reasoning, codes create, owner]
 related:
   - 30-sharing-activities/03-time-limitation
   - 30-sharing-activities/04-anonymous-vs-per-user
@@ -35,6 +35,8 @@ Novedu checks the activity file before storing anything. If the file has errors,
 7. Select **Create code**.
 
 ## The LLM override section
+
+Above the override fields, the create and edit forms show the AI settings the activity file itself names in the read-only field **Activity's LLM (from the YAML)**: its provider, model, and reasoning level, or **provider default** when the file sets no level. The field fills in when the form opens with an address and again whenever you change **Activity YAML URL** and move on to another field, so you can see whether a code needs an override without opening the file. If Novedu can't read the file, the field says so instead; for a new code, selecting **Create code** checks the file and lists what's wrong.
 
 The override section has three fields, with a quick-pick dropdown and two buttons below them:
 
