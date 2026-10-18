@@ -18,6 +18,8 @@ const fake = vi.hoisted(() => {
     // Every WHERE condition handed to a select (the COUNT's and the rows'), so a
     // test can render the SQL a filter produced.
     wheres: [] as unknown[],
+    // Every select's projection, so a test can see which columns a query reads.
+    selects: [] as (Record<string, unknown> | undefined)[],
     inserted: [] as Record<string, unknown>[],
     insertErrors: [] as unknown[],
     selectError: undefined as unknown,
@@ -84,7 +86,10 @@ const fake = vi.hoisted(() => {
     };
     return tail;
   };
-  const select = (fields?: Record<string, unknown>) => ({ from: () => fromTail(fields) });
+  const select = (fields?: Record<string, unknown>) => {
+    state.selects.push(fields);
+    return { from: () => fromTail(fields) };
+  };
   const insert = () => ({
     values: async (values: Record<string, unknown>) => {
       const error = state.insertErrors.shift();
@@ -113,6 +118,7 @@ const fake = vi.hoisted(() => {
 vi.mock("@/lib/db", () => ({ getDb: () => fake.db }));
 
 import {
+  billedTokensSince,
   CODE_PATTERN,
   type CodeEntry,
   checkCode,
@@ -120,6 +126,7 @@ import {
   effectiveLlm,
   generateCode,
   getCode,
+  LLM_SOURCE_ORDER,
   listCodeOwners,
   listCodes,
   MAX_FILE_URL_LENGTH,
@@ -656,6 +663,48 @@ describe("listCodes filters (new list)", () => {
     const { sql } = render(fake.state.wheres[0]);
     // Only the known-module guard remains.
     expect(sql).toBe('"novedu_codes"."module" in ($1, $2, $3, $4)');
+  });
+});
+
+describe("listCodes model and usage columns", () => {
+  const rowQuery = () => fake.state.selects.find((fields) => fields && !("n" in fields));
+
+  it("reads no usage unless asked for the billed tokens", async () => {
+    await listCodes({ sort: { key: "tokens", dir: "desc" } });
+    expect(rowQuery()).not.toHaveProperty("billedTokens");
+    // `tokens` is no sort key without them: the default order applies.
+    expect(fake.state.order).toEqual([desc(codes.createdAt), asc(codes.code)]);
+  });
+
+  it("selects and sorts by the billed tokens when asked", async () => {
+    const since = new Date("2026-09-18T12:00:00Z");
+    fake.state.rows = [{ ...toRow(entry()), ownerName: null, billedTokens: 1234 }];
+    const result = await listCodes({
+      billedTokensSince: since,
+      sort: { key: "tokens", dir: "desc" },
+    });
+    expect(result?.rows[0]?.billedTokens).toBe(1234);
+    const { sql, params } = render(rowQuery()?.billedTokens);
+    expect(sql).toContain('"novedu_usage_by_code"."code" = "novedu_codes"."code"');
+    expect(sql).toContain("COALESCE(SUM(");
+    expect(params).toEqual(["OpenRouter", since]);
+    expect(render(fake.state.order[0]).sql).toMatch(/^\(SELECT COALESCE.* desc$/);
+  });
+
+  it("billedTokensSince bounds the sum by provider and hour", () => {
+    const flat = render(billedTokensSince(NOW)).sql.replace(/[()]/g, "");
+    expect(flat).toContain('"novedu_usage_by_code"."provider" = $1');
+    expect(flat).toContain('"novedu_usage_by_code"."hour" >= $2');
+  });
+
+  it("orders a usable override before the YAML default, as toLlmOverride reads it", () => {
+    const { sql, params } = render(LLM_SOURCE_ORDER);
+    expect(sql).toMatch(/^CASE WHEN "novedu_codes"\."llm_provider" in \(\$1, \$2, \$3\)/);
+    expect(sql).toContain(
+      `"novedu_codes"."llm_model" IS NOT NULL AND "novedu_codes"."llm_model" <> ''`,
+    );
+    expect(sql).toContain("THEN 0 ELSE 1 END");
+    expect(params).toEqual(["SCCH", "Azure Foundry", "OpenRouter"]);
   });
 });
 

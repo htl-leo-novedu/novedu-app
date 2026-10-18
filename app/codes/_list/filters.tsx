@@ -1,6 +1,11 @@
-import { type FilterChip, FilterGroup, FilterPill } from "@/components/list/filters";
-import { LinkSelect } from "@/components/list/link-select";
-import { listHref, paramValue, parseMultiParam, toggleMultiValue } from "@/components/list/url";
+import {
+  type FilterDraft,
+  FilterSearch,
+  FilterSelect,
+  FilterToggle,
+} from "@/components/list/filter-panel";
+import { FilterGroup, type FilterSummaryPart } from "@/components/list/filters";
+import { listHref, paramValue, parseMultiParam } from "@/components/list/url";
 import { CODE_MODULES, type CodeModule, codeModuleLabels } from "@/lib/code-modules/types";
 import { WINDOW_STATUSES, type WindowStatus } from "@/lib/code-window";
 import { ALL_OWNERS, type OwnerOption, parseOwner } from "@/lib/db/owner-filter";
@@ -9,7 +14,7 @@ import type { ParamRecord } from "@/lib/db/paging";
 // The `/codes` list's filters on the new list engine (see `docs/filtered-lists.md`,
 // "The new list engine"). Each is a URL param the store turns into SQL:
 //
-//   q       contains-search over note/code (the toolbar's search box)
+//   q       contains-search over note/code (the panel's search field)
 //   owner   absent = me, `all`, or a user id — as on the classic list
 //   module  activities, comma-separated (`?module=tutor,quiz`)
 //   status  window states at the request's "now", comma-separated
@@ -68,68 +73,71 @@ function otherOwners(options: OwnerOption[], value: string, currentUserId: strin
 const ownerValue = (filters: CodeFilters, currentUserId: string) =>
   filters.owner.value === currentUserId ? "" : filters.owner.value;
 
-/** The drawer's filter groups. */
+/** The filters the URL applies, as the panel's draft starts out. */
+export function appliedCodeFilters(filters: CodeFilters, currentUserId: string): FilterDraft {
+  const owner = ownerValue(filters, currentUserId);
+  return {
+    q: filters.q ? [filters.q] : [],
+    owner: owner ? [owner] : [],
+    module: filters.modules,
+    status: filters.statuses,
+  };
+}
+
+/** How many filter values the list applies (the default owner is none). */
+export const codeFilterCount = (filters: CodeFilters, currentUserId: string) =>
+  Object.values(appliedCodeFilters(filters, currentUserId)).flat().length;
+
+/** The panel's search field. */
+export function CodeSearch() {
+  return (
+    <FilterGroup label="Search">
+      <FilterSearch param="q" label="Search codes" placeholder="Search note or code" />
+    </FilterGroup>
+  );
+}
+
+/** The panel's filter groups. */
 export function CodeFilterGroups({
-  sp,
   filters,
   owners,
   currentUserId,
 }: {
-  sp: ParamRecord;
   filters: CodeFilters;
   owners: OwnerOption[];
   currentUserId: string;
 }) {
-  const owner = ownerValue(filters, currentUserId);
-  const others = otherOwners(owners, owner, currentUserId);
+  const others = otherOwners(owners, ownerValue(filters, currentUserId), currentUserId);
   return (
     <>
       <FilterGroup label="Owner">
-        <FilterPill href={listHref(CODES_PATH, sp, { owner: undefined })} active={owner === ""}>
+        <FilterToggle param="owner" value="">
           Mine
-        </FilterPill>
-        <FilterPill
-          href={listHref(CODES_PATH, sp, { owner: ALL_OWNERS })}
-          active={owner === ALL_OWNERS}
-        >
+        </FilterToggle>
+        <FilterToggle param="owner" value={ALL_OWNERS}>
           All owners
-        </FilterPill>
+        </FilterToggle>
         {others.length > 0 ? (
-          <LinkSelect
+          <FilterSelect
+            param="owner"
             label="Other owner"
             placeholder="Other owner…"
-            value={owner}
-            options={others.map((o) => ({
-              ...o,
-              href: listHref(CODES_PATH, sp, { owner: o.value }),
-            }))}
+            options={others}
           />
         ) : null}
       </FilterGroup>
       <FilterGroup label="Activity">
         {CODE_MODULES.map((module) => (
-          <FilterPill
-            key={module}
-            href={listHref(CODES_PATH, sp, {
-              module: toggleMultiValue(filters.modules, module, CODE_MODULES),
-            })}
-            active={filters.modules.includes(module)}
-          >
+          <FilterToggle key={module} param="module" value={module} multi>
             {codeModuleLabels[module].badge}
-          </FilterPill>
+          </FilterToggle>
         ))}
       </FilterGroup>
       <FilterGroup label="Status">
         {WINDOW_STATUSES.map((status) => (
-          <FilterPill
-            key={status}
-            href={listHref(CODES_PATH, sp, {
-              status: toggleMultiValue(filters.statuses, status, WINDOW_STATUSES),
-            })}
-            active={filters.statuses.includes(status)}
-          >
+          <FilterToggle key={status} param="status" value={status} multi>
             {STATUS_LABELS[status]}
-          </FilterPill>
+          </FilterToggle>
         ))}
       </FilterGroup>
     </>
@@ -137,41 +145,37 @@ export function CodeFilterGroups({
 }
 
 /**
- * One chip per active filter value (the search term lives in its own box). The
- * default owner — me — is no filter, so it has no chip.
+ * The summary line's filters, in a fixed order: the owner always (my own codes
+ * are a filter too), then activity, status and search only when set.
  */
-export function codeFilterChips(
-  sp: ParamRecord,
+export function codeFilterSummary(
   filters: CodeFilters,
   owners: OwnerOption[],
   currentUserId: string,
-): FilterChip[] {
-  const chips: FilterChip[] = [];
+): FilterSummaryPart[] {
   const owner = ownerValue(filters, currentUserId);
-  if (owner !== "") {
-    const label =
-      owner === ALL_OWNERS
-        ? "All owners"
-        : `Owner: ${otherOwners(owners, owner, currentUserId).find((o) => o.value === owner)?.label ?? owner}`;
-    chips.push({ label, removeHref: listHref(CODES_PATH, sp, { owner: undefined }) });
-  }
-  for (const module of filters.modules) {
-    chips.push({
-      label: codeModuleLabels[module].badge,
-      removeHref: listHref(CODES_PATH, sp, {
-        module: toggleMultiValue(filters.modules, module, CODE_MODULES),
-      }),
+  const ownerLabel =
+    owner === ""
+      ? "mine"
+      : owner === ALL_OWNERS
+        ? "all owners"
+        : (otherOwners(owners, owner, currentUserId).find((o) => o.value === owner)?.label ??
+          owner);
+  const parts: FilterSummaryPart[] = [{ label: "Owner", value: ownerLabel }];
+  if (filters.modules.length > 0) {
+    parts.push({
+      label: "Activity",
+      value: filters.modules.map((module) => codeModuleLabels[module].badge).join(", "),
     });
   }
-  for (const status of filters.statuses) {
-    chips.push({
-      label: STATUS_LABELS[status],
-      removeHref: listHref(CODES_PATH, sp, {
-        status: toggleMultiValue(filters.statuses, status, WINDOW_STATUSES),
-      }),
+  if (filters.statuses.length > 0) {
+    parts.push({
+      label: "Status",
+      value: filters.statuses.map((status) => STATUS_LABELS[status]).join(", "),
     });
   }
-  return chips;
+  if (filters.q) parts.push({ label: "Search", value: `“${filters.q}”` });
+  return parts;
 }
 
 /** The list URL with every filter cleared; the sort and page size stay. */

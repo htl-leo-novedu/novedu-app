@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
 //
 // - The popover lives in the TOP LAYER, so it escapes the table card's
 //   `overflow-x-auto` clipping, and the platform supplies light dismiss and Escape.
-// - From `md` up it drops from the trigger: its position is computed when it
+// - From `md` up it drops from the trigger (right-aligned, or left with
+//   `align="start"`): its position is computed when it
 //   opens and handed to the static `md:` utilities through CSS variables (the
 //   docs/styling.md pattern for runtime values). Below `md` it is a bottom sheet
 //   with 48px rows, pure CSS — the variables are simply unused there.
@@ -31,7 +32,17 @@ import { cn } from "@/lib/utils";
 // `button` kind carries a function and is for client callers (the bulk bar).
 
 export type ActionMenuItem =
-  | { kind: "link"; label: string; href: string; icon?: ReactNode; newTab?: boolean }
+  | {
+      kind: "link";
+      label: string;
+      href: string;
+      icon?: ReactNode;
+      newTab?: boolean;
+      /** A second, muted line under the label. */
+      description?: string;
+      /** The current choice (the view picker's view): a tick, `aria-current`. */
+      checked?: boolean;
+    }
   /** Copies this app's origin + `path` (e.g. a code's share link). */
   | { kind: "copy-link"; label: string; path: string; icon?: ReactNode }
   /** Shown but not actionable, with the reason next to it. */
@@ -53,7 +64,7 @@ const PANEL =
   // Phone: a bottom sheet over a dimmed page.
   "max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:w-full max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-2xl max-md:p-2 max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-md:backdrop:bg-foreground/45 " +
   // md+: dropped from the trigger (positions set in `place`).
-  "md:inset-auto md:top-[var(--menu-top)] md:left-[var(--menu-left)] md:min-w-48";
+  "md:inset-auto md:top-[var(--menu-top)] md:left-[var(--menu-left)] md:min-w-48 md:max-w-80";
 
 const ITEM =
   "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-left no-underline hover:bg-foreground/5 focus-visible:bg-foreground/5 focus-visible:outline-none max-md:min-h-12 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-foreground/60";
@@ -63,6 +74,7 @@ export function ActionMenu({
   items,
   children,
   triggerClassName,
+  align = "end",
 }: {
   /** The trigger's accessible name and tooltip; also heads the phone sheet. */
   label: string;
@@ -71,6 +83,8 @@ export function ActionMenu({
   children?: ReactNode;
   /** Replaces the default icon-button recipe on the trigger. */
   triggerClassName?: string;
+  /** Which trigger edge the panel lines up with from `md` up. */
+  align?: "start" | "end";
 }) {
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -88,9 +102,10 @@ export function ActionMenu({
     const edge = 8;
     const width = panel.offsetWidth;
     const height = panel.offsetHeight;
-    // Right-aligned to the trigger, kept on screen; above it when there is no
-    // room below.
-    const left = Math.max(edge, Math.min(rect.right - width, window.innerWidth - width - edge));
+    // Lined up with the trigger's end (or start) edge, kept on screen; above it
+    // when there is no room below.
+    const anchor = align === "start" ? rect.left : rect.right - width;
+    const left = Math.max(edge, Math.min(anchor, window.innerWidth - width - edge));
     const below = rect.bottom + gap;
     const above = rect.top - gap - height;
     const top = below + height > window.innerHeight - edge && above >= edge ? above : below;
@@ -195,9 +210,16 @@ function MenuItem({ item, close }: { item: ActionMenuItem; close: () => void }) 
           {item.label}
         </a>
       ) : (
-        <Link role="menuitem" href={item.href} className={ITEM} onClick={close}>
+        <Link
+          role="menuitem"
+          href={item.href}
+          aria-current={item.checked ? "true" : undefined}
+          className={ITEM}
+          onClick={close}
+        >
           {item.icon}
-          {item.label}
+          <ItemText label={item.label} description={item.description} />
+          {item.checked ? <CheckIcon className="ml-auto text-foreground!" /> : null}
         </Link>
       );
     case "copy-link":
@@ -212,7 +234,7 @@ function MenuItem({ item, close }: { item: ActionMenuItem; close: () => void }) 
         >
           {item.icon}
           {item.label}
-          <span className="ml-auto pl-3 text-foreground/55 text-xs">{item.reason}</span>
+          <span className="ml-auto shrink-0 pl-3 text-foreground/55 text-xs">{item.reason}</span>
         </div>
       );
     case "button":
@@ -231,6 +253,16 @@ function MenuItem({ item, close }: { item: ActionMenuItem; close: () => void }) 
         </button>
       );
   }
+}
+
+function ItemText({ label, description }: { label: string; description?: string }) {
+  if (!description) return label;
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="font-medium">{label}</span>
+      <span className="text-xs opacity-70">{description}</span>
+    </span>
+  );
 }
 
 // Copying keeps the menu open for a beat so "Copied!" is seen, then closes it.

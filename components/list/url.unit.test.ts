@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listHref, paramValue, parseMultiParam, toggleMultiValue } from "@/components/list/url";
+import { listHref, paramValue, parseMultiParam } from "@/components/list/url";
 
 const STATES = ["active", "upcoming", "expired"] as const;
 
@@ -28,14 +28,6 @@ describe("parseMultiParam", () => {
     expect(parseMultiParam({ status: ["upcoming", "active"] }, "status", STATES)).toEqual([
       "upcoming",
     ]);
-  });
-});
-
-describe("toggleMultiValue", () => {
-  it("adds and removes a value, keeping the allowed order", () => {
-    expect(toggleMultiValue(["expired"], "active", STATES)).toBe("active,expired");
-    expect(toggleMultiValue(["active", "expired"], "active", STATES)).toBe("expired");
-    expect(toggleMultiValue(["active"], "active", STATES)).toBe("");
   });
 });
 

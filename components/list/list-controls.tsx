@@ -1,64 +1,71 @@
 "use client";
 
-import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
 import { ChevronDownIcon, FilterIcon } from "@/components/icons";
 import { type BulkActionSpec, BulkBar } from "@/components/list/bulk-bar";
+import { type FilterDraft, FilterPanel } from "@/components/list/filter-panel";
 import { useListSelection } from "@/components/list/selection";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cardVariants } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import type { ParamRecord } from "@/lib/db/paging";
 import { cn } from "@/lib/utils";
 
 // The new list engine's control area (see `docs/filtered-lists.md`, "The new
-// list engine"): the toolbar, the filter drawer under it and, while the drawer
-// is closed, the active-filter chips. While rows are ticked the bulk bar takes
-// the toolbar's place (from `md` up; on a phone it floats and the toolbar stays).
+// list engine"): one toolbar row — view picker, the phone Sort menu, Filters, and
+// the page's own actions on the right (on a phone they get the top row) — then
+// the filter panel while it is open, then the summary line. While rows are
+// ticked the bulk bar takes the toolbar's place (from `md` up; on a phone it
+// floats and the toolbar stays).
 //
-// Everything filter-related arrives server-rendered as nodes — the drawer's
-// groups, the chips, the search box — and is only arranged here; the drawer's
-// open state is the one piece of client state, and it survives the soft
-// navigation a pill click makes, so a teacher can tick several filters in a row.
+// The view picker, the search field, the filter groups and the summary arrive
+// server-rendered as nodes and are only arranged here; the panel's open state
+// and its draft are the only client state.
 export function ListControls({
-  search,
+  viewPicker,
   sortMenu,
+  actions,
   filterCount,
-  drawer,
-  chips,
-  clearHref,
+  filters,
+  search,
+  groups,
+  summary,
   bulkActions,
   itemNoun,
 }: {
-  search: ReactNode;
+  viewPicker: ReactNode;
   /** The phone Sort menu (folded rows have no headers); hidden from `md` up. */
   sortMenu?: ReactNode;
-  /** How many filter values are active — the Filters button's badge. */
+  /** The page's own buttons (the engine switch, "New …"). */
+  actions?: ReactNode;
+  /** How many filter values the list applies — the Filters button's badge. */
   filterCount: number;
-  /** The filter groups. */
-  drawer: ReactNode;
-  /** The active-filter chips, shown while the drawer is closed. */
-  chips: ReactNode;
-  /** The list URL with every filter cleared. */
-  clearHref: string;
+  /** Where Apply navigates from, and the filters applied now (see `FilterPanel`). */
+  filters: { pathname: string; params: ParamRecord; applied: FilterDraft };
+  /** The panel's search field. */
+  search: ReactNode;
+  /** The panel's filter groups. */
+  groups: ReactNode;
+  /** The row count and applied filters, under the toolbar. */
+  summary: ReactNode;
   bulkActions: BulkActionSpec[];
   itemNoun: string;
 }) {
   const { selectedIds } = useListSelection();
   const [open, setOpen] = useState(false);
-  const drawerId = useId();
+  const panelId = useId();
   const selecting = selectedIds.length > 0;
 
   return (
     <div className="flex w-0 min-w-full flex-col gap-3">
       {selecting ? <BulkBar actions={bulkActions} itemNoun={itemNoun} /> : null}
       <div className={cn("flex flex-wrap items-center gap-2", selecting && "md:hidden")}>
-        <div className="max-md:order-last max-md:w-full">{search}</div>
-        <div className="flex items-center gap-2 max-md:ml-auto">
+        <div className="flex items-center gap-2 max-md:w-full">
+          <div className="flex max-md:min-w-0 max-md:flex-1">{viewPicker}</div>
           {sortMenu ? <div className="md:hidden">{sortMenu}</div> : null}
           <button
             type="button"
             className={buttonVariants({ variant: "outline" })}
             aria-expanded={open}
-            aria-controls={drawerId}
+            aria-controls={open ? panelId : undefined}
             onClick={() => setOpen(!open)}
           >
             <FilterIcon />
@@ -68,33 +75,30 @@ export function ListControls({
                 {filterCount}
               </span>
             ) : null}
-            <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
+            <ChevronDownIcon
+              className={cn("transition-transform max-md:hidden", open && "rotate-180")}
+            />
           </button>
         </div>
+        {actions ? (
+          <div className="flex items-center gap-2 max-md:order-first max-md:w-full max-md:justify-end md:ml-auto">
+            {actions}
+          </div>
+        ) : null}
       </div>
       {open ? (
-        <section id={drawerId} aria-label="Filters" className={cardVariants()}>
-          {/* Columns of at least 14rem, as many as fit — one column on a phone. */}
-          <div className="grid gap-5 p-4 md:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))]">
-            {drawer}
-          </div>
-          <div className="flex items-center justify-end gap-4 border-foreground/10 border-t px-4 py-2.5">
-            {filterCount > 0 ? (
-              <Link
-                href={clearHref}
-                className="text-foreground/70 text-sm underline hover:text-foreground"
-              >
-                Clear all
-              </Link>
-            ) : null}
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              Done
-            </Button>
-          </div>
-        </section>
-      ) : (
-        chips
-      )}
+        <FilterPanel
+          id={panelId}
+          pathname={filters.pathname}
+          params={filters.params}
+          applied={filters.applied}
+          search={search}
+          onClose={() => setOpen(false)}
+        >
+          {groups}
+        </FilterPanel>
+      ) : null}
+      {summary}
     </div>
   );
 }
