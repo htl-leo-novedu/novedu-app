@@ -321,3 +321,45 @@ export const MoonIcon = (props: SVGProps<SVGSVGElement>) => (
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
   </Icon>
 );
+
+/** Three dots — a row's "more actions" menu. */
+export const MoreHorizontalIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+    <circle cx="5" cy="12" r="1" />
+  </Icon>
+);
+
+/** Magnifier — a search field. */
+export const SearchIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </Icon>
+);
+
+/** Funnel — a list's filters. */
+export const FilterIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </Icon>
+);
+
+/** Cross — remove or close. */
+export const XIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </Icon>
+);
+
+/** Up and down arrows — a list's sort order. */
+export const ArrowUpDownIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <path d="m21 16-4 4-4-4" />
+    <path d="M17 20V4" />
+    <path d="m3 8 4-4 4 4" />
+    <path d="M7 4v16" />
+  </Icon>
+);

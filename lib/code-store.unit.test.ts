@@ -1,4 +1,5 @@
 import { asc, desc } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Fake drizzle handle: just enough of the fluent query API for the store's
@@ -14,6 +15,9 @@ const fake = vi.hoisted(() => {
     // The ORDER BY terms of the most recent row query, so a test can pin that an
     // explicit sort replaced the default order and the tiebreaker still trails.
     order: [] as unknown[],
+    // Every WHERE condition handed to a select (the COUNT's and the rows'), so a
+    // test can render the SQL a filter produced.
+    wheres: [] as unknown[],
     inserted: [] as Record<string, unknown>[],
     insertErrors: [] as unknown[],
     selectError: undefined as unknown,
@@ -58,7 +62,13 @@ const fake = vi.hoisted(() => {
   // `.from(...).$dynamic()` is how the shared `countRows` helper applies its joins
   // in a loop; the tail still resolves through `queryTail`.
   const dynamicTail = (fields?: Record<string, unknown>) => {
-    const tail = { leftJoin: () => tail, where: () => queryTail(fields) };
+    const tail = {
+      leftJoin: () => tail,
+      where: (condition: unknown) => {
+        state.wheres.push(condition);
+        return queryTail(fields);
+      },
+    };
     return tail;
   };
   // `.from(...)` accepts the row query's `.leftJoin(authUsers, …)` (the owner name) as
@@ -66,7 +76,10 @@ const fake = vi.hoisted(() => {
   const fromTail = (fields?: Record<string, unknown>) => {
     const tail = {
       leftJoin: () => tail,
-      where: () => queryTail(fields),
+      where: (condition: unknown) => {
+        state.wheres.push(condition);
+        return queryTail(fields);
+      },
       $dynamic: () => dynamicTail(fields),
     };
     return tail;
@@ -114,6 +127,7 @@ import {
   MAX_NOTE_LENGTH,
   updateCode,
   validateCodeRequest,
+  windowStatusCondition,
 } from "@/lib/code-store";
 import { codes } from "@/lib/db/schema";
 
@@ -613,6 +627,63 @@ describe("listCodes", () => {
 
     await listCodes();
     expect(fake.state.order).toEqual([desc(codes.createdAt), asc(codes.code)]);
+  });
+});
+
+// Renders a condition the way Postgres receives it: SQL text plus parameters.
+const render = (condition: unknown) => new PgDialect().sqlToQuery(condition as never);
+
+describe("listCodes filters (new list)", () => {
+  it("puts the multi-activity and status filters into BOTH the COUNT and the rows", async () => {
+    await listCodes({
+      modules: ["tutor", "quiz"],
+      statuses: ["expired"],
+      now: NOW,
+      paging: { page: 1, pageSize: 20 },
+    });
+
+    expect(fake.state.wheres).toHaveLength(2);
+    for (const where of fake.state.wheres) {
+      const { sql, params } = render(where);
+      expect(sql).toContain('"novedu_codes"."module" in ($5, $6)');
+      expect(sql).toContain('"novedu_codes"."valid_until" < $');
+      expect(params).toEqual(expect.arrayContaining(["tutor", "quiz", NOW.toISOString()]));
+    }
+  });
+
+  it("adds no condition for an empty activity or status list", async () => {
+    await listCodes({ modules: [], statuses: [] });
+    const { sql } = render(fake.state.wheres[0]);
+    // Only the known-module guard remains.
+    expect(sql).toBe('"novedu_codes"."module" in ($1, $2, $3, $4)');
+  });
+});
+
+describe("windowStatusCondition", () => {
+  // Drizzle wraps every operand in parentheses; comparing without them keeps the
+  // assertions readable (the e2e list spec runs the real query).
+  const flat = (condition: unknown) => render(condition).sql.replace(/[()]/g, "");
+  const from = '"novedu_codes"."valid_from"';
+  const until = '"novedu_codes"."valid_until"';
+
+  it("filters nothing for none or all three states", () => {
+    expect(windowStatusCondition([], NOW)).toBeUndefined();
+    expect(windowStatusCondition(["active", "upcoming", "expired"], NOW)).toBeUndefined();
+  });
+
+  it("reads open bounds and inclusive bounds the way the badge does", () => {
+    const started = `${from} is null or ${from} <= $1`;
+    expect(flat(windowStatusCondition(["upcoming"], NOW))).toBe(`${from} > $1`);
+    expect(flat(windowStatusCondition(["expired"], NOW))).toBe(`${started} and ${until} < $2`);
+    expect(flat(windowStatusCondition(["active"], NOW))).toBe(
+      `${started} and ${until} is null or ${until} >= $2`,
+    );
+  });
+
+  it("ORs several states, each judged against the same now", () => {
+    const { sql, params } = render(windowStatusCondition(["active", "upcoming"], NOW));
+    expect(sql.replace(/[()]/g, "")).toMatch(/ or "novedu_codes"\."valid_from" > \$3$/);
+    expect(new Set(params)).toEqual(new Set([NOW.toISOString()]));
   });
 });
 
