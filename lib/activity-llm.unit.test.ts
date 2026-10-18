@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The `/codes` "YAML model" page column: each code reads its YAML's `llm:` block —
-// each distinct file once — and anything that goes wrong (HTTP, YAML, a host that
-// never answers) is `null`.
+// The activity YAML's `llm:` block, read for display (the `/codes` "YAML model"
+// page column, the code form's "Activity's LLM" line): each distinct file once, and
+// anything that goes wrong (HTTP, YAML, a host that never answers) is `null`.
 
 const fetcher = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/app-hosted-fetcher", () => ({ serverYamlFetcher: async () => fetcher }));
 
-import { loadActivityLlm, MODEL_LOAD_TIMEOUT_MS, yamlModels } from "./models";
+import { loadActivityLlm, MODEL_LOAD_TIMEOUT_MS, yamlModels } from "./activity-llm";
 
 const TUTOR_URL = "https://example.test/tutor.yaml";
 const yaml = (text: string) => ({ ok: true, status: 200, text: async () => text });

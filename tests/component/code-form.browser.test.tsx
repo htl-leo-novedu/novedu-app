@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import {
   addToDatetimeLocal,
@@ -15,6 +16,9 @@ import {
 const created: FormData[] = [];
 const updated: { code: string; formData: FormData }[] = [];
 let updateResult: { status: string; message?: string; errors?: unknown[] } = { status: "saved" };
+// The display-only YAML read behind the "Activity's LLM" line; `null` = no model
+// (reading nothing, by default). Tests swap in their own implementation.
+const readActivityLlmAction = vi.fn<(url: string) => Promise<unknown>>(async () => null);
 
 vi.mock("@/lib/code-actions", () => ({
   createCodeAction: vi.fn(async (_prev: unknown, formData: FormData) => {
@@ -26,6 +30,7 @@ vi.mock("@/lib/code-actions", () => ({
     updated.push({ code, formData });
     return updateResult;
   }),
+  readActivityLlmAction: (url: string) => readActivityLlmAction(url),
 }));
 vi.mock("next/link", () => import("@/tests/mocks/next-link"));
 
@@ -249,4 +254,94 @@ test("override: an SCCH quick pick resets reasoning to Provider default; Clear e
   expect(inputValue(screen.getByLabelText(/LLM provider override/))).toBe("");
   expect(inputValue(screen.getByLabelText(/LLM model override/))).toBe("");
   expect(inputValue(reasoning)).toBe("");
+});
+
+// The "Activity's LLM" field: the YAML's own provider · model · reasoning, read when
+// the form opens with a URL and whenever the URL field is left with a new one
+// (docs/codes.md).
+const GEMMA = { provider: "OpenRouter", model: "google/gemma-4", reasoning: "high" };
+const NO_URL_YET = "Enter the Activity YAML URL to see it.";
+
+test("yaml llm: create reads the model when the URL field is left with a new URL — only then", async () => {
+  readActivityLlmAction.mockReset().mockResolvedValue(GEMMA);
+  const screen = await render(<CodeForm mode="create" />);
+  // Nothing to read yet: the read-only field says so, and nothing is read.
+  const yamlLlm = screen.getByLabelText("Activity's LLM (from the YAML)");
+  await expect.element(yamlLlm).toHaveTextContent(NO_URL_YET);
+  expect(readActivityLlmAction).not.toHaveBeenCalled();
+
+  const url = screen.getByLabelText("Activity YAML URL");
+  await url.fill(FILE_URL);
+  expect(readActivityLlmAction).not.toHaveBeenCalled();
+  await userEvent.tab();
+
+  await expect.element(yamlLlm).toHaveTextContent("OpenRouter · google/gemma-4 · high");
+  expect(readActivityLlmAction).toHaveBeenCalledExactlyOnceWith(FILE_URL);
+
+  // Leaving the field again without a change reads nothing.
+  await url.click();
+  await userEvent.tab();
+  expect(readActivityLlmAction).toHaveBeenCalledOnce();
+
+  // A YAML without a pinned effort says so.
+  readActivityLlmAction.mockResolvedValue({ provider: "SCCH", model: "qwen3-coder" });
+  await url.fill("https://example.com/other.yaml");
+  await userEvent.tab();
+  await expect.element(screen.getByText("SCCH · qwen3-coder · provider default")).toBeVisible();
+  expect(readActivityLlmAction).toHaveBeenLastCalledWith("https://example.com/other.yaml");
+
+  // Emptying the URL field empties the read-only field again.
+  await url.clear();
+  await userEvent.tab();
+  await expect.element(yamlLlm).toHaveTextContent(NO_URL_YET);
+});
+
+test("yaml llm: a pre-filled create URL is read on open; a failure shows the generic warning", async () => {
+  readActivityLlmAction.mockReset().mockResolvedValue(null);
+  const screen = await render(<CodeForm mode="create" initialFileUrl={FILE_URL} />);
+
+  await expect
+    .element(
+      screen.getByText(
+        "Couldn't read the model from this YAML file. Creating the code checks the file and shows what's wrong.",
+      ),
+    )
+    .toBeVisible();
+  expect(readActivityLlmAction).toHaveBeenCalledExactlyOnceWith(FILE_URL);
+});
+
+test("yaml llm: edit reads the frozen URL on open, and its warning has no create hint", async () => {
+  readActivityLlmAction.mockReset().mockRejectedValue(new Error("network"));
+  const screen = await render(
+    <CodeForm mode="edit" code="a1b2c3d4e5" initialModule="tutor" initialFileUrl={FILE_URL} />,
+  );
+
+  await expect
+    .element(screen.getByText("Couldn't read the model from this YAML file.", { exact: true }))
+    .toBeVisible();
+  expect(readActivityLlmAction).toHaveBeenCalledExactlyOnceWith(FILE_URL);
+});
+
+test("yaml llm: shows 'Reading…' while it reads, and a slow answer for an earlier URL never wins", async () => {
+  const answers = new Map<string, (llm: unknown) => void>();
+  readActivityLlmAction
+    .mockReset()
+    .mockImplementation((url) => new Promise((resolve) => answers.set(url, resolve)));
+  const screen = await render(<CodeForm mode="create" />);
+  const url = screen.getByLabelText("Activity YAML URL");
+
+  await url.fill("https://example.com/first.yaml");
+  await userEvent.tab();
+  await expect.element(screen.getByText("Reading the model from the YAML…")).toBeVisible();
+
+  await url.fill("https://example.com/second.yaml");
+  await userEvent.tab();
+  answers.get("https://example.com/second.yaml")?.({ provider: "SCCH", model: "second" });
+  await expect.element(screen.getByText("SCCH · second · provider default")).toBeVisible();
+
+  // The first read settles late: the line keeps the second file's model.
+  answers.get("https://example.com/first.yaml")?.(GEMMA);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  await expect.element(screen.getByText("SCCH · second · provider default")).toBeVisible();
+  await expect.element(screen.getByText(/google\/gemma-4/)).not.toBeInTheDocument();
 });

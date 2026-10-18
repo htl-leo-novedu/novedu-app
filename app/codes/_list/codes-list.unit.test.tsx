@@ -15,7 +15,7 @@ const yamlModels = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/code-store", () => ({ listCodes, listCodeOwners }));
 vi.mock("@/lib/code-stats-store", () => ({ getInteractionCounts }));
-vi.mock("./models", () => ({ yamlModels }));
+vi.mock("@/lib/activity-llm", () => ({ yamlModels }));
 vi.mock("@/lib/session", () => ({ getSession: async () => ({ user: { id: "user-me" } }) }));
 vi.mock("@/lib/code-actions", () => ({ deleteSelectedCodesAction: vi.fn() }));
 vi.mock("@/lib/list-engine-actions", () => ({ switchListEngineAction: vi.fn() }));

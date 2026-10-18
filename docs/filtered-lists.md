@@ -569,7 +569,7 @@ Novedu-sized: a small core plus per-list files, no generic grid framework.
 | `listHref` / `parseMultiParam` / `paramValue` | `components/list/url.ts` (**no DB import**) | the URL grammar: every link the server builds, and the panel's Apply |
 | `describeSort` / `sortMenuItems` | `components/list/sorting.ts` (**no DB import**) | the folded list's Sort menu and its "Note ↑" line |
 | `EngineSwitch` | `components/list/engine-switch.tsx` (**server**) | the Classic/New switch both engines render |
-| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `models.ts` (the YAML model page column), `codes-list.tsx` (the list body) |
+| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `codes-list.tsx` (the list body; its YAML model page column reads through `lib/activity-llm.ts`) |
 
 The engine does not import the classic pieces (`components/data-list.tsx`,
 `components/list-filter-bar.tsx`, `components/list-selection.tsx`,
@@ -651,7 +651,7 @@ Every column is one of two kinds:
   It is computed only when the active view shows it, is never sortable, and shows
   "—" when its computation fails, never a wrong value. `/codes` has two:
   - Interactions: one aggregate over the page's codes.
-  - YAML model: `yamlModels` in `app/codes/_list/models.ts`, for every row on
+  - YAML model: `yamlModels` in `lib/activity-llm.ts`, for every row on
     the page, overridden ones included. Each distinct activity file is loaded
     once, in parallel, through the same server fetcher the activities use, and
     its `llm:` block is read. Each load is capped at 10 seconds, so a slow

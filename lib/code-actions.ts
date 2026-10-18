@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { loadActivityLlm } from "@/lib/activity-llm";
+import type { ActivityLlm } from "@/lib/activity-load";
 import { createCodeForUser } from "@/lib/code-service";
 import { deleteCodesAndData } from "@/lib/code-stats-store";
 import { getCode, updateCode, validateCodeRequest } from "@/lib/code-store";
@@ -70,6 +72,28 @@ export async function createCodeAction(
 function refreshTeacherHome(userId: string): void {
   invalidateHome(userId);
   revalidatePath("/");
+}
+
+/**
+ * The activity YAML's `llm:` block (provider, model, reasoning) at `fileUrl`, for the
+ * code form's read-only "Activity's LLM" line — `null` for a non-teacher, a non-http(s)
+ * URL, or a file that can't be read, whatever the cause (the form shows one generic
+ * warning). Display only: creating a code validates the file on its own. Reads through
+ * the server fetcher the activities use (app-hosted YAML comes from the database), so
+ * an uploaded file needs no teacher bearer; never throws.
+ */
+export async function readActivityLlmAction(fileUrl: string): Promise<ActivityLlm | null> {
+  const gate = await requireTeacherUserId();
+  if (!gate.ok) return null;
+
+  let url: URL;
+  try {
+    url = new URL(typeof fileUrl === "string" ? fileUrl.trim() : "");
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  return loadActivityLlm(url.href);
 }
 
 /** The uniform shape every list's "Delete Selected" action returns. */

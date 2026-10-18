@@ -341,6 +341,29 @@ coding. The origin comes from `CODE_ORIGIN` (read
 first), then `TUTOR_CODE_ORIGIN` (fallback), then the request's forwarded/host headers
 (fine for dev); it is display-only.
 
+The form has three groups: the activity (module, YAML URL, note), its LLM, and the
+availability window. The LLM group opens with the activity YAML's own `llm:` block in
+a read-only field, **Activity's LLM (from the YAML)**, in BOTH modes —
+`provider · model · reasoning`, the reasoning reading "provider default" when the YAML
+pins none — directly above the override fields, so a teacher sees what an override
+would replace without opening the file. The form reads it through the
+teacher-only server action `readActivityLlmAction` (`lib/code-actions.ts`,
+`requireTeacherUserId`, http(s) URLs only), which calls `loadActivityLlm`
+(`lib/activity-llm.ts`, the loader of the `/codes` "YAML model" column: the server
+fetcher, so app-hosted YAML comes from the database; capped at 10 seconds; `null` on
+any failure). It reads when the form opens with a URL (edit's frozen URL, or a
+pre-filled `?file=`) and whenever the URL field is left holding a URL other than the
+last one read; only the newest read settles the field. Every failure shows the same
+warning ("Couldn't read the model from this YAML file.", plus "Creating the code
+checks the file and shows what's wrong." on `/codes/new`). The field is display only:
+it never fills or gates the override, and create validates the file on its own. It is
+always rendered at one input's height, its text cut to one line (the whole text in its
+tooltip), and asks for a URL until there is one — pressing **Create code** straight
+from the URL field starts a read on that mousedown, and a field growing then would
+move the button out from under the click. Next dispatches server actions
+one at a time per client, so a save sent while a slow outside host is still being
+read waits for that read (at most the 10-second cap).
+
 A publication that embeds MANY activities does not mint them one by one: an
 **activity registry** file lists every activity under a stable key and
 `novedu-cli codes sync` reconciles it with the server (reuse a matching code,
