@@ -192,7 +192,8 @@ describe("CodesList", () => {
       const text = html.replace(/<[^>]+>/g, "");
       expect(text).toContain("YAML model");
       expect(text).toContain("Override model");
-      expect(text).toContain("OpenRouter · openai/gpt-6.1-sol · high");
+      expect(text).toContain("OpenRouter · openai/gpt-6.1-sol");
+      expect(text).not.toContain("openai/gpt-6.1-sol · high");
       expect(text).toContain("SCCH · qwen3-coder");
       expect(text).toContain("override openai/gpt-6.1-sol");
       expect(text).not.toContain("Owner↕");
@@ -201,6 +202,39 @@ describe("CodesList", () => {
       expect(html.match(/line-through/g)).toHaveLength(2);
       expect(html.match(/\(replaced by the override\)/g)).toHaveLength(2);
       expect(html).toContain('title="Replaced by this code&#x27;s override"');
+    });
+
+    it("shows the reasoning level that runs: the override's, else the YAML's", async () => {
+      yamlModels.mockResolvedValue(
+        new Map([
+          [ROW.fileUrl, { provider: "SCCH", model: "qwen3-coder", reasoning: "low" }],
+          [QUIZ_URL, null],
+        ]),
+      );
+      const cells = (html: string) =>
+        [...html.matchAll(/<tr[^>]*>(.*?)<\/tr>/g)]
+          .map((row) =>
+            [...(row[1] ?? "").matchAll(/<td[^>]*>(.*?)<\/td>/g)].map((cell) =>
+              (cell[1] ?? "").replace(/<[^>]+>/g, ""),
+            ),
+          )
+          .filter((row) => row.length > 0); // the header row has no <td>
+      const html = await render({ view: "models" });
+      expect(html.replace(/<[^>]+>/g, "")).toContain("Reasoning");
+      // Desktop cells: checkbox, activity, note, YAML model, override, reasoning, actions.
+      const reasoning = cells(html).map((row) => row[5]);
+      // The override's `high` beats the YAML's `low`; the YAML's `low` runs
+      // without one; an unreadable YAML without an override is unknown.
+      expect(reasoning).toEqual(["high", "low", "—"]);
+      expect(html).toContain("reasoning high");
+      expect(html).toContain("reasoning low");
+
+      yamlModels.mockResolvedValue(new Map([[ROW.fileUrl, { provider: "SCCH", model: "m" }]]));
+      listCodes.mockResolvedValue(page([ROW]));
+      const unpinned = await render({ view: "models" });
+      expect(cells(unpinned).map((row) => row[5])).toEqual(["provider default"]);
+      // No phone fact for the provider default.
+      expect(unpinned).not.toMatch(/reasoning (none|minimal|low|medium|high|xhigh)\b/);
     });
 
     it("shows — for a YAML that can't be read and nothing without an override", async () => {

@@ -25,8 +25,8 @@ export const CODE_VIEWS: CodeView[] = [
     id: "models",
     label: "Models",
     description:
-      "Which model each code runs on: its activity YAML's, and the code's override that replaces it.",
-    columns: ["kind", "note", "yamlModel", "override"],
+      "Which model each code runs on: its activity YAML's, the code's override that replaces it, and the reasoning level that runs.",
+    columns: ["kind", "note", "yamlModel", "override", "reasoning"],
   },
 ];
 

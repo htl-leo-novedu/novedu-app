@@ -548,28 +548,30 @@ frame gets the plain list: a miss, never a wrong filter.
 
 `/codes` has a second engine next to the classic one. It keeps every rule above —
 filter, sort and page in SQL, state in the URL, select-all page-scoped, delete
-bulk-only — and changes the screen: one toolbar row with a view picker, one "…"
-menu per row instead of a row of buttons, a filter panel whose changes load only
+bulk-only — and changes the screen: one toolbar row with a view picker, row
+actions as icon buttons only where the screen is wide enough and behind one "…"
+menu otherwise, a filter panel whose changes load only
 on Apply, a summary line naming the applied filters, a bulk bar that appears
 while rows are ticked, and rows that fold into three lines on a phone. It is deliberately
 Novedu-sized: a small core plus per-list files, no generic grid framework.
 
 | Piece | Where | Role |
 | --- | --- | --- |
-| `ListGrid<T>` | `components/list/list-grid.tsx` (**server**) | the table: checkbox column, sortable header links, row "…" menu; plus each row's folded phone cell (below) |
+| `ListGrid<T>` | `components/list/list-grid.tsx` (**server**) | the table: checkbox column, sortable header links, row actions; plus each row's folded phone cell (below) |
 | `GridColumn<T>` | same file | `{ id, header, render, sortKey?, kind?, className?, fact? }` — `fact` is the column's short text on a folded row |
 | `ListControls` | `components/list/list-controls.tsx` (**client**) | the toolbar row (view picker, phone Sort, Filters button with a count badge, the page's actions), the filter panel, the summary line; swaps in the bulk bar while rows are ticked |
 | `FilterPanel` / `FilterToggle` / `FilterSelect` / `FilterSearch` | `components/list/filter-panel.tsx` (**client**) | the panel holding the draft and its Apply / Cancel / Clear all, and the controls that edit the draft: toggle pills, a select for long lists (the "Other owner…" picker), the search field |
 | `FilterGroup` / `FilterSummary` | `components/list/filters.tsx` (**server-safe**) | a labelled group of the panel; the summary line under the toolbar |
 | `ViewPicker` | `components/list/view-picker.tsx` (**server-safe**) | the toolbar button naming the view; its menu lists every view with its description |
 | `ActionMenu` | `components/list/action-menu.tsx` (**client**) | the one menu: the view picker, row "…" menus, the phone Sort menu, the phone bulk "Actions" |
+| `RowActions` | `components/list/row-actions.tsx` (**client**) | a row's actions from one item list: icon buttons from `xl` up, its `ActionMenu` below |
 | `ListSelection` / `RowCheckbox` / `SelectAllCheckbox` | `components/list/selection.tsx` (**client**) | the page-scoped selection and the one way a bulk action runs |
 | `BulkBar` | `components/list/bulk-bar.tsx` (**client**) | "N selected" + one button per bulk action; floats at the bottom on a phone |
 | `ListPager` | `components/list/list-pager.tsx` (**server**) | "Showing 21–40 of 137" + previous/next |
 | `listHref` / `parseMultiParam` / `paramValue` | `components/list/url.ts` (**no DB import**) | the URL grammar: every link the server builds, and the panel's Apply |
 | `describeSort` / `sortMenuItems` | `components/list/sorting.ts` (**no DB import**) | the folded list's Sort menu and its "Note ↑" line |
 | `EngineSwitch` | `components/list/engine-switch.tsx` (**server**) | the Classic/New switch both engines render |
-| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row menu), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `codes-list.tsx` (the list body; its YAML model page column reads through `lib/activity-llm.ts`) |
+| per-list files | `app/codes/_list/` | `columns.tsx` (the column catalogue + row actions), `views.ts`, `filters.tsx` (parse, the panel's search and groups, its starting draft, the summary parts, the clear href), `codes-list.tsx` (the list body; its YAML model page column reads through `lib/activity-llm.ts`) |
 
 The engine does not import the classic pieces (`components/data-list.tsx`,
 `components/list-filter-bar.tsx`, `components/list-selection.tsx`,
@@ -634,10 +636,13 @@ memory reopens the last view on this device.
 `/codes` has two views:
 
 - **Overview** (default): activity, note, owner, the window, interactions.
-- **Models** (`view=models`): activity, note, the activity YAML's model and the
-  code's override model. The override replaces the YAML's model
-  wholesale (`effectiveLlm`), so an overridden code's YAML model is struck
-  through, and a code without an override leaves that cell empty.
+- **Models** (`view=models`): activity, note, the activity YAML's model, the
+  code's override model and the reasoning level. The override replaces the YAML's
+  `llm:` block wholesale (`effectiveLlm`), so an overridden code's YAML model is
+  struck through, and a code without an override leaves that cell empty. The
+  model cells name provider and model only; Reasoning shows the level that runs
+  — the override's when there is one, else the YAML's — "provider default" when
+  none is pinned, and "—" when the YAML can't be read.
 
 Every column is one of two kinds:
 
@@ -656,8 +661,20 @@ Every column is one of two kinds:
     once, in parallel, through the same server fetcher the activities use, and
     its `llm:` block is read. Each load is capped at 10 seconds, so a slow
     outside host holds this view for at most that long and no other view at all.
+  - Reasoning: no query of its own — it reads the same YAML load, which runs
+    whenever the view shows either column.
 
-### The row menu and the bulk bar
+### Row actions, the row menu and the bulk bar
+
+A row's actions are one item list shown two ways (`RowActions`): from `xl`
+(1280px) up every action is an icon button in the row, as on the classic lists;
+below it they sit in the row's "…" menu, and a folded phone row only ever shows
+the menu. Both are in the same render and CSS picks one, so they can never
+disagree. Between `md` and `xl` the menu stays on purpose: a wider table scrolls
+sideways there, and the actions column at its far end would scroll out of
+view. Inline, every item needs an icon; a `disabled` item keeps its slot as a
+disabled button whose name carries the reason, so the icons line up from row
+to row.
 
 `ActionMenu` is a button plus a native `popover` panel. The popover lives in the
 top layer, so it escapes the table card's `overflow-x-auto` clipping, and the
@@ -668,7 +685,7 @@ it is a bottom sheet with 48px rows. Arrow keys, Home and End move between the
 items; a scroll or resize closes it. Items are plain data — `link` (optionally
 with a description line and a tick), `copy-link`, `disabled` (with its reason),
 `button` — so a server page builds a row's menu.
-The row menu never holds Delete: delete stays bulk-only.
+Neither the row menu nor the inline actions hold Delete: delete stays bulk-only.
 
 The bulk bar replaces the whole toolbar row while rows are ticked (same height, so
 the table does not move) and lists one button per bulk action; `confirm: "delete"` asks with
@@ -706,7 +723,7 @@ gets `DEFAULT_LIST_ENGINE`.
 2. Under `app/<list>/_list/`, write the column catalogue (`GridColumn`s with
    `sortKey`s from the store's sort map, `fact`s for the folded rows), the views,
    the filter file (parse, the panel's search and groups, its starting draft, the
-   summary parts, the clear href), the row menu and the
+   summary parts, the clear href), the row actions and the
    list body; render it from the page behind the engine cookie and add the route
    to `LIST_ENGINE_ROUTES`.
 3. Compute page columns only when the view shows them.

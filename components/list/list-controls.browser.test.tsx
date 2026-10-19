@@ -124,7 +124,7 @@ function Harness({ action, applied = ACTIVE }: { action: BulkAction; applied?: F
         columns={COLUMNS}
         rowKey={(row) => row.id}
         rowLabel={(row) => row.note}
-        rowMenu={(row) => (
+        rowActions={(row) => (
           <ActionMenu
             label={`Actions for ${row.note}`}
             items={[{ kind: "link", label: "View", href: `/codes/${row.id}` }]}
@@ -416,7 +416,7 @@ describe("phone", () => {
           columns={COLUMNS}
           rowKey={(row) => row.id}
           rowLabel={(row) => row.note}
-          rowMenu={() => null}
+          rowActions={() => null}
           folded={{ title: (row) => row.note, meta: () => null }}
           sorting={{ pathname: "/codes", params: {}, sort: undefined }}
           sortLabel="Newest first"
