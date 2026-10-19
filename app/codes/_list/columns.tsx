@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CopyIcon, EditIcon, ExternalLinkIcon, StatsIcon } from "@/components/icons";
-import { ActionMenu, type ActionMenuItem } from "@/components/list/action-menu";
 import type { GridColumn } from "@/components/list/list-grid";
+import { type RowActionItem, RowActions } from "@/components/list/row-actions";
 import { ModuleBadge } from "@/components/module-badge";
 import { Badge } from "@/components/ui/badge";
 import type { ActivityLlm } from "@/lib/activity-load";
@@ -14,7 +14,8 @@ import { LocalTime } from "../../local-time";
 // `docs/filtered-lists.md`, "The new list engine"): every column a view may
 // show, keyed by id. A column with a `sortKey` is a QUERY column — it orders by
 // the store's `CODE_SORT_COLUMNS` entry of that key; one without is display-only
-// (Interactions and YAML model are PAGE columns, computed after the page is read).
+// (Interactions, YAML model and Reasoning are PAGE columns, computed after the
+// page is read).
 
 /** One `/codes` row as the new list renders it — plain values, dates as unix seconds. */
 export interface CodeRow {
@@ -103,16 +104,25 @@ function NoteLink({ row }: { row: CodeRow }) {
   );
 }
 
-/** A model on one line: the provider (muted), the model id, and the reasoning effort when pinned. */
+/**
+ * A model on one line: the provider (muted) and the model id. The reasoning effort
+ * has its own column; the tooltip still names it.
+ */
 function ModelText({ llm, title }: { llm: ActivityLlm; title?: string }) {
   return (
     <span title={title ?? [llm.provider, llm.model, llm.reasoning].filter(Boolean).join(" · ")}>
       <span className="text-foreground/55">{llm.provider} · </span>
       {llm.model}
-      {llm.reasoning ? <span className="text-foreground/55"> · {llm.reasoning}</span> : null}
     </span>
   );
 }
+
+/**
+ * The model the code actually runs on: its override when set, the YAML's otherwise —
+ * wholesale, never merged (the rule of `effectiveLlm` in `lib/code-store.ts`).
+ * `null` when there is no override and the YAML couldn't be read.
+ */
+const runningLlm = (row: CodeRow) => row.override ?? row.yamlModel;
 
 export type CodeColumnId =
   | "kind"
@@ -122,7 +132,8 @@ export type CodeColumnId =
   | "until"
   | "interactions"
   | "yamlModel"
-  | "override";
+  | "override"
+  | "reasoning";
 
 export const CODE_COLUMNS: Record<CodeColumnId, GridColumn<CodeRow> & { sortKey?: CodeSortKey }> = {
   kind: {
@@ -222,6 +233,21 @@ export const CODE_COLUMNS: Record<CodeColumnId, GridColumn<CodeRow> & { sortKey?
     render: (row) => (row.override ? <ModelText llm={row.override} /> : null),
     fact: (row) => (row.override ? `override ${row.override.model}` : null),
   },
+  reasoning: {
+    id: "reasoning",
+    header: "Reasoning",
+    className: "whitespace-nowrap",
+    // The level that runs, so it follows the override like the model does.
+    render: (row) => {
+      const llm = runningLlm(row);
+      if (!llm) return "—";
+      return llm.reasoning ?? <span className="text-foreground/55">provider default</span>;
+    },
+    fact: (row) => {
+      const reasoning = runningLlm(row)?.reasoning;
+      return reasoning ? `reasoning ${reasoning}` : null;
+    },
+  },
 };
 
 /** Lines 1 and 2 of a folded phone row: the note, then kind, code and status. */
@@ -236,9 +262,9 @@ export const codeFolded = {
   ),
 };
 
-/** A row's "…" menu. No delete here: deleting is bulk-only. */
-export function CodeRowMenu({ row }: { row: CodeRow }) {
-  const items: ActionMenuItem[] = [
+/** A row's actions: inline icons on a wide screen, else its "…" menu. No delete here: deleting is bulk-only. */
+export function CodeRowActions({ row }: { row: CodeRow }) {
+  const items: RowActionItem[] = [
     { kind: "link", label: "View stats", href: `/codes/${row.code}`, icon: <StatsIcon /> },
     row.status === "active"
       ? {
@@ -257,5 +283,5 @@ export function CodeRowMenu({ row }: { row: CodeRow }) {
     { kind: "copy-link", label: "Copy link", path: `/${row.code}`, icon: <CopyIcon /> },
     { kind: "link", label: "Edit code", href: `/codes/edit/${row.code}`, icon: <EditIcon /> },
   ];
-  return <ActionMenu label={`Actions for ${codeRowLabel(row)}`} items={items} />;
+  return <RowActions label={`Actions for ${codeRowLabel(row)}`} items={items} />;
 }

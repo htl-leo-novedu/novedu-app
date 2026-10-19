@@ -25,7 +25,7 @@ import { getSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import {
   CODE_COLUMNS,
-  CodeRowMenu,
+  CodeRowActions,
   codeFolded,
   codeRowAccent,
   codeRowLabel,
@@ -97,7 +97,10 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
     shows("interactions")
       ? getInteractionCounts(result.rows.map((entry) => entry.code))
       : undefined,
-    shows("yamlModel") ? yamlModels(result.rows.map((entry) => entry.fileUrl)) : undefined,
+    // The Reasoning column needs the YAML's level whenever there is no override.
+    shows("yamlModel") || shows("reasoning")
+      ? yamlModels(result.rows.map((entry) => entry.fileUrl))
+      : undefined,
   ]);
   const rows = result.rows.map((entry) =>
     toCodeRow(entry, windowStatus(entry, now), {
@@ -199,7 +202,7 @@ export async function CodesList({ sp }: { sp: ParamRecord }) {
               rowKey={(row) => row.code}
               rowLabel={codeRowLabel}
               rowClassName={codeRowAccent}
-              rowMenu={(row) => <CodeRowMenu row={row} />}
+              rowActions={(row) => <CodeRowActions row={row} />}
               folded={codeFolded}
               sorting={sorting}
               sortLabel={describeSort(columns, sort, DEFAULT_ORDER)}

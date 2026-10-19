@@ -8,8 +8,9 @@ import { watchErrors } from "./page.utils";
 // its cookie, and — against the real database — the new list's filter panel
 // (applied on Apply or Enter), sort header and pager drive ONE URL the server
 // filters on, the summary line names the applied filters, its bulk bar deletes,
-// and the view picker switches to the Models view (each code's YAML model and its
-// override). Minted codes belong to the e2e creator, hence `owner=all`.
+// the view picker switches to the Models view (each code's YAML model, its
+// override and the reasoning level that runs), and a wide screen shows the row
+// actions inline. Minted codes belong to the e2e creator, hence `owner=all`.
 
 test.use({ storageState: TEACHER_STORAGE_STATE });
 
@@ -130,13 +131,13 @@ test("the filter panel, sort and pager build one URL the database filters on", {
   await expect(page.getByText("Showing 1–1 of 3")).toBeVisible();
 });
 
-test("the Models view shows each code's YAML model and its override", {
+test("the Models view shows each code's YAML model, its override and the reasoning that runs", {
   tag: ["@live", "@live-db"],
 }, async ({ page, context, baseURL }) => {
   const tag = `e2e-models-${Date.now()}`;
   await mintCode({
     note: `${tag} override`,
-    llm: { provider: "OpenRouter", model: "e2e/openrouter-model" },
+    llm: { provider: "OpenRouter", model: "e2e/openrouter-model", reasoning: "high" },
   });
   await mintCode({ note: `${tag} yaml`, module: "quiz", file: VALID_QUIZ_URL });
   await useNewEngine(context, baseURL);
@@ -160,6 +161,16 @@ test("the Models view shows each code's YAML model and its override", {
   const yamlRow = codeRows(page, `${tag} yaml`);
   await expect(yamlRow).toContainText("SCCH · test-model");
   await expect(yamlRow).not.toContainText("OpenRouter");
+  // Reasoning: the override's level; the fixture YAMLs pin none.
+  await expect(page.getByRole("columnheader", { name: "Reasoning" })).toBeVisible();
+  await expect(overrideRow.getByRole("cell", { name: "high", exact: true })).toBeVisible();
+  await expect(yamlRow.getByRole("cell", { name: "provider default" })).toBeVisible();
+
+  // Desktop Chrome is 1280px wide, so `xl`: the row actions are inline, no "…" menu.
+  const actions = yamlRow.getByRole("group", { name: /^Actions for/ });
+  await expect(actions.getByRole("link", { name: "View stats" })).toBeVisible();
+  await expect(actions.getByRole("link", { name: "Edit code" })).toBeVisible();
+  await expect(yamlRow.getByRole("button", { name: /^Actions for/ })).toBeHidden();
 
   // Applying a filter keeps the view...
   await openFilters(page);

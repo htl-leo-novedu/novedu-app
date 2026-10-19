@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 
 // The new list engine's table (see `docs/filtered-lists.md`, "The new list
 // engine"). A SERVER component: the rows arrive filtered, sorted and paged by
-// the database. Every row has a leading checkbox and a trailing "…" menu.
+// the database. Every row has a leading checkbox and trailing actions — the
+// list's `RowActions`: icon buttons from `xl` up, a "…" menu below.
 //
 // Below `md` each row FOLDS into a three-line entry instead of scrolling
 // sideways: line 1 the row's title, line 2 its meta badges, line 3 the view's
@@ -89,7 +90,7 @@ export function ListGrid<T>({
   rowKey,
   rowLabel,
   rowClassName,
-  rowMenu,
+  rowActions,
   folded,
   sorting,
   sortLabel,
@@ -101,8 +102,11 @@ export function ListGrid<T>({
   /** Names the row in its checkbox's accessible name ("Select <label>"). */
   rowLabel: (row: T) => string;
   rowClassName?: (row: T) => string | undefined;
-  /** The row's "…" menu. */
-  rowMenu: (row: T) => ReactNode;
+  /**
+   * The row's actions (`RowActions`), rendered in the desktop cell and in the folded
+   * phone cell, where only its "…" menu half ever shows.
+   */
+  rowActions: (row: T) => ReactNode;
   /** Lines 1 and 2 of a folded phone row. */
   folded: { title: (row: T) => ReactNode; meta: (row: T) => ReactNode };
   sorting: GridSorting;
@@ -142,7 +146,7 @@ export function ListGrid<T>({
           {rows.map((row) => {
             const key = rowKey(row);
             const label = rowLabel(row);
-            const menu = rowMenu(row);
+            const actions = rowActions(row);
             return (
               <tr key={key} className={rowClassName?.(row)}>
                 <td className={cn(TD, "w-[1%] text-center max-md:hidden")}>
@@ -161,7 +165,7 @@ export function ListGrid<T>({
                     {column.render(row)}
                   </td>
                 ))}
-                <td className={cn(TD, "w-[1%] whitespace-nowrap max-md:hidden")}>{menu}</td>
+                <td className={cn(TD, "w-[1%] whitespace-nowrap max-md:hidden")}>{actions}</td>
                 {/* The folded phone entry. */}
                 <td colSpan={columns.length + 2} className={cn(TD, "md:hidden")}>
                   <div className="flex items-start gap-3">
@@ -175,7 +179,7 @@ export function ListGrid<T>({
                       <div className="flex flex-wrap items-center gap-2">{folded.meta(row)}</div>
                       <Facts row={row} columns={columns} />
                     </div>
-                    {menu}
+                    {actions}
                   </div>
                 </td>
               </tr>
