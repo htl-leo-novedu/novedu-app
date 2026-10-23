@@ -34,7 +34,7 @@ The highest-cost rules to break. They always apply, regardless of subsystem; the
 - Image bytes are served ONLY by the cookie-session `GET /api/image-content/<id>`, which re-checks the active row on every request (incl. a `304`), sends `nosniff` + a sandboxing `Content-Security-Policy` on every response, and applies NO further authorization beyond a live session — no `checkCode()`, no thread token; teacher-hosted images are shared authenticated assets, not per-code resources. SVG renders only via `<img src>`, never inline markup (`docs/images.md`).
 - Telemetry carries **no** message / prompt / PII content on either backend. The backend is chosen ONCE at boot by the pure resolver `lib/telemetry-mode.ts` — `OTEL_SDK_DISABLED` > `OTEL_EXPORTER_OTLP_ENDPOINT` (standard OTLP) > `APPLICATIONINSIGHTS_CONNECTION_STRING` (Azure Monitor) > off — behind the single facade `lib/telemetry.ts`; startup logs name only the mode. `cli/src/**` never imports the facade or any OTel SDK (grep-guarded) (`docs/telemetry.md`).
 - Usage metering writes two **independent** hourly buckets — `usage_by_code` (no user) and `usage_by_user` (no code). **Never** a `(user × code)` row; ids + counts only, never content (`docs/usage-metering.md`).
-- Fork-PR CI stays **secret-free**; never add `pull_request_target` (`docs/ci-security.md`).
+- Fork-PR CI stays **secret-free**; `pull_request_target` only in `.github/workflows/cla.yml`, which never checks out or runs PR code (`docs/ci-security.md`).
 - Production Postgres is always passwordless Entra / Managed Identity; password auth is dev/test only (`docs/database.md`).
 
 ## Subsystem map
