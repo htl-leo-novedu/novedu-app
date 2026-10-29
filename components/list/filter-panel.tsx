@@ -195,7 +195,9 @@ export function FilterSelect({
   return (
     <Select
       aria-label={label}
-      className={cn("h-8", current && "border-foreground")}
+      // A native select is as wide as its longest option; fill the group's
+      // column instead and let a long name end in an ellipsis.
+      className={cn("h-8 w-full min-w-0 truncate", current && "border-foreground")}
       value={current}
       onChange={(event) => set([event.target.value])}
     >
