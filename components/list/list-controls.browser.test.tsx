@@ -85,7 +85,10 @@ function Harness({ action, applied = ACTIVE }: { action: BulkAction; applied?: F
                 param="owner"
                 label="Other owner"
                 placeholder="Other owner…"
-                options={[{ value: "u-ada", label: "Ada" }]}
+                options={[
+                  { value: "u-ada", label: "Ada" },
+                  { value: "u-long", label: "Stropek-Wolfsberger Rainer Maximilian (Lehrer)" },
+                ]}
               />
             </FilterGroup>
             <FilterGroup label="Status">
@@ -271,6 +274,16 @@ describe("desktop", () => {
     await expect.element(select).toHaveValue("");
     await screen.getByRole("button", { name: "Apply" }).click();
     expect(push).toHaveBeenCalledWith("/codes?sort=note&owner=all&status=active");
+  });
+
+  test("a long owner name stays inside the Owner column", async () => {
+    const screen = await render(<Harness action={ok} />);
+    await screen.getByRole("button", { name: /Filters/ }).click();
+    const group = screen.getByRole("group", { name: "Owner" }).element().getBoundingClientRect();
+    const select = screen.getByRole("combobox", { name: "Other owner" }).element();
+    expect(select.getBoundingClientRect().right).toBeLessThanOrEqual(group.right);
+    await screen.getByRole("combobox", { name: "Other owner" }).selectOptions("u-long");
+    expect(select.getBoundingClientRect().right).toBeLessThanOrEqual(group.right);
   });
 
   test("select-all is tri-state and folded rows stay hidden", async () => {
