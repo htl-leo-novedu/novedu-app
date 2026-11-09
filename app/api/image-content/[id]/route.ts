@@ -47,7 +47,7 @@ function failure(status: number, message: string): Response {
 
 /**
  * Streams one image version's bytes to a signed-in user. 200 with
- * `Content-Type` (the row's stored MIME, never sniffed), `Content-Length`,
+ * `Content-Type` (the row's stored MIME, never sniffed),
  * `Cache-Control: private, no-cache` and `ETag: "<id>"`; 304 for a matching
  * `If-None-Match`, but only after the session check and the active-row lookup
  * both pass. 401 without a session, 404 for a malformed id, a closed/unknown
@@ -93,8 +93,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
   if ("missing" in opened) return failure(404, "Not found");
 
-  return new Response(opened.stream, {
-    status: 200,
-    headers: { ...cacheHeaders, "Content-Length": String(opened.byteLength) },
-  });
+  return new Response(opened.stream, { status: 200, headers: cacheHeaders });
 }

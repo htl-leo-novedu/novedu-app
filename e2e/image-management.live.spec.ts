@@ -215,7 +215,7 @@ test.describe("app-hosted image lifecycle", () => {
       expect(plain.status()).toBe(200);
       const headers = plain.headers();
       expect(headers["content-type"]).toBe("image/png");
-      expect(headers["content-length"]).toBe(String(pngBytes.length));
+      expect(await plain.body()).toEqual(pngBytes);
       expect(headers["cache-control"]).toBe("private, no-cache");
       expect(headers.etag).toBe(`"${pngId}"`);
       expect(headers["x-content-type-options"]).toBe("nosniff");
