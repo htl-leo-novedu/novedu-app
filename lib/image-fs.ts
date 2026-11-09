@@ -367,14 +367,13 @@ export async function inspectObject(key: string): Promise<InspectObjectResult> {
 }
 
 export type OpenObjectResult =
-  | { ok: true; stream: ReadableStream<Uint8Array>; byteLength: number }
+  | { ok: true; stream: ReadableStream<Uint8Array> }
   | { ok: true; missing: true }
   | StorageFailure;
 
 /**
- * Opens one object for streaming, with the byte length the response's
- * `Content-Length` uses. A row whose object is gone reads as `missing` (a 404
- * for the caller); anything else is a failure.
+ * Opens one object for streaming. A row whose object is gone reads as `missing`
+ * (a 404 for the caller); anything else is a failure.
  */
 export async function openObject(key: string): Promise<OpenObjectResult> {
   const check = await verifyImageRoot();
@@ -399,7 +398,7 @@ export async function openObject(key: string): Promise<OpenObjectResult> {
 
   try {
     const stream = Readable.toWeb(createReadStream(/*turbopackIgnore: true*/ resolved.contentPath));
-    return { ok: true, stream: stream as ReadableStream<Uint8Array>, byteLength: info.size };
+    return { ok: true, stream: stream as ReadableStream<Uint8Array> };
   } catch (error) {
     return { ok: false, reason: "error", detail: message(error) };
   }

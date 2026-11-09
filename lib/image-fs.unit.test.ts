@@ -390,7 +390,7 @@ describe("inspectObject / openObject", () => {
 
     await expect(inspectObject(KEY)).resolves.toEqual({ ok: true, exists: true, byteLength: 5 });
     const opened = await openObject(KEY);
-    expect(opened).toMatchObject({ ok: true, byteLength: 5 });
+    expect(opened).toMatchObject({ ok: true });
     if (!opened.ok || !("stream" in opened)) throw new Error("expected a stream");
     const read = new Uint8Array(await new Response(opened.stream).arrayBuffer());
     expect(read).toEqual(payload);

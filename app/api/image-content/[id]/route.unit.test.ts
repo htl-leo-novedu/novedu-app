@@ -69,7 +69,6 @@ beforeEach(() => {
   mocks.openObject.mockResolvedValue({
     ok: true,
     stream: stream(PAYLOAD),
-    byteLength: PAYLOAD.byteLength,
   });
 });
 
@@ -158,7 +157,7 @@ describe("GET /api/image-content/<id> — lookup", () => {
 });
 
 describe("GET /api/image-content/<id> — response", () => {
-  it("streams the exact bytes with the adapter's length and the ROW's MIME", async () => {
+  it("streams the exact bytes with the ROW's MIME", async () => {
     mocks.getActiveImageById.mockResolvedValue(row({ mimeType: "image/svg+xml" }));
     const res = await get();
 
@@ -166,16 +165,14 @@ describe("GET /api/image-content/<id> — response", () => {
     expect(mocks.openObject).toHaveBeenCalledWith("11111111-2222-3333-4444-555555555555.png");
     // The declared MIME comes from the row, never from sniffing the bytes.
     expect(res.headers.get("content-type")).toBe("image/svg+xml");
-    expect(res.headers.get("content-length")).toBe(String(PAYLOAD.byteLength));
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(PAYLOAD);
   });
 
-  it("carries all six headers on a 200", async () => {
+  it("carries all five headers on a 200", async () => {
     const res = await get();
     expect(res.headers.get("cache-control")).toBe("private, no-cache");
     expect(res.headers.get("etag")).toBe(`"${ID}"`);
     expect(res.headers.get("content-type")).toBe("image/png");
-    expect(res.headers.get("content-length")).toBe(String(PAYLOAD.byteLength));
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
   });

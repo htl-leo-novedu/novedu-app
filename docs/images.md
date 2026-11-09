@@ -178,7 +178,7 @@ above it (the service, the store, the routes) speaks in opaque object **keys**
 - **Reads and deletes.** `inspectObject`/`openObject` distinguish absence
   (`exists: false` / `missing: true` — DATA, not an error) from an operational
   failure (permission, a link where a file belongs, …); `openObject` returns a
-  Node stream plus the byte length the response's `Content-Length` uses.
+  Node stream.
   `deleteObject` is idempotent: removing an already-gone object is
   `{ ok: true, existed: false }`, not an error.
 - **MIME is never invented from bytes.** The adapter derives only byte length
@@ -310,10 +310,10 @@ authenticated, `<id>` the immutable `novedu_images` version row id.
   ever hands out an image URL, and chat/grading/reports keep their own code and
   thread-token rules untouched.
 - **Headers.** On `200`: `Content-Type` = the row's stored MIME (never
-  sniffed), `Content-Length` = the adapter's measured byte length,
-  `Cache-Control: private, no-cache`, `ETag: "<id>"` (a strong ETag over the
-  immutable row id — a browser may keep a private copy but must revalidate on
-  every use). A conditional request (`If-None-Match` containing that ETag)
+  sniffed), `Cache-Control: private, no-cache`, `ETag: "<id>"` (a strong ETag
+  over the immutable row id — a browser may keep a private copy but must
+  revalidate on every use). Next.js strips `Content-Length` from route-handler
+  responses, so the body goes out chunked. A conditional request (`If-None-Match` containing that ETag)
   answers `304` with the same headers, **but only after the same session check
   and active-row lookup both pass** — a closed row `404`s a conditional request
   exactly as it `404`s a plain one, and no shared cache may ever store the
