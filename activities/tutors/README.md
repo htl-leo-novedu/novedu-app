@@ -202,6 +202,7 @@ llm:
   imageInput: false # optional: omit for default true; set false to disable image uploads
 tools: # optional: omit for default [] (no tools); built-in tools the model may call
   - random_number
+  - board
 prompt:
   fragment_files: [...] # optional: the libraries you pull fragments from
   text_files: [...] # optional: plain-text files you embed with {{file ...}}
@@ -307,6 +308,7 @@ Available tools (this list is exhaustive):
 | Tool            | What it does                                                                                          |
 | --------------- | ----------------------------------------------------------------------------------------------------- |
 | `random_number` | Returns a uniformly random integer between `min` and `max` (both inclusive), using true server-side randomness. |
+| `board`         | Draws on a whiteboard next to the chat (boxes, arrows, groups, message sequences, bit layouts) and changes the same drawing in place on follow-ups. Tested with GPT-6 Luna. |
 
 Use `random_number` when the tutor generates practice problems: language models
 are poor at inventing random values on their own — they repeat the same "random"
@@ -326,6 +328,35 @@ prompt:
     When the student asks for a practice problem, use the random_number tool
     to pick the values — do not invent the numbers yourself.
 ```
+
+Use `board` when the topic is about structure, flow or how parts work together
+(protocols, architectures, data structures, packet headers). The tutor draws while
+it explains and, when the student follows up, highlights or extends the existing
+drawing instead of starting over. Students see the drawing beside the chat (on a
+phone: above it) and only look at it; they do not draw themselves. The board is
+tested with GPT-6 Luna (`model: openai/gpt-6-luna`, `provider: OpenRouter`). A
+recommended paragraph for `tutor_instructions`:
+
+```yaml
+tools:
+  - board
+
+prompt:
+  tutor_instructions: |
+    ...
+    You have a whiteboard next to the chat (the `board` tool). Whenever a question
+    is about structure, flow, dependencies or how parts work together, draw it on
+    the board while you explain and refer to the drawing in your text. When the
+    student asks a follow-up, change or extend the existing drawing instead of
+    starting over.
+    Drawing hints for this topic: draw each subnet as a group inside the VNet;
+    draw protocol handshakes as a sequence board.
+```
+
+Topic hints for **how** to draw — and for the follow-ups you expect — make the
+drawings much better than the generic paragraph alone. See
+`activities/examples/networking/` for a complete example, and
+`docs/tutor-board.md` for how the board works.
 
 `novedu-cli prompts` lists a tutor's enabled tools alongside its assembled
 system prompt.
@@ -739,6 +770,7 @@ Nothing is uploaded and no sign-in is needed; the command only reads your file.
 | `UNUSED_TEXT_FILE` _(warning)_                      | A declared text file isn't embedded by any marker.             | Remove the unused `text_files` entry, or add a `{{file}}` marker that uses it. |
 | `UNDECLARED_VARIABLE` _(warning)_                   | A marker passes an argument the fragment doesn't use.          | Usually a typo — remove or correct it.           |
 | `REQUIRED_PROPERTY_HAS_DEFAULT` _(warning)_         | A `required` input also declares a `default` it can never use. | Drop the `default`, or remove it from `required`. |
+| `UNMENTIONED_TOOL` _(warning)_                      | A tool in `tools:` is never named in the prompt, so the model rarely calls it. | Tell the tutor in `tutor_instructions` when to use the tool (see "Built-in tools"). |
 
 ---
 

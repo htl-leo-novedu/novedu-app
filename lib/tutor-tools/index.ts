@@ -4,11 +4,14 @@
 
 export {
   type AnyTutorToolDef,
+  boardTool,
   defaultTutorToolDeps,
+  NO_PRIOR_CALLS,
   RANDOM_NUMBER_BOUND,
   type RandomIntFn,
   randomNumberTool,
   resolveTutorTools,
+  type TutorToolCallContext,
   type TutorToolDef,
   type TutorToolDeps,
   tutorToolCatalog,

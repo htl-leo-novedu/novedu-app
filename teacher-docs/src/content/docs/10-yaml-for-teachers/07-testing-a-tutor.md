@@ -4,7 +4,7 @@ description: Script a few conversations, let the real tutor answer the last mess
 sidebar:
   order: 7
 audience: teacher
-keywords: [tutor eval, eval, test the tutor, tutor rules, scripted conversation, judge, flagged responses, required_tools, tools, random_number, report]
+keywords: [tutor eval, eval, test the tutor, tutor rules, scripted conversation, judge, flagged responses, required_tools, tools, random_number, board, report]
 related:
   - 10-yaml-for-teachers/06-testing-the-grader
   - 20-building-activities/03-tutors
@@ -93,7 +93,7 @@ This is the one thing the judge cannot see. A tool call leaves no trace in the a
 
 The run's missing-tool-calls line appears only when some conversation asked for a tool at all. No line means nothing was checked, which is not the same as "every tool ran". The Markdown report names which run of which conversation skipped the tool, and what it called instead.
 
-Write `required_tools` only where the tool really is the point, such as a practice number that has to be drawn rather than invented. For everything else, say what the answer must look like in `grading_instructions`.
+Write `required_tools` only where the tool really is the point, such as a practice number that has to be drawn rather than invented. For a drawing tutor, `required_tools: [board]` checks that the tutor draws. Every evaluated answer starts with an empty board, so follow-ups that change an existing drawing can't be checked this way; try those in the chat yourself. For everything else, say what the answer must look like in `grading_instructions`.
 
 ## Check the file, for free
 

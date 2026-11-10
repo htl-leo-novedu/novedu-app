@@ -11,6 +11,15 @@ export function watchErrors(page: Page): string[] {
 }
 
 /**
+ * `errors` without the console noise of an external resource that failed to
+ * load — e.g. Excalidraw's font CDN being unreachable, which the board survives
+ * (it falls back to a local font). Nothing a spec asserts depends on it.
+ */
+export function withoutNetworkNoise(errors: string[]): string[] {
+  return errors.filter((e) => !/Failed to load (resource|font)/.test(e));
+}
+
+/**
  * Replaces the CodeMirror document with `text`. `insertText` inserts verbatim
  * (like a paste) so YAML indentation and newlines survive — unlike per-key
  * typing, which CodeMirror would auto-indent.

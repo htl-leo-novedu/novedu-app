@@ -40,7 +40,9 @@ vi.mock("@copilotkit/react-core/v2", () => {
       { WelcomeMessage: () => <h1 data-testid="ck-welcome-message">greeting</h1> },
     ),
   };
-  return { CopilotChat };
+  // The board pane's hooks (app/_tutor/board/board-frame.tsx) — only reached when
+  // a test renders the frame ModuleChat is handed.
+  return { CopilotChat, useAgent: () => ({ agent: { messages: [] } }), useRenderTool: () => {} };
 });
 
 // TutorChat mounts the shared ReportButton, which statically imports the report
@@ -116,6 +118,23 @@ test("hands ModuleChat the tutor agent, code+thread-keyed provider, threadId and
   });
   // The welcome screen is supplied as a chatView function.
   expect(moduleChatSpy.mock.lastCall?.[0].chatView).toBeTypeOf("function");
+});
+
+test("hands ModuleChat no board frame by default", async () => {
+  const screen = await renderTutorChat();
+  await expect.element(screen.getByTestId("module-chat")).toBeInTheDocument();
+  expect(moduleChatSpy.mock.lastCall?.[0].frame).toBeUndefined();
+});
+
+test("hands ModuleChat the board frame for a tutor granted the board tool", async () => {
+  const chat = await renderTutorChat({ board: true });
+  await expect.element(chat.getByTestId("module-chat")).toBeInTheDocument();
+  const frame = moduleChatSpy.mock.lastCall?.[0].frame;
+  expect(frame).toBeTypeOf("function");
+  // Without a drawing yet the frame renders the chat alone.
+  const screen = await render(frame(<p data-testid="framed-chat">chat</p>));
+  await expect.element(screen.getByTestId("framed-chat")).toBeVisible();
+  expect(document.querySelector('[data-testid="board-pane"]')).toBeNull();
 });
 
 test("enables image attachments with the RAW pick ceiling when the tutor opts in", async () => {

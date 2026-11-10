@@ -1,6 +1,11 @@
 import type { Message } from "@ag-ui/core";
 import { and, eq, sql } from "drizzle-orm";
-import { collapseReplayedRuns, toAguiMessage } from "@/lib/conversation-collapse";
+import {
+  collapseReplayedRuns,
+  messageKey,
+  toAguiChatMessages,
+  toAguiMessage,
+} from "@/lib/conversation-collapse";
 import { getDb } from "@/lib/db";
 import { userChats } from "@/lib/db/schema";
 import { THREAD_ID_PATTERN } from "@/lib/thread-token";
@@ -55,7 +60,9 @@ export async function threadLastMessageAt(
  * `connect` snapshot — ids unchanged (`mastra_messages.id`), which is what lets
  * the snapshot runner recognise the same messages in the in-process replay and
  * lets `@ag-ui/mastra` dedupe a re-sent user message. Replayed history is
- * collapsed so each turn shows once. `lastMessageAt` is `null` with no messages.
+ * collapsed so each turn shows once (judged on the text, as the transcript
+ * viewer does); a reply that drew on the board then carries its board calls
+ * (`toAguiChatMessages`). `lastMessageAt` is `null` with no messages.
  * Returns `undefined` on a database error or a malformed thread id. Never throws.
  */
 export async function loadThreadForChat(
@@ -77,9 +84,12 @@ export async function loadThreadForChat(
       ORDER BY m."createdAtZ" ASC, m.id ASC
     `);
     const last = res.rows.at(-1);
-    const messages = res.rows.map(toAguiMessage).filter((m): m is Message => m !== null);
+    const rows = res.rows
+      .map((row) => ({ row, text: toAguiMessage(row) }))
+      .filter((r): r is { row: (typeof res.rows)[number]; text: Message } => r.text !== null);
+    const kept = collapseReplayedRuns(rows, (r) => messageKey(r.text));
     return {
-      messages: collapseReplayedRuns(messages),
+      messages: kept.flatMap((r) => toAguiChatMessages(r.row)),
       lastMessageAt: last ? new Date(last.createdAt) : null,
     };
   } catch (error) {

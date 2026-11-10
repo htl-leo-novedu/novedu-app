@@ -93,6 +93,13 @@ Read before touching: `lib/tutor-tools/**`, `app/mastra/tutor-tools.ts`, the tut
 - `lib/tutor-tools/` is the pure, CLI-bundled catalog (names, schemas, executors with injected effects) — it sits inside the prompt-dump grep-guard closure; the Mastra `createTool` binding lives ONLY in `app/mastra/tutor-tools.ts`.
 - Tool grants are top-level `tools:` (enum-validated, default `[]`) — independent of `llm:` and the per-code LLM override; the platform never mentions tools in the prompt (authors do, in `tutor_instructions`).
 
+### Tutor board → `docs/tutor-board.md`
+
+Read before touching: `lib/board/**`, `app/_tutor/board/**`, `lib/tutor-board-store.ts`, `toAguiChatMessages` in `lib/conversation-collapse.ts`, or the `board` catalog entry.
+
+- The board is the REPLAY of the thread's successful `board` calls — no table or column of its own; the client derives it from the chat's messages, never keeps a copy. `lib/board/` stays pure (CLI-bundled closure: no `app/**`, DB or Excalidraw import).
+- Rendered as a PNG `<img>` (never SVG markup); Excalidraw is lazy-loaded and its font CDN is the only external request; a student never sees a board error.
+
 ### Writing → `docs/writing.md`
 
 Read before touching: `lib/writing-*.ts`, `app/[code]/_writing/**`, `app/codes/[code]/s/**`, `app/mastra/writing-agents.ts`, `novedu_writing_submissions`.

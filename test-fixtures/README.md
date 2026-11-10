@@ -33,9 +33,9 @@ fixtures live in-code in `lib/tutors/test-fixtures.ts`.
 
 ## Models
 
-Hermetic fixtures use a fake `model: test-model` (nothing calls an LLM). The six
+Hermetic fixtures use a fake `model: test-model` (nothing calls an LLM). The seven
 LLM-backed fixtures carry a **real** model id: `tutors/live-tutor.yaml`,
-`tutors/live-tools-tutor.yaml`, `tutors/vision-tutor.yaml`,
+`tutors/live-tools-tutor.yaml`, `tutors/board-tutor.yaml`, `tutors/vision-tutor.yaml`,
 `quizzes/vision-quiz.yaml`, `writings/test-writing.yaml` and
 `coding/live-coding.yaml`. The vision pair serves only `@live-llm` specs (the live
 SCCH endpoint); the others also back CI specs that run against the fake LLM, which
@@ -49,7 +49,8 @@ activities/
              broken-tutor.yaml (→ broken-fragments.yaml), broken-fragments.yaml,
              broken-template-fragments.yaml, tools-tutor.yaml,
              broken-tools-tutor.yaml, eval-tutor.yaml (the tutor evals' target),
-             live-tutor.yaml, live-tools-tutor.yaml, vision-tutor.yaml [real model id]
+             live-tutor.yaml, live-tools-tutor.yaml, board-tutor.yaml,
+             vision-tutor.yaml [real model id]
   quizzes/   test-quiz.yaml, broken-quiz.yaml, fragments-quiz.yaml,
              vision-quiz.yaml [real model id]
   writings/  test-writing.yaml [real model id], broken-writing.yaml, fragments-writing.yaml

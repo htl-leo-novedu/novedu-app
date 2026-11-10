@@ -8,7 +8,13 @@ without `tools:` runs tool-less, byte-identical to before the feature.
 ```yaml
 tools:
   - random_number
+  - board
 ```
+
+| Tool | What it does |
+| --- | --- |
+| `random_number` | a uniformly random integer in `[min, max]` (stateless) |
+| `board` | draws on the whiteboard beside the chat and changes it in place (stateful — `docs/tutor-board.md`) |
 
 ## Architecture: pure catalog vs Mastra binding
 
@@ -19,7 +25,7 @@ The implementation is deliberately split across the CLI-bundling boundary:
   tool, the model-facing description, zod input/output schemas, and the pure
   `execute` logic. Effects are injected (`TutorToolDeps` — currently just
   `randomInt`, crypto-backed in `defaultTutorToolDeps`) so tests are
-  deterministic. `names.ts` is imported by `lib/tutors/schemas.ts` and thus
+  deterministic, and so is a stateful tool's history (below). `names.ts` is imported by `lib/tutors/schemas.ts` and thus
   sits inside the prompt-dump grep-guard's transitive closure
   (`lib/prompt-dump.unit.test.ts`): **nothing in `lib/tutor-tools/` may import
   `app/**`, the DB, or `lib/llm/model.ts`, or carry `"use server"`.** Node
@@ -38,6 +44,26 @@ Data flow: `tools:` in the YAML → `TutorSchema` (enum-validated, `.default([])
 → `BuildResult.tools` (`lib/prompt-fragments/errors.ts`) → the agent's `tools`
 resolver → `selectTutorTools` → the model's tool list for that request.
 
+## Stateful tools
+
+A tool whose catalog entry sets `stateful: true` (today: `board`) needs what its
+earlier calls in the same thread left behind. Its executor stays pure: it gets a
+third argument, `{ priorCalls }` — the inputs of the tool's earlier SUCCESSFUL calls
+in the thread, oldest first — and rebuilds its state from them
+(`execute(input, deps, { priorCalls })`). Stateless tools get `NO_PRIOR_CALLS`.
+
+The binding (`priorCallsFor` in `app/mastra/tutor-tools.ts`) assembles them from
+the run's Mastra context:
+
+- the thread's **stored** messages (`lib/tutor-board-store.ts`, scoped by the run's
+  `threadId` and its `resourceId` = the code) — all of them, because the agent's
+  memory window holds only the last 40;
+- plus **this run's** calls not stored yet (`context.agent.getMessages()`),
+  deduplicated by tool-call id, minus the call being executed.
+
+A run without a thread (the eval tutor, `docs/cli-eval.md`) uses only its own
+calls. Nothing new is stored: the state IS the replay of stored tool calls.
+
 ## Invariants
 
 - **The name enum is the validation seam.** An unknown tool name is a
@@ -46,7 +72,10 @@ resolver → `selectTutorTools` → the model's tool list for that request.
   `lib/tutors` by reference — no second list to update).
 - **The platform never mentions tools in the prompt.** The "prompt is used
   verbatim — nothing appended" rule stays; authors reference enabled tools in
-  `tutor_instructions` themselves. `novedu-cli prompts` shows the enabled tool
+  `tutor_instructions` themselves. Validation warns (`UNMENTIONED_TOOL`, in
+  `lib/tutors/load.ts`) when a granted tool's name appears nowhere in the
+  assembled prompt — a case-insensitive substring check, linking the teacher
+  guide's tutor chapter. `novedu-cli prompts` shows the enabled tool
   list (`TutorPromptDump.tools`) so the dump remains a faithful picture of
   what the model receives.
 - **Tool grants are independent of the LLM.** `tools:` is top-level, NOT part
@@ -61,8 +90,8 @@ resolver → `selectTutorTools` → the model's tool list for that request.
 
 1. Add the name to `TUTOR_TOOL_NAMES` (`lib/tutor-tools/names.ts`).
 2. Add the catalog entry (`lib/tutor-tools/catalog.ts`): description written
-   for the model, strict zod input/output schemas, pure `execute` taking
-   injected deps. The `satisfies Record<TutorToolName, …>` clause makes a
+   for the model, zod input/output schemas, pure `execute` taking
+   injected deps (and, with `stateful: true`, the thread's prior calls). The `satisfies Record<TutorToolName, …>` clause makes a
    missing entry a type error.
 3. Unit-test the executor exhaustively (`lib/tutor-tools/*.unit.test.ts`).
 4. `npm run generate:schemas` — the enum lands in
@@ -78,7 +107,10 @@ picks the calls up on its own.
 ## Testing
 
 - `lib/tutor-tools/catalog.unit.test.ts` — catalog completeness (every name
-  has an entry), executor logic with injected RNG, schema rejections.
+  has an entry), executor logic with injected RNG and prior calls, schema
+  rejections.
+- `app/mastra/tutor-tools.unit.test.ts` — the binding's prior calls (stored +
+  this run, deduplicated; none without a thread).
 - `lib/tutors/load.unit.test.ts` — `tools` normalization + unknown-name
   rejection through the real loader.
 - `app/mastra/tutor-agent.unit.test.ts` — per-request tool resolution: empty

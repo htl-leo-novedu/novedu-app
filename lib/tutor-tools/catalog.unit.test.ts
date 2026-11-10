@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  boardTool,
   defaultTutorToolDeps,
+  NO_PRIOR_CALLS,
   RANDOM_NUMBER_BOUND,
   randomNumberTool,
   resolveTutorTools,
@@ -47,6 +49,10 @@ describe("catalog completeness", () => {
 
   it("resolveTutorTools returns entries in selection order", () => {
     expect(resolveTutorTools(["random_number"])).toEqual([tutorToolCatalog.random_number]);
+    expect(resolveTutorTools(["board", "random_number"])).toEqual([
+      tutorToolCatalog.board,
+      tutorToolCatalog.random_number,
+    ]);
     expect(resolveTutorTools([])).toEqual([]);
   });
 });
@@ -54,14 +60,18 @@ describe("catalog completeness", () => {
 describe("random_number", () => {
   it("delegates to the injected RNG with the inclusive bounds and wraps the value", () => {
     const deps = fixedDeps(42);
-    expect(randomNumberTool.execute({ min: 1, max: 100 }, deps)).toEqual({ value: 42 });
+    expect(randomNumberTool.execute({ min: 1, max: 100 }, deps, NO_PRIOR_CALLS)).toEqual({
+      value: 42,
+    });
     expect(deps.calls).toEqual([[1, 100]]);
   });
 
   it("accepts min === max (a single-value range)", () => {
     const parsed = randomNumberTool.inputSchema.safeParse({ min: 7, max: 7 });
     expect(parsed.success).toBe(true);
-    expect(randomNumberTool.execute({ min: 7, max: 7 }, defaultTutorToolDeps)).toEqual({
+    expect(
+      randomNumberTool.execute({ min: 7, max: 7 }, defaultTutorToolDeps, NO_PRIOR_CALLS),
+    ).toEqual({
       value: 7,
     });
   });
@@ -86,7 +96,11 @@ describe("random_number", () => {
   it("default deps produce in-range integers across the whole range (inclusive ends)", () => {
     const seen = new Set<number>();
     for (let i = 0; i < 200; i++) {
-      const { value } = randomNumberTool.execute({ min: 1, max: 6 }, defaultTutorToolDeps);
+      const { value } = randomNumberTool.execute(
+        { min: 1, max: 6 },
+        defaultTutorToolDeps,
+        NO_PRIOR_CALLS,
+      );
       expect(Number.isInteger(value)).toBe(true);
       expect(value).toBeGreaterThanOrEqual(1);
       expect(value).toBeLessThanOrEqual(6);
@@ -97,19 +111,85 @@ describe("random_number", () => {
   });
 
   it("default deps handle negative ranges and the extreme bounds", () => {
-    const { value } = randomNumberTool.execute({ min: -20, max: -10 }, defaultTutorToolDeps);
+    const { value } = randomNumberTool.execute(
+      { min: -20, max: -10 },
+      defaultTutorToolDeps,
+      NO_PRIOR_CALLS,
+    );
     expect(value).toBeGreaterThanOrEqual(-20);
     expect(value).toBeLessThanOrEqual(-10);
     const extreme = randomNumberTool.execute(
       { min: -RANDOM_NUMBER_BOUND, max: RANDOM_NUMBER_BOUND },
       defaultTutorToolDeps,
+      NO_PRIOR_CALLS,
     );
     expect(Number.isInteger(extreme.value)).toBe(true);
     expect(Math.abs(extreme.value)).toBeLessThanOrEqual(RANDOM_NUMBER_BOUND);
   });
 
   it("output matches the declared output schema", () => {
-    const out = randomNumberTool.execute({ min: 1, max: 3 }, fixedDeps(2));
+    const out = randomNumberTool.execute({ min: 1, max: 3 }, fixedDeps(2), NO_PRIOR_CALLS);
     expect(randomNumberTool.outputSchema.safeParse(out).success).toBe(true);
+  });
+});
+
+describe("board", () => {
+  const draw = {
+    steps: [
+      { op: "board", id: "dhcp", title: "DHCP", kind: "sequence" },
+      { op: "box", id: "laptop", text: "Laptop" },
+      { op: "box", id: "server", text: "DHCP server" },
+      { op: "arrow", id: "discover", from: "laptop", to: "server", text: "Discover" },
+    ],
+  };
+
+  it("draws on an empty board and returns the summary", () => {
+    expect(boardTool.execute(draw, defaultTutorToolDeps, NO_PRIOR_CALLS)).toEqual({
+      ok: true,
+      board: "board dhcp (sequence): laptop, server\n  arrows: discover",
+    });
+  });
+
+  it("applies on top of the thread's prior calls", () => {
+    const out = boardTool.execute(
+      { steps: [{ op: "highlight", ids: ["discover", "ghost"] }] },
+      defaultTutorToolDeps,
+      { priorCalls: [draw] },
+    );
+    expect(out).toEqual({
+      ok: true,
+      board: "board dhcp (sequence): laptop, server\n  arrows: discover",
+      warnings: ['steps[0] (highlight): ignored "ghost"; not on the board'],
+    });
+  });
+
+  it("rejects a call with errors and names them", () => {
+    const out = boardTool.execute(
+      { steps: [{ op: "box", id: "laptop", text: "Again" }] },
+      defaultTutorToolDeps,
+      { priorCalls: [draw] },
+    );
+    expect(out).toEqual({
+      ok: false,
+      errors: [
+        'steps[0] (box "laptop"): id "laptop" is already used; ids are never reused, pick a new one',
+      ],
+    });
+  });
+
+  it("is stateful, and its outputs match the declared output schema", () => {
+    expect(boardTool.stateful).toBe(true);
+    expect(tutorToolCatalog.random_number.stateful).toBeUndefined();
+    const good = boardTool.execute(draw, defaultTutorToolDeps, NO_PRIOR_CALLS);
+    const bad = boardTool.execute({ steps: [] }, defaultTutorToolDeps, NO_PRIOR_CALLS);
+    expect(boardTool.outputSchema.safeParse(good).success).toBe(true);
+    expect(boardTool.outputSchema.safeParse(bad).success).toBe(true);
+  });
+
+  it("keeps the input schema loose: the board's checks explain mistakes", () => {
+    expect(boardTool.inputSchema.safeParse({ steps: [{ op: "anything", x: 1 }] }).success).toBe(
+      true,
+    );
+    expect(boardTool.inputSchema.safeParse({}).success).toBe(false);
   });
 });

@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 
-export const TUTOR_TOOL_NAMES = ["random_number"] as const;
+export const TUTOR_TOOL_NAMES = ["random_number", "board"] as const;
 
 export type TutorToolName = (typeof TUTOR_TOOL_NAMES)[number];
 

@@ -58,6 +58,8 @@ export async function RenderTutor({
         // the frozen one on the code row and the live one from the YAML this
         // render already built (lib/tutor-history-gate.ts).
         historyEnabled={historyEnabled(entry.anonymous, result.anonymous)}
+        // The board pane only for a tutor granted the `board` tool.
+        board={result.tools.includes("board")}
       />
     </Main>
   );

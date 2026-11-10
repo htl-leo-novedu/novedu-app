@@ -18,8 +18,16 @@ vi.mock("@/lib/tutors", () => ({
 vi.mock("@/lib/app-hosted-fetcher", () => ({ serverYamlFetcher: async () => serverFetcher }));
 // Stub the chat so the happy path needs no CopilotKit/runtime.
 vi.mock("../tutor-chat", () => ({
-  TutorChat: ({ code, historyEnabled }: { code: string; historyEnabled: boolean }) => (
-    <div data-testid="chat" data-history={String(historyEnabled)}>
+  TutorChat: ({
+    code,
+    historyEnabled,
+    board,
+  }: {
+    code: string;
+    historyEnabled: boolean;
+    board: boolean;
+  }) => (
+    <div data-testid="chat" data-history={String(historyEnabled)} data-board={String(board)}>
       chat for {code}
     </div>
   ),
@@ -57,9 +65,11 @@ describe("RenderTutor", () => {
       title: "Tutor",
       description: "",
       exampleQuestions: [],
+      tools: [],
     });
     const html = await render();
     expect(html).toContain("chat for a1b2c3d4e5");
+    expect(html).toContain('data-board="false"');
     expect(loadAndBuildTutorPrompt).toHaveBeenCalledWith(entry.fileUrl, serverFetcher);
   });
 
@@ -80,11 +90,26 @@ describe("RenderTutor", () => {
       description: "",
       exampleQuestions: [],
       anonymous: live,
+      tools: [],
     });
     const html = await render(frozen);
     expect(html).toContain(`data-history="${expected}"`);
     // The live flag comes from this render's own build: one YAML load, no second fetch.
     expect(loadAndBuildTutorPrompt).toHaveBeenCalledTimes(1);
+  });
+
+  it("a tutor granted the board tool gets the board pane", async () => {
+    loadAndBuildTutorPrompt.mockResolvedValue({
+      ok: true,
+      prompt: "system prompt",
+      warnings: [],
+      imageInput: false,
+      title: "Tutor",
+      description: "",
+      exampleQuestions: [],
+      tools: ["random_number", "board"],
+    });
+    expect(await render()).toContain('data-board="true"');
   });
 
   it("broken tutor → renders the load-failure notice and error list, no chat", async () => {

@@ -32,7 +32,7 @@ import { loadThreadForChat } from "@/lib/tutor-history-store";
 // by the inner connect FILTERED: the in-process replay re-emits the very same
 // messages (same ids: user messages keep their client-minted id in
 // `mastra_messages`, an assistant reply streams under its stored id, or
-// `<id>-agui-text` for text after a tool call), and the client APPENDS a replayed
+// `<id>-agui-text`, `-agui-text-2`, … for text after tool calls), and the client APPENDS a replayed
 // TEXT_MESSAGE_CONTENT to an existing message rather than replacing it. So every
 // text/reasoning event of a stored id is dropped, and every tool call whose parent
 // is a stored message is dropped with its args/end/result. Reasoning is never
@@ -102,8 +102,14 @@ const TOOL_FOLLOW_UP_TYPES: ReadonlySet<string> = new Set<string>([
 ]);
 
 // `@ag-ui/mastra`'s suffix for assistant text streamed after a tool call within
-// one reply (`MastraAgent.continuationMessageId`); stored under the base id.
-const TEXT_CONTINUATION_SUFFIX = "-agui-text";
+// one reply (`MastraAgent.continuationMessageId`): `-agui-text`, then `-agui-text-2`,
+// `-agui-text-3`, … after further tool calls; all stored under the base id.
+const TEXT_CONTINUATION = /-agui-text(?:-\d+)?$/;
+
+/** The stored message id an event's message id belongs to. */
+function baseMessageId(id: string): string {
+  return id.replace(TEXT_CONTINUATION, "");
+}
 
 type LooseEvent = BaseEvent & {
   messageId?: unknown;
@@ -133,10 +139,8 @@ function filterReplay(
   messages: Message[],
 ): Observable<BaseEvent> {
   const known = new Set<string>();
-  for (const message of messages) {
-    known.add(message.id);
-    known.add(`${message.id}${TEXT_CONTINUATION_SUFFIX}`);
-  }
+  for (const message of messages) known.add(baseMessageId(message.id));
+  const isKnown = (id: unknown) => typeof id === "string" && known.has(baseMessageId(id));
   const droppedToolCalls = new Set<string>();
 
   return new Observable<BaseEvent>((subscriber) => {
@@ -161,16 +165,12 @@ function filterReplay(
       }
 
       if (MESSAGE_EVENT_TYPES.has(event.type)) {
-        if (typeof event.messageId === "string" && known.has(event.messageId)) return;
+        if (isKnown(event.messageId)) return;
       } else if (
         event.type === EventType.TOOL_CALL_START ||
         (event.type === EventType.TOOL_CALL_CHUNK && typeof event.parentMessageId === "string")
       ) {
-        if (
-          typeof event.parentMessageId === "string" &&
-          known.has(event.parentMessageId) &&
-          typeof event.toolCallId === "string"
-        ) {
+        if (isKnown(event.parentMessageId) && typeof event.toolCallId === "string") {
           droppedToolCalls.add(event.toolCallId);
           return;
         }

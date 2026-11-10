@@ -93,7 +93,8 @@ function runRequest(threadId: string, runId: string, agent: ReturnType<typeof fa
 
 /**
  * One stored-and-completed reply: assistant text under the stored id `a1`, a tool
- * call parented on it with its result, then more text under `a1-agui-text`.
+ * call parented on it with its result, then more text under `a1-agui-text`; a
+ * second tool call and the text after it under `a1-agui-text-2`.
  */
 function storedTurn(threadId: string, runId: string): BaseEvent[] {
   return [
@@ -123,6 +124,24 @@ function storedTurn(threadId: string, runId: string): BaseEvent[] {
       delta: "with two divisors.",
     },
     { type: EventType.TEXT_MESSAGE_END, messageId: "a1-agui-text" },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: "c2",
+      toolCallName: "board",
+      parentMessageId: "a1-agui-text",
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: "c2", delta: "{}" },
+    { type: EventType.TOOL_CALL_END, toolCallId: "c2" },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      toolCallId: "c2",
+      messageId: "tr2",
+      content: "{}",
+      role: "tool",
+    },
+    { type: EventType.TEXT_MESSAGE_START, messageId: "a1-agui-text-2", role: "assistant" },
+    { type: EventType.TEXT_MESSAGE_CONTENT, messageId: "a1-agui-text-2", delta: "And more." },
+    { type: EventType.TEXT_MESSAGE_END, messageId: "a1-agui-text-2" },
     { type: EventType.RUN_FINISHED, threadId, runId },
   ] as BaseEvent[];
 }
@@ -297,7 +316,7 @@ describe("HistorySnapshotRunner.connect — the filtered in-process replay (warm
 
     const out = await collectVerified(runner.connect(connectRequest(threadId)));
 
-    // Nothing about a1 (incl. a1-agui-text) or its tool call c1 (incl. the result).
+    // Nothing about a1 (incl. a1-agui-text and a1-agui-text-2) or its tool calls (incl. results).
     expect(
       out.filter((event) => /^(TEXT_MESSAGE|TOOL_CALL)_/.test(event.type)).map((e) => e.type),
     ).toEqual([]);

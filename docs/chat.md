@@ -50,6 +50,7 @@ Modules supply the rest through props/slots:
 | `labels` | passthrough | welcome-greeting override (tutor) |
 | `chatView` | passthrough | welcome-screen view override (tutor) |
 | `attachments` | passthrough | image-upload config (tutor, vision-capable model — normalized, below) |
+| `frame` | `(chat) => ReactNode` | wraps the chat container inside the provider — the tutor's board pane lays itself out beside or above the chat (`docs/tutor-board.md`) |
 
 `children` render **inside** the provider and **before** the chat container, so a
 slot that needs the CopilotKit React context — the writing tool registrar, the
@@ -122,7 +123,11 @@ a `chatView` from `useTutorWelcomeView(...)` (`app/_tutor/welcome-view.tsx` — 
 fragile welcome-screen override, pinned to a CopilotKit version in a comment next
 to itself), and, when the tutor's `llm.imageInput` is set, an `attachments` config
 (vision-capable model, `onUpload` running the normalizer below, `onUploadFailed`
-driving the notice). Tutor needs
+driving the notice). For a tutor granted the `board` tool it passes a `frame`:
+`BoardFrame` (`app/_tutor/board/`) derives the drawing from the chat's messages
+(`useAgent`), shows it beside the chat on laptops and docked above it on phones,
+and registers the "Drew on the board" marker as the `board` tool-call renderer
+(`docs/tutor-board.md`). Tutor needs
 no height/padding delta, so it passes no `className`: `ModuleChat`'s base container fits it.
 
 It is also the only surface that **owns its thread after mount**. The server props
@@ -214,12 +219,19 @@ installed packages, none of them documented API):
   replays them on `connect`; the client APPENDS a replayed `TEXT_MESSAGE_CONTENT`
   to an existing message, so an unfiltered replay would double the text;
 - ids line up: a user message keeps its client-minted id in `mastra_messages`, an
-  assistant reply streams under its stored id (or `<id>-agui-text` for text after a
-  tool call), and a tool call names that id as its `parentMessageId`;
+  assistant reply streams under its stored id (or `<id>-agui-text`, `-agui-text-2`, …
+  for text after each tool call), and a tool call names that id as its `parentMessageId`;
 - a failed run that emitted any event is replayed with a terminal `RUN_ERROR`.
 
+The snapshot is the stored messages as text, except that a reply which drew on the
+board also carries its successful `board` calls — an assistant message with the
+`toolCalls` (and the text written before the drawing), a `tool` message per result,
+then the text written after it under `<id>-agui-text`, the shape the live stream has (`toAguiChatMessages`, `docs/tutor-board.md`) — so the
+board pane rebuilds the drawing from the restored list as it does live. Other tools
+stay text-only, as in the teacher's transcript.
+
 So the filter drops every `TEXT_MESSAGE_*` / `REASONING_*` event of a stored id (or
-its `-agui-text` twin), every tool call parented on a stored message with its
+its `-agui-text(-N)` continuations), every tool call parented on a stored message with its
 args/end/result, and the reasoning of every run that already FINISHED (reasoning is
 never stored, so the snapshot cannot place it; replayed, it would land as a stray
 block below the restored conversation; only teachers receive reasoning at all). It

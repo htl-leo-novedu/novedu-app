@@ -54,6 +54,21 @@ prose carries everything an editor needs.
   If the example ever turns anonymous again, the walkthrough breaks.
 - Any reset (`docker compose down -v`) ends every session, the CLI's included.
 
+## 20-building-activities/03-tutors
+
+- The `board` tool: students only LOOK at the drawing. Never imply they can draw,
+  drag, or select parts of it.
+- The board shows the latest state only; there is no history or version list.
+- The drawing comes back after a reload and with a reopened earlier conversation,
+  because it is rebuilt from the conversation; "Start over" gives an empty board.
+  Do not call the drawing "saved" or "stored".
+- The board is tested with GPT-6 Luna only. Recommend it; do not promise that
+  other models draw well.
+- Tutor evaluations start every answer with an empty board: they can check THAT a
+  tutor draws (`required_tools: [board]`), not follow-ups that change a drawing.
+- Novedu never mentions the board in the prompt; the teacher must, in
+  `tutor_instructions`.
+
 ## 00-introduction/03-tutors-overview
 
 - "Start over" clears the student's conversation, it does not delete it. The

@@ -1,4 +1,5 @@
 import type { Message } from "@ag-ui/core";
+import { appliedBoardInvocation, BOARD_TOOL_NAME } from "@/lib/board/calls";
 
 // Pure helpers for turning stored Mastra messages into AG-UI messages and for
 // collapsing the "replayed history" duplicates. No DB or Mastra imports, so the
@@ -66,10 +67,84 @@ export function toAguiMessage(row: { id: string; role: string; content: string }
   return null;
 }
 
+// `@ag-ui/mastra`'s id for assistant text streamed after a tool call within one
+// reply; the snapshot reuses it so the restored list has the live shape.
+const TEXT_CONTINUATION_SUFFIX = "-agui-text";
+
+/**
+ * The tutor chat's view of one stored row (the `connect` snapshot, never a
+ * teacher view): like `toAguiMessage`, but an assistant reply that drew on the
+ * board also carries its SUCCESSFUL `board` calls, in the shape the live stream
+ * produced — an assistant message with the `toolCalls` (under the row id), one
+ * `tool` message per result, then the text written after the drawing under
+ * `<id>-agui-text` (text before it stays on the first message). The
+ * browser rebuilds the board from that list exactly as it does live
+ * (docs/tutor-board.md). Other tools and rejected board calls stay dropped.
+ */
+export function toAguiChatMessages(row: { id: string; role: string; content: string }): Message[] {
+  const message = toAguiMessage(row);
+  if (!message) return [];
+  if (row.role !== "assistant") return [message];
+  let parts: StoredMessageContent["parts"];
+  try {
+    parts = (JSON.parse(row.content) as StoredMessageContent).parts;
+  } catch {
+    return [message];
+  }
+  // Text before the first drawing stays on the message that carries the calls
+  // (above the marker, as live); text after it moves below, segments split by a
+  // tool call kept apart as paragraphs.
+  const calls: { id: string; input: unknown; result: unknown }[] = [];
+  const before: string[] = [];
+  const after: string[][] = [[]];
+  for (const part of parts ?? []) {
+    const call = appliedBoardInvocation(part);
+    if (call) calls.push(call);
+    if (part.type === "tool-invocation") {
+      if (calls.length && (after.at(-1)?.length ?? 0) > 0) after.push([]);
+      continue;
+    }
+    if (part.type !== "text") continue;
+    const text = (part as { text?: string }).text ?? "";
+    if (calls.length) after.at(-1)?.push(text);
+    else before.push(text);
+  }
+  if (calls.length === 0) return [message];
+  const beforeText = before.join("");
+  const afterText = after
+    .map((segment) => segment.join(""))
+    .filter(Boolean)
+    .join("\n\n");
+  const out: Message[] = [
+    {
+      id: row.id,
+      role: "assistant",
+      ...(beforeText ? { content: beforeText } : {}),
+      toolCalls: calls.map((c) => ({
+        id: c.id,
+        type: "function" as const,
+        function: { name: BOARD_TOOL_NAME, arguments: JSON.stringify(c.input ?? {}) },
+      })),
+    },
+    ...calls.map(
+      (c): Message => ({
+        id: `${c.id}-result`,
+        role: "tool",
+        toolCallId: c.id,
+        content: JSON.stringify(c.result),
+      }),
+    ),
+  ];
+  if (afterText) {
+    out.push({ id: `${row.id}${TEXT_CONTINUATION_SUFFIX}`, role: "assistant", content: afterText });
+  }
+  return out;
+}
+
 // A stable identity for a message, by what the viewer actually shows: its role
 // and rendered content (text, or text + image sources). Deliberately ignores
 // `id`/`createdAt` — the replayed copies differ in exactly those.
-function messageKey(message: Message): string {
+export function messageKey(message: Message): string {
   const content = message.content as unknown;
   if (typeof content === "string") return `${message.role} ${content}`;
   if (Array.isArray(content)) {

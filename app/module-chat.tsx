@@ -68,6 +68,11 @@ export type ModuleChatProps = {
   chatView?: ComponentProps<typeof CopilotChat>["chatView"];
   /** Image-upload config (tutor, vision-capable model). */
   attachments?: ComponentProps<typeof CopilotChat>["attachments"];
+  /**
+   * Wraps the chat container INSIDE the provider (the tutor's board pane lays
+   * itself out beside or above the chat). Without it the chat renders bare.
+   */
+  frame?: (chat: ReactNode) => ReactNode;
 };
 
 export function ModuleChat({
@@ -80,10 +85,10 @@ export function ModuleChat({
   labels,
   chatView,
   attachments,
+  frame,
 }: ModuleChatProps) {
-  const body = (
+  const chat = (
     <>
-      {children}
       {/* Base chat container: fill the available height (min-h-0 against flex
           parents), never push the page taller, and let CopilotChat (*:h-full)
           own the internal scroll. */}
@@ -111,6 +116,12 @@ export function ModuleChat({
           attachments={attachments}
         />
       </div>
+    </>
+  );
+  const body = (
+    <>
+      {children}
+      {frame ? frame(chat) : chat}
     </>
   );
 

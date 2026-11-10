@@ -1,0 +1,15 @@
+id: board-tutor
+name: "Board Tutor"
+description: "Tutor with a real model id AND the board tool — drives the board
+  specs, which draw through the fake LLM's [tool:board …] marker and check the
+  board pane beside (laptop) or above (phone) the chat."
+# The same real model the plain live-tutor uses; the fake LLM answers in CI.
+llm:
+  model: RedHatAI/gemma-4-31B-it-FP8-Dynamic
+tools:
+  - board
+prompt:
+  tutor_instructions: |
+    You are a terse assistant used by an automated test. You have a whiteboard
+    next to the chat (the `board` tool). When the user asks about structure or
+    flow, draw it on the board and refer to the drawing in one sentence.

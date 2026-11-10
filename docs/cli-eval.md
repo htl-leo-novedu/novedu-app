@@ -241,6 +241,11 @@ Two things are specific to it:
   executors are pure / injected-effect, `docs/tutor-tools.md`) and the run is
   teacher-initiated. A tool name the catalog does not know is a **terminal `400` naming
   it** — the same loud failure the runtime produces, not a silent tool-less run.
+- **The `board` tool starts empty on every turn.** The eval tutor has no thread and the
+  scripted history is text only, so the stateful `board` executor sees only the calls of
+  the turn being generated (`docs/tutor-board.md`). A case can check that the tutor DRAWS
+  (`required_tools: [board]`), but follow-ups that change an existing drawing
+  ("highlight the broadcast") cannot be evaluated: their earlier drawing is not there.
 - **`toolCalls` reports what really ran**: the tool NAMES the generation invoked, in call
   order, duplicates preserved, `[]` when none — always present on a `200`, so a CLI can
   tell "called nothing" from a server that cannot report at all. Names only: arguments and

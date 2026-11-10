@@ -4,7 +4,7 @@ description: What a tutor is, what students see in the chat, and how your writte
 sidebar:
   order: 3
 audience: teacher
-keywords: [tutor, chat, AI tutor, starter questions, instructions, prompt, fragments]
+keywords: [tutor, chat, AI tutor, starter questions, instructions, prompt, fragments, whiteboard, drawing]
 related:
   - 20-building-activities/03-tutors
   - 00-introduction/04-quizzes-overview
@@ -22,6 +22,8 @@ Students open a tutor and see a chat. Before the first message, the empty screen
 You can also offer clickable starter questions on the empty screen. A student picks one, the question lands in the chat input ready to edit, and the conversation begins. Starter questions are a gentle way to show students what the tutor is good at, especially for a class that has never talked to an AI tutor before.
 
 From there it's a normal back-and-forth conversation. Students ask in their own words, the tutor answers within your rules, and they can dig deeper for as long as they need. Nobody is graded, and there is no fixed path through the material.
+
+A tutor can also draw. If you give it the whiteboard tool, it sketches diagrams on a board next to the chat while it explains (above the chat on a phone), and changes the same drawing when a student asks a follow-up, for example to highlight one step. Students only look at the drawing; the tutor does the drawing.
 
 Students can also start a tutor conversation over. A button above the chat clears what they've discussed and begins a fresh conversation, and it asks them to confirm first. In an anonymous tutor that earlier conversation is gone for the student; in a per-user tutor they can reopen it later and continue. It helps when a conversation has drifted off topic, or when a student wants to approach a question again from the beginning. The tutor won't remember anything from the earlier conversation, but you still see that conversation under the code, and a student who chats both before and after starting over counts as two conversations in your statistics.
 
