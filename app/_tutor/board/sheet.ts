@@ -129,3 +129,21 @@ export function focusCamera(
     scale,
   };
 }
+
+/** The student's zoom steps (drawing pixels → CSS pixels), like a browser's. */
+export const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2] as const;
+
+/** The largest zoom a student can pick; images are rendered for it (use-board-image.ts). */
+export const ZOOM_MAX = 2;
+
+/**
+ * The next zoom from `current`, or null when that button has nowhere to go.
+ * Zooming in stops at {@link ZOOM_MAX}; zooming out stops at `lowest` (the
+ * scale that shows the whole drawing: smaller would only shrink it further).
+ */
+export function nextZoom(current: number, lowest: number, dir: "in" | "out"): number | null {
+  const eps = 0.01;
+  if (dir === "in") return ZOOM_STEPS.find((s) => s > current + eps) ?? null;
+  if (current <= lowest + eps) return null;
+  return [...ZOOM_STEPS].reverse().find((s) => s < current - eps && s > lowest + eps) ?? lowest;
+}

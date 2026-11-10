@@ -152,8 +152,8 @@ output appears in the chat.
 - **Fonts.** Excalidraw loads its fonts from its default CDN — the only external
   request the board makes. Text must be measured with them loaded, so the first
   board runs a one-time warm-up export and waits for `document.fonts.ready`.
-- **Scale.** One image per change at device pixel ratio × 1.1 (the largest zoom
-  the pane uses), capped at 16 M canvas pixels for iOS.
+- **Scale.** One image per change at device pixel ratio × 2 (`ZOOM_MAX`, the
+  largest zoom a student can pick), capped at 4× and at 16 M canvas pixels for iOS.
 - **Geometry.** `exportToCanvas` places the drawing at `getCommonBounds − padding`,
   so the highlighted parts' bounds (`focus`) are in image pixels — pinned by the
   browser test that finds the marker colour inside them.
@@ -178,7 +178,8 @@ and the line gets thicker.
 **Laptop and up (≥ `md`):** no board yet → the chat as always. The first drawing
 opens the pane on the right (chat : board ≈ 1 : 1.35): "Board", a one-line status
 ("Drawn just now", "Highlighted 1 part", "Added 2 parts, highlighted 3 parts"), a
-hide button, and the drawing fit onto a white sheet over the slate canvas. Hidden,
+full-screen button (⤢), a hide button, and the drawing fit onto a white sheet over
+the slate canvas (never above 1.1×), with the zoom controls. Hidden,
 it is a 44px rail with a vertical "Board" label; an ink dot means it changed while
 hidden. A change crossfades the new image over the old one (about 300 ms); the
 fixed layout keeps unchanged parts where they were.
@@ -191,7 +192,7 @@ functions in `app/_tutor/board/sheet.ts`:
 | hidden | nothing (no board yet) |
 | peek | a 60px bar: thumbnail, "Board", status, ink dot, Show |
 | half | about 46% of the height; the default once there is a board |
-| full | covers the app, the drawing at ≥ 0.9 scale, scrolled natively (pinch zoom) |
+| full | covers the app, the drawing at 90–100%, with the zoom controls; pinch zooms the page |
 
 - The first board opens *half*. If the student collapsed it to *peek*, later
   changes keep it there (status and dot update); otherwise a change returns *half*.
@@ -202,6 +203,16 @@ functions in `app/_tutor/board/sheet.ts`:
   at a readable scale (≤ 1.1, never below the whole-board fit) with an animated
   camera (`focusCamera`); a "Whole board" / "Zoom to highlight" pill switches.
   Without a highlight it shows the whole board; tapping it opens *full*.
+
+**Zoom and full screen.** The laptop pane and the full-screen view (laptop: ⤢ in
+the pane; phone: ⤢ or a tap on the half sheet) show the drawing in a scroll area
+with − / percentage / + controls in the bottom-right corner. The steps
+(`ZOOM_STEPS` in `sheet.ts`) run from 25% to 200%; zooming out stops at the
+whole drawing, and the percentage button returns to the fitted view. A zoom keeps
+the point in the middle of the view in place; from the fitted view it moves to the
+highlight. A chosen zoom survives the tutor's changes, and a new highlight that is
+not fully in view scrolls into the middle. Full screen covers the app; ✕ or Escape
+closes it and returns focus to ⤢. The phone's half sheet keeps its camera instead.
 
 **Accessibility.** The image's alt text is built from the board model (titles,
 parts, arrows, what is highlighted); a polite live region announces each change.
@@ -233,9 +244,11 @@ camera animation.
 - `app/mastra/tutor-tools.unit.test.ts` — prior calls from storage + the run,
   deduplicated, without a thread for evals.
 - `lib/conversation-collapse.unit.test.ts` — the snapshot's board-call shape.
-- `app/_tutor/board/sheet.unit.test.ts` — the sheet rules and the camera.
+- `app/_tutor/board/sheet.unit.test.ts` — the sheet rules, the camera and the zoom
+  steps.
 - `tests/component/tutor-board.browser.test.tsx` — the pane at both breakpoints
-  with the real renderer, and the geometry pin.
+  with the real renderer (zoom steps and limits, full screen with ✕ and Escape),
+  and the geometry pin.
 - `e2e/tutor-board.spec.ts` — laptop and phone against the fake LLM's
   `[tool:board {…}]` marker; `e2e/tutor-reload-roundtrip.spec.ts` — the board
   comes back after a reload, once.
