@@ -224,3 +224,17 @@ test("owns the base chat container and cn-merges className as a delta", async ()
   expect(container?.className).toContain("overflow-visible");
   expect(container?.className).not.toContain("overflow-hidden");
 });
+
+test("wraps the chat in the passed frame inside the provider", async () => {
+  const screen = await render(
+    <ModuleChat
+      agentId={AGENT_ID}
+      threadId={THREAD_ID}
+      headers={RUNTIME_HEADERS}
+      providerKey={PROVIDER_KEY}
+      frame={(chat) => <section data-testid="frame">{chat}</section>}
+    />,
+  );
+  await expect.element(screen.getByTestId("frame").getByTestId("ck-chat")).toBeInTheDocument();
+  await expect.element(screen.getByTestId("ck-provider").getByTestId("frame")).toBeInTheDocument();
+});

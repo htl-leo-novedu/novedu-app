@@ -74,7 +74,7 @@ describe("runValidate — tutors (local files)", () => {
   // The real-model fixture tutors back e2e chat specs, where a schema break would
   // surface as an opaque chat timeout — and the vision one only in a local
   // @live-llm run. This CI-run check names the break directly.
-  it.each(["vision-tutor.yaml", "live-tutor.yaml", "live-tools-tutor.yaml"])(
+  it.each(["vision-tutor.yaml", "live-tutor.yaml", "live-tools-tutor.yaml", "board-tutor.yaml"])(
     "keeps the live e2e fixture %s valid",
     async (fixture) => {
       const outcome = await runValidate(`${tutorsDir}${fixture}`, "tutor");

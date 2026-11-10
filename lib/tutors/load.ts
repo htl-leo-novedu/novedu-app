@@ -37,6 +37,7 @@ export async function loadAndBuildTutorPrompt(
   );
   warnings.push(...assembled.warnings);
   if (!assembled.ok) return { ok: false, errors: assembled.errors, warnings };
+  warnings.push(...unmentionedToolWarnings(tutor.tools, assembled.prompt));
 
   // Surface the tutor's model alongside the prompt so consumers (the chat route)
   // don't have to re-parse the YAML to learn which model to drive.
@@ -55,4 +56,26 @@ export async function loadAndBuildTutorPrompt(
     exampleQuestions: tutor.exampleQuestions ?? [],
     warnings,
   };
+}
+
+/** The teacher guide's tutor chapter: built-in tools and the prompt paragraph each one needs. */
+const TOOLS_GUIDE_URL = "https://docs.novedu.at/20-building-activities/03-tutors/";
+
+/**
+ * One warning per granted tool the assembled prompt never names. The platform
+ * never mentions tools in the prompt (docs/tutor-tools.md), so a grant the author
+ * forgot to explain is a tool the model rarely calls. A plain, case-insensitive
+ * substring check: any mention ("the board tool", "whiteboard") counts.
+ */
+export function unmentionedToolWarnings(
+  tools: readonly string[],
+  prompt: string,
+): ValidationWarning[] {
+  const text = prompt.toLowerCase();
+  return tools
+    .filter((tool) => !text.includes(tool.toLowerCase()))
+    .map((tool) => ({
+      code: "UNMENTIONED_TOOL" as const,
+      message: `The tutor is granted the "${tool}" tool, but its prompt never mentions it. Novedu does not tell the model about its tools: say in tutor_instructions when to use "${tool}". The teacher guide has a recommended paragraph for each built-in tool: ${TOOLS_GUIDE_URL}`,
+    }));
 }

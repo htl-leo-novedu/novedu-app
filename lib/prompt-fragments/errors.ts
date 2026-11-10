@@ -121,7 +121,10 @@ export type WarningCode =
   // A `text_files:` entry is declared but no `{{file}}` marker in the host text ever
   // embeds it — a likely leftover or typo'd alias.
   | "UNUSED_TEXT_FILE"
-  | "REQUIRED_PROPERTY_HAS_DEFAULT";
+  | "REQUIRED_PROPERTY_HAS_DEFAULT"
+  // A tutor grants a built-in tool whose name its assembled prompt never mentions:
+  // Novedu never tells the model about tools, so it will rarely call it.
+  | "UNMENTIONED_TOOL";
 
 export interface ValidationError {
   code: ErrorCode;

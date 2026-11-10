@@ -123,7 +123,8 @@
     "tutorToolName": {
       "type": "string",
       "enum": [
-        "random_number"
+        "random_number",
+        "board"
       ],
       "description": "Name of a built-in tutor tool."
     },

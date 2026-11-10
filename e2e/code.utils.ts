@@ -29,6 +29,8 @@ export const PER_USER_TUTOR_URL = `${FIXTURES_BASE}/tutors/per-user-tutor.yaml`;
 export const VISION_TUTOR_URL = `${FIXTURES_BASE}/tutors/vision-tutor.yaml`;
 // A tutor with the random_number tool for the tool-call spec (tutor-chat-reply.spec.ts).
 export const LIVE_TOOLS_TUTOR_URL = `${FIXTURES_BASE}/tutors/live-tools-tutor.yaml`;
+// A tutor with the board tool for the board specs (tutor-board.spec.ts, the reload round-trip).
+export const BOARD_TUTOR_URL = `${FIXTURES_BASE}/tutors/board-tutor.yaml`;
 // A valid CODING activity URL — coding has a strict authoring gate, so a coding
 // code must point at a real coding YAML (a tutor URL would fail CODING_SCHEMA_ERROR).
 export const VALID_CODING_URL = `${FIXTURES_BASE}/coding/test-coding.yaml`;

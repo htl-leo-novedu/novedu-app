@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ImageErrorNotice } from "@/components/image-error-notice";
 import { ReportButton } from "@/components/report-button";
 import { LoadingPanel } from "@/components/spinner";
@@ -18,6 +18,7 @@ import {
 import { resumeTutorThread } from "@/lib/tutor-actions";
 import { readTutorThread, removeTutorThread, writeTutorThread } from "@/lib/tutor-thread-storage";
 import type { ExampleQuestion } from "@/lib/tutors";
+import { BoardFrame } from "./_tutor/board/board-frame";
 import { PreviousConversationsButton } from "./_tutor/previous-conversations-button";
 import { StartOverButton } from "./_tutor/start-over-button";
 import { useTutorWelcomeView } from "./_tutor/welcome-view";
@@ -70,6 +71,11 @@ type ThreadPhase =
   | { kind: "resuming" }
   | { kind: "ready"; thread: ChatThread };
 
+/** Lays the chat out with the tutor's board pane (inside the chat's provider). */
+function renderBoardFrame(chat: ReactNode) {
+  return <BoardFrame>{chat}</BoardFrame>;
+}
+
 /** The accumulated upload notice: one sentence per rejected file, plus what we learned about each. */
 interface UploadFailures {
   messages: string[];
@@ -85,6 +91,7 @@ export function TutorChat({
   description,
   exampleQuestions = [],
   historyEnabled = false,
+  board = false,
 }: {
   /** The code the chat was opened with — half of the provider key. */
   code: string;
@@ -109,6 +116,11 @@ export function TutorChat({
    * conversations" and the per-user Start-over wording.
    */
   historyEnabled?: boolean;
+  /**
+   * The tutor is granted the `board` tool (docs/tutor-board.md): the chat gets
+   * the board pane, which appears with the first drawing.
+   */
+  board?: boolean;
 }) {
   // Rejected uploads (undecodable, too large, wrong type) call onUploadFailed and
   // silently drop the file — without this notice the student would never learn why.
@@ -255,6 +267,7 @@ export function TutorChat({
         // Tutor needs no height/padding delta: ModuleChat's base container matches it.
         labels={title ? { welcomeMessageText: title } : undefined}
         chatView={chatView}
+        frame={board ? renderBoardFrame : undefined}
         attachments={
           imageInput
             ? {

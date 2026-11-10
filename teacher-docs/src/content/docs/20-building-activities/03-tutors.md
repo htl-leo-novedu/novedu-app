@@ -1,10 +1,10 @@
 ---
 title: Building a tutor
-description: The fields that make a tutor YAML file, what students see on the empty chat, and when reusable fragments are worth the effort.
+description: The fields that make a tutor YAML file, what students see on the empty chat, built-in tools such as drawing on a whiteboard (with prompt advice for drawing tutors), and when reusable fragments are worth the effort.
 sidebar:
   order: 3
 audience: teacher
-keywords: [tutor, tutor_instructions, instructions, fragments, fragment library, starter questions, exampleQuestions, greeting, tools, random_number, built-in tools, YAML]
+keywords: [tutor, tutor_instructions, instructions, fragments, fragment library, starter questions, exampleQuestions, greeting, tools, random_number, built-in tools, board, whiteboard, drawing, diagram, highlight, YAML]
 related:
   - 00-introduction/03-tutors-overview
   - 20-building-activities/02-available-llms
@@ -78,13 +78,64 @@ The complete list of available tools:
 | Tool            | What it does                                                                                              |
 | --------------- | --------------------------------------------------------------------------------------------------------- |
 | `random_number` | Returns a random whole number between `min` and `max` (both included), with true server-side randomness. |
+| `board`         | Draws on a whiteboard next to the chat and changes the same drawing when the student follows up. The next section covers it.  |
 
 Why `random_number` matters: AI models are surprisingly bad at being random. Ask a model to "pick a random number" and it tends to produce the same few values in every session, so your students end up practising with the same exercises. The tool draws a genuinely random number instead, which gives every student varied practice problems.
 
 Two rules to get right:
 
 - **Validation checks the names.** A tool name that Novedu doesn't offer fails validation, so a typo can't slip through quietly.
-- **Tell the tutor to use its tools.** Novedu never mentions the tools in the prompt for you. Say it in your `tutor_instructions`, for example: "When the student asks for a practice problem, use the random_number tool to pick the values. Don't invent the numbers yourself."
+- **Tell the tutor to use its tools.** Novedu never mentions the tools in the prompt for you, and validation warns you when your instructions never name a tool you added. Say it in your `tutor_instructions`, for example: "When the student asks for a practice problem, use the random_number tool to pick the values. Don't invent the numbers yourself."
+
+## Drawing on the board
+
+Some topics click faster with a picture than with words: a DHCP handshake, the parts of an IPv4 header, how a web app sits in a cloud network. The `board` tool gives a tutor a whiteboard next to the chat. The tutor draws while it explains, like a teacher at the blackboard, and when the student follows up it changes the same drawing instead of starting a new one.
+
+### What students see on the board
+
+- **Beside the chat on a laptop, above the chat on a phone.** The board appears with the tutor's first drawing. A tutor that never draws looks exactly like any other tutor.
+- **One drawing that changes in place.** When a student asks "Can you highlight the broadcast?", the tutor marks that part with a yellow marker and fades the rest. When the student asks "And with a second server?", the tutor adds the server to the existing drawing. Students always see the latest state of the board; there is no history of earlier versions.
+- **Zoom to the highlight on phones.** On a small screen the board zooms to the part the tutor highlights, so the labels stay readable. Students can switch to the whole board, open it full screen, or fold it away to a small bar.
+- **A small marker in the chat.** Under each reply that changed the board, students see "Drew on the board" or "Changed the board". Selecting the marker opens the board if it is folded away.
+- **The board stays with the conversation.** After a page reload, and when a student reopens an earlier conversation, the drawing comes back. "Start over" begins with an empty board.
+
+Students only look at the board. They can't draw on it, move parts, or select parts of the drawing.
+
+### Turning the board on
+
+Add `board` to the tutor's `tools:` list and tell the tutor about it in `tutor_instructions`. Novedu never mentions the board in the prompt for you. This paragraph is a good starting point for any drawing tutor:
+
+```yaml
+tools:
+  - board
+
+prompt:
+  tutor_instructions: |
+    ...
+    You have a whiteboard next to the chat (the `board` tool). Whenever a
+    question is about structure, flow, dependencies or how parts work together,
+    draw it on the board while you explain and refer to the drawing in your
+    text. When the student asks a follow-up, change or extend the existing
+    drawing instead of starting over.
+```
+
+The board is tested with GPT-6 Luna (`model: openai/gpt-6-luna` with `provider: OpenRouter`), and that is the model to use for a drawing tutor. Other models may be granted the tool, but how well they draw is untested.
+
+### Topic hints make better drawings
+
+The tutor decides what to draw. It doesn't need to be a perfect illustrator, but a few topic hints in your instructions make the drawings much clearer than the general paragraph alone. Tell the tutor how drawings in your subject should look, for example:
+
+- "Draw protocols and handshakes (DHCP, the TCP handshake) as a sequence: one box per participant, one numbered arrow per message."
+- "Draw a packet header with 32 bits per row, one box per field."
+- "Draw each VNet as a group and each subnet as its own group inside the VNet. Put every server and database in its subnet."
+
+**Hint the follow-ups too.** Think about what students will ask after the first drawing and say what the tutor should do then: "When the student asks where something happens, highlight it. When they ask 'what if there were two …', add it to the existing drawing. When something goes wrong, mark it with a red problem arrow." A hint in your instructions is the simplest way to improve a drawing; the board itself stays the same for every subject.
+
+The networking sample tutor (`activities/examples/networking/network-board-tutor.yaml`) is a complete, validated file with the paragraph above and drawing hints for a networks unit.
+
+### Testing a drawing tutor
+
+A tutor evaluation can check that the tutor draws: list `board` under `required_tools` for a conversation. Each evaluated answer starts with an empty board, though, so an evaluation can't check follow-ups that change an existing drawing, such as "highlight the broadcast". Try those in the chat yourself before you share the tutor.
 
 ## Fragments: reusable pieces of prompt
 

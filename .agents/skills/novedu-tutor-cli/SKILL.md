@@ -121,6 +121,12 @@ token on every request.
 
 ## Where to start, by what the user is asking
 
+- *"Write a tutor / make it draw / give it a tool."* → the teacher guide's
+  [Building a tutor](https://docs.novedu.at/20-building-activities/03-tutors.md)
+  chapter: the fields, the built-in tools (`random_number`, the `board`
+  whiteboard), the `tutor_instructions` paragraph a tool needs and the drawing
+  hints that make good diagrams. Then `validate`, which warns when a granted tool
+  is never mentioned in the prompt.
 - *"Is this valid? why won't it load?"* → `validate`, and re-run with `--json`
   when a schema error reads vague. → [validate.md](references/validate.md)
 - *"Why does the tutor/grader behave like that?"* → `prompts`. Validity and
@@ -162,5 +168,6 @@ report, and deletion is deliberately bulk-only in the web UI.
 drifting when the CLI changes. The `novedu-teacher-docs` skill covers the teacher
 guide's prose, and `novedu-publish` covers releasing the app and the CLI itself.
 Note the boundary: this CLI checks whether a file is valid and what it produces —
-it does not tell you what makes a good quiz question. Authoring guidance lives
-with the course material.
+it does not tell you what makes a good quiz question. Authoring guidance lives in
+the teacher guide, which publishes every chapter as Markdown for agents: start at
+<https://docs.novedu.at/llms.txt>.

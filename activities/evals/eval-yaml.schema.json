@@ -134,7 +134,8 @@
                 "items": {
                   "type": "string",
                   "enum": [
-                    "random_number"
+                    "random_number",
+                    "board"
                   ]
                 },
                 "description": "Optional list of built-in tool names the tutor must call AT LEAST ONCE while answering this case (e.g. [random_number]). Reported only — a missing tool call never fails the run. Tools beyond this list are always fine, and every name must be one the target tutor's own `tools:` grant contains."

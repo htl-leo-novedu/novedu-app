@@ -431,7 +431,8 @@ the same coding-workshop flow.
 Per-subsystem deep references live in [`docs/`](docs/): codes & modules
 ([`codes.md`](docs/codes.md)), the start page, achievements, saved quiz results and
 Settings ([`home.md`](docs/home.md)), the registry and `codes sync`
-([`registry.md`](docs/registry.md)), tutor tools ([`tutor-tools.md`](docs/tutor-tools.md)),
+([`registry.md`](docs/registry.md)), tutor tools ([`tutor-tools.md`](docs/tutor-tools.md))
+and the tutor whiteboard ([`tutor-board.md`](docs/tutor-board.md)),
 CLI prompt dumps and evals ([`cli-prompts.md`](docs/cli-prompts.md),
 [`cli-eval.md`](docs/cli-eval.md)), LLM diagnostics ([`diagnostics.md`](docs/diagnostics.md)),
 the Azure stages and access to them ([`azure-runtime-env.md`](docs/azure-runtime-env.md)), the shared [`prompt-fragments.md`](docs/prompt-fragments.md),

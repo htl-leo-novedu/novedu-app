@@ -73,6 +73,7 @@ validation certifies both files. See [eval.md](eval.md) for the eval format.
 | `EVAL_SCHEMA` | Eval document wrong — the dotted path leads the message (e.g. `questions.0.answers.1.expect`). |
 | `EVAL_TARGET_ERROR` | The eval's `target` quiz couldn't be resolved or loaded (path wrong, or the quiz itself is broken). |
 | `EVAL_UNKNOWN_QUESTION` | The eval names a question id the quiz doesn't have — for an imported question use the namespaced `"<alias>/<id>"` form. |
+| `UNMENTIONED_TOOL` _(warning)_ | A tutor grants a tool its prompt never names; Novedu never tells the model about tools, so add a sentence to `tutor_instructions` saying when to use it (the warning links the teacher guide's paragraph for each built-in tool). |
 | `EVAL_UNGRANTED_TOOL` | A tutor eval case's `required_tools` names a tool the target tutor's own `tools:` list does not grant — it could never be called. |
 
 ## Triage order

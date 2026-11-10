@@ -125,6 +125,27 @@ describe("loadAndBuildTutorPrompt — tools opt-in", () => {
     if (result.ok) expect(result.tools).toEqual(["random_number"]);
   });
 
+  it("UNMENTIONED_TOOL warning when the prompt never names a granted tool", async () => {
+    const overrides = new Map([[TUTOR_URL, fixtureResponse(withTools("\n  - random_number"))]]);
+    const result = await loadAndBuildTutorPrompt(TUTOR_URL, fixtureFetcher(overrides));
+    assert(result.ok);
+    const warning = result.warnings.find((w) => w.code === "UNMENTIONED_TOOL");
+    expect(warning?.message).toContain('"random_number"');
+    expect(warning?.message).toContain("https://docs.novedu.at/20-building-activities/03-tutors/");
+  });
+
+  it("no UNMENTIONED_TOOL warning once tutor_instructions names the tool", async () => {
+    const yaml = withTools("\n  - board").replace(
+      "tutor_instructions: |",
+      "tutor_instructions: |\n    Use the Board tool to draw.",
+    );
+    expect(yaml).toContain("Use the Board tool");
+    const overrides = new Map([[TUTOR_URL, fixtureResponse(yaml)]]);
+    const result = await loadAndBuildTutorPrompt(TUTOR_URL, fixtureFetcher(overrides));
+    assert(result.ok);
+    expect(result.warnings.map((w) => w.code)).not.toContain("UNMENTIONED_TOOL");
+  });
+
   it("accepts an explicitly empty tools list", async () => {
     const overrides = new Map([[TUTOR_URL, fixtureResponse(withTools(" []"))]]);
     const result = await loadAndBuildTutorPrompt(TUTOR_URL, fixtureFetcher(overrides));
