@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import "@/app/globals.css";
 
@@ -141,6 +141,58 @@ describe("laptop", () => {
     await expect.element(screen.getByTestId("board-pane")).toBeVisible();
   });
 
+  test("zooms in steps up to 200%, out to the whole drawing, and back to fit", async () => {
+    ck.messages = reply("t1", DRAW);
+    const screen = await render(frame(["t1"]));
+    await expect.element(screen.getByTestId("board-image")).toBeVisible();
+    const fit = screen.getByTestId("board-zoom-fit");
+    const zoomIn = screen.getByTestId("board-zoom-in");
+    const zoomOut = screen.getByTestId("board-zoom-out");
+    // The drawing fits (never blown up beyond 110%); smaller would only shrink it.
+    await expect.element(fit).toHaveTextContent(/^\d+%$/);
+    const fitted = fit.element().textContent ?? "";
+    expect(Number.parseInt(fitted, 10)).toBeLessThanOrEqual(110);
+    await expect.element(fit).toBeDisabled();
+    await expect.element(zoomOut).toBeDisabled();
+
+    await zoomIn.click();
+    await expect.element(fit).toHaveTextContent("125%");
+    const content = screen.getByTestId("board-zoom-content").element() as HTMLElement;
+    const image = screen.getByTestId("board-image").element() as HTMLImageElement;
+    expect(content.getBoundingClientRect().width).toBeCloseTo(
+      (image.naturalWidth / image.naturalHeight) * content.getBoundingClientRect().height,
+      0,
+    );
+    await zoomIn.click();
+    await zoomIn.click();
+    await expect.element(fit).toHaveTextContent("200%");
+    await expect.element(zoomIn).toBeDisabled();
+    await zoomOut.click();
+    await expect.element(fit).toHaveTextContent("150%");
+    await fit.click();
+    await expect.element(fit).toHaveTextContent(fitted);
+  });
+
+  test("opens full screen from the pane; ✕ and Escape close it", async () => {
+    ck.messages = reply("t1", DRAW);
+    const screen = await render(frame(["t1"]));
+    await expect.element(screen.getByTestId("board-image")).toBeVisible();
+    await screen.getByTestId("board-full").click();
+    const full = screen.getByTestId("board-fullscreen");
+    await expect.element(full.getByTestId("board-image")).toBeVisible();
+    await expect.element(full.getByTestId("board-close")).toHaveFocus();
+    await full.getByTestId("board-zoom-in").click();
+    await expect.element(full.getByTestId("board-zoom-fit")).toHaveTextContent("125%");
+    await full.getByTestId("board-close").click();
+    expect(screen.container.querySelector('[data-testid="board-fullscreen"]')).toBeNull();
+    await expect.element(screen.getByTestId("board-full")).toHaveFocus();
+
+    await screen.getByTestId("board-full").click();
+    await expect.element(screen.getByTestId("board-fullscreen")).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.container.querySelector('[data-testid="board-fullscreen"]')).toBeNull();
+  });
+
   test("a failed render keeps the last good image", async () => {
     ck.messages = reply("t1", DRAW);
     const screen = await render(frame(["t1"]));
@@ -180,6 +232,11 @@ describe("phone", () => {
     await expect.element(sheet).toHaveAttribute("data-state", "half");
     await screen.getByTestId("board-full").click();
     await expect.element(sheet).toHaveAttribute("data-state", "full");
+    // Full screen opens at a readable 90% and zooms too.
+    const zoomFit = screen.getByTestId("board-zoom-fit");
+    await expect.element(zoomFit).toHaveTextContent("90%");
+    await screen.getByTestId("board-zoom-in").click();
+    await expect.element(zoomFit).toHaveTextContent("100%");
     await screen.getByTestId("board-close").click();
     await expect.element(sheet).toHaveAttribute("data-state", "half");
   });

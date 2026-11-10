@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { BoardState } from "@/lib/board";
 import { type RenderedBoard, renderBoard } from "./render";
-import type { Rect } from "./sheet";
+import { type Rect, ZOOM_MAX } from "./sheet";
 
 /** One rendered image of the board; the newest crossfades over the one before. */
 export interface BoardImageLayer {
@@ -17,10 +17,10 @@ export interface BoardImageLayer {
 /** The crossfade between two images (board-image.tsx). */
 export const CROSSFADE_MS = 300;
 
-/** Device pixels per drawing pixel: the pixel ratio × the largest zoom the pane uses (1.1). */
+/** Device pixels per drawing pixel: the pixel ratio × the largest zoom a student can pick. */
 function renderScale(): number {
   const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
-  return Math.min(4, Math.max(1, dpr) * 1.1);
+  return Math.min(4, Math.max(1, dpr) * ZOOM_MAX);
 }
 
 /**

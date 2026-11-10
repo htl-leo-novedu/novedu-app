@@ -3,9 +3,12 @@ import {
   fitCamera,
   focusCamera,
   INITIAL_SHEET,
+  nextZoom,
   type SheetEvent,
   type SheetModel,
   sheetReducer,
+  ZOOM_MAX,
+  ZOOM_STEPS,
 } from "./sheet";
 
 const run = (...events: SheetEvent["type"][]): SheetModel =>
@@ -100,5 +103,32 @@ describe("the camera", () => {
     const end = focusCamera(view, image, { x: 1150, y: 560, w: 50, h: 40 });
     expect(image.w * end.scale + end.x).toBeCloseTo(view.w);
     expect(image.h * end.scale + end.y).toBeCloseTo(view.h);
+  });
+});
+
+describe("the zoom steps", () => {
+  it("ends at the zoom the images are rendered for", () => {
+    expect(ZOOM_STEPS.at(-1)).toBe(ZOOM_MAX);
+  });
+
+  it("zooms in step by step up to 200%", () => {
+    expect(nextZoom(0.62, 0.62, "in")).toBe(0.67);
+    expect(nextZoom(1, 0.62, "in")).toBe(1.25);
+    expect(nextZoom(1.5, 0.62, "in")).toBe(2);
+    expect(nextZoom(2, 0.62, "in")).toBeNull();
+  });
+
+  it("zooms out step by step down to the whole drawing, never below", () => {
+    expect(nextZoom(2, 0.62, "out")).toBe(1.5);
+    expect(nextZoom(0.8, 0.62, "out")).toBe(0.67);
+    expect(nextZoom(0.67, 0.62, "out")).toBe(0.62);
+    expect(nextZoom(0.62, 0.62, "out")).toBeNull();
+    // A huge drawing: below the last step, straight to the whole drawing.
+    expect(nextZoom(0.25, 0.12, "out")).toBe(0.12);
+  });
+
+  it("treats a scale a hair off a step as that step", () => {
+    expect(nextZoom(0.999, 0.5, "in")).toBe(1.25);
+    expect(nextZoom(1.004, 0.5, "out")).toBe(0.8);
   });
 });

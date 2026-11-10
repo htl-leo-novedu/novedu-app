@@ -82,6 +82,18 @@ test.describe("laptop", () => {
     await expect(page.getByTestId("board-pill")).toHaveCount(2);
     await expect(page.getByTestId("board-status")).toHaveText("Highlighted 1 part");
 
+    // Zoom: a step in, back to fit; full screen covers the app, Escape closes it.
+    const fit = page.getByTestId("board-zoom-fit");
+    const fitted = await fit.textContent();
+    await page.getByTestId("board-zoom-in").click();
+    await expect(fit).not.toHaveText(fitted ?? "");
+    await fit.click();
+    await expect(fit).toHaveText(fitted ?? "");
+    await page.getByTestId("board-full").click();
+    await expect(page.getByTestId("board-fullscreen").getByTestId("board-image")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("board-fullscreen")).toHaveCount(0);
+
     // Collapsed: the rail; a change while collapsed sets the dot; the pill reopens it.
     await page.getByTestId("board-collapse").click();
     await expect(page.getByTestId("board-rail")).toBeVisible();

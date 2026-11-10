@@ -4,7 +4,7 @@ description: The fields that make a tutor YAML file, what students see on the em
 sidebar:
   order: 3
 audience: teacher
-keywords: [tutor, tutor_instructions, instructions, fragments, fragment library, starter questions, exampleQuestions, greeting, tools, random_number, built-in tools, board, whiteboard, drawing, diagram, highlight, YAML]
+keywords: [tutor, tutor_instructions, instructions, fragments, fragment library, starter questions, exampleQuestions, greeting, tools, random_number, built-in tools, board, whiteboard, drawing, diagram, highlight, zoom, full screen, YAML]
 related:
   - 00-introduction/03-tutors-overview
   - 20-building-activities/02-available-llms
@@ -95,6 +95,7 @@ Some topics click faster with a picture than with words: a DHCP handshake, the p
 
 - **Beside the chat on a laptop, above the chat on a phone.** The board appears with the tutor's first drawing. A tutor that never draws looks exactly like any other tutor.
 - **One drawing that changes in place.** When a student asks "Can you highlight the broadcast?", the tutor marks that part with a yellow marker and fades the rest. When the student asks "And with a second server?", the tutor adds the server to the existing drawing. Students always see the latest state of the board; there is no history of earlier versions.
+- **Zoom and full screen.** Students can zoom the drawing in and out with the − and + buttons in the board's corner, up to 200%, and the percentage between them brings back the whole drawing. The full-screen button shows the board over the whole screen, on laptops and phones alike. A zoom stays as the student set it when the tutor changes the drawing; a new highlight outside the visible part scrolls into view.
 - **Zoom to the highlight on phones.** On a small screen the board zooms to the part the tutor highlights, so the labels stay readable. Students can switch to the whole board, open it full screen, or fold it away to a small bar.
 - **A small marker in the chat.** Under each reply that changed the board, students see "Drew on the board" or "Changed the board". Selecting the marker opens the board if it is folded away.
 - **The board stays with the conversation.** After a page reload, and when a student reopens an earlier conversation, the drawing comes back. "Start over" begins with an empty board.

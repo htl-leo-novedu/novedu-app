@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -29,6 +30,7 @@ import {
   fitCamera,
   focusCamera,
   INITIAL_SHEET,
+  nextZoom,
   type SheetEvent,
   type Size,
   sheetReducer,
@@ -42,8 +44,8 @@ import { type BoardImageLayer, useBoardImage } from "./use-board-image";
 // Rendered inside the CopilotKit provider (ModuleChat's `frame`), so Start over
 // (a provider remount) empties it.
 
-/** The largest zoom the pane uses; images are rendered for it (use-board-image.ts). */
-const MAX_ZOOM = 1.1;
+/** The largest scale a fitted drawing gets: a small board stays crisp instead of being blown up. */
+const FIT_MAX = 1.1;
 
 /** Tailwind's `md` (48rem): beside the chat at and above it, docked above it below. */
 const WIDE_QUERY = "(min-width: 48rem)";
@@ -116,6 +118,7 @@ export function BoardFrame({ children }: { children: ReactNode }) {
   const { key, derived, pills, sent } = useBoardFromMessages();
   const { layers, current } = useBoardImage(derived?.state ?? null, key);
   const [collapsed, setCollapsed] = useState(false);
+  const [laptopFull, setLaptopFull] = useState(false);
   const [railUnseen, setRailUnseen] = useState(false);
   const [sheet, dispatch] = useReducer(sheetReducer, INITIAL_SHEET);
   const [announcement, setAnnouncement] = useState("");
@@ -127,6 +130,7 @@ export function BoardFrame({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!key) {
       dispatch({ type: "cleared" });
+      setLaptopFull(false);
       return;
     }
     dispatch({ type: "changed" });
@@ -222,11 +226,24 @@ export function BoardFrame({ children }: { children: ReactNode }) {
           ) : (
             <LaptopPane
               layers={layers}
+              current={current}
               status={status}
               alt={alt}
               onCollapse={() => setCollapsed(true)}
+              onOpenFull={() => setLaptopFull(true)}
             />
           )
+        ) : null}
+        {hasBoard && wide && laptopFull ? (
+          <FullScreenBoard
+            testId="board-fullscreen"
+            layers={layers}
+            current={current}
+            status={status}
+            alt={alt}
+            autoScale={(fit) => Math.min(fit, FIT_MAX)}
+            onClose={() => setLaptopFull(false)}
+          />
         ) : null}
       </div>
     </BoardContext.Provider>
@@ -235,21 +252,26 @@ export function BoardFrame({ children }: { children: ReactNode }) {
 
 const PANE_HEADING = "font-semibold text-sm";
 const PANE_STATUS = "truncate text-foreground/65 text-xs";
+const ZOOM_BUTTON =
+  "inline-flex h-7 min-w-7 shrink-0 cursor-pointer items-center justify-center rounded-full px-1.5 font-semibold text-sm hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1 disabled:cursor-default disabled:text-foreground/30 disabled:hover:bg-transparent";
 const TOOL =
   "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full border border-foreground/25 bg-background px-3 font-semibold text-xs hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
 
 function LaptopPane({
   layers,
+  current,
   status,
   alt,
   onCollapse,
+  onOpenFull,
 }: {
   layers: BoardImageLayer[];
+  current: BoardImageLayer | null;
   status: string;
   alt: string;
   onCollapse: () => void;
+  onOpenFull: () => void;
 }) {
-  const current = layers.at(-1);
   return (
     <section
       aria-label="Board"
@@ -264,6 +286,16 @@ function LaptopPane({
         <button
           type="button"
           className={TOOL}
+          onClick={onOpenFull}
+          aria-label="Show board full screen"
+          title="Full screen"
+          data-testid="board-full"
+        >
+          ⤢
+        </button>
+        <button
+          type="button"
+          className={TOOL}
           onClick={onCollapse}
           aria-label="Hide board"
           title="Hide board"
@@ -272,18 +304,16 @@ function LaptopPane({
           ›
         </button>
       </header>
-      <div className="mx-4 mb-4 min-h-0 flex-1 rounded-lg border border-foreground/15 bg-white p-3">
+      <div className="mx-4 mb-4 flex min-h-0 flex-1 overflow-hidden rounded-lg border border-foreground/15 bg-white">
         {current ? (
-          // Never larger than the 1.1× the image was rendered for (a small board
-          // stays crisp instead of being blown up to fill the pane).
-          <div
-            className="mx-auto h-full w-full"
-            style={{ maxWidth: current.width * MAX_ZOOM, maxHeight: current.height * MAX_ZOOM }}
-          >
-            <BoardImageStack layers={layers} alt={alt} />
-          </div>
+          <ZoomBoard
+            layers={layers}
+            current={current}
+            alt={alt}
+            autoScale={(fit) => Math.min(fit, FIT_MAX)}
+          />
         ) : (
-          <div className="h-full" aria-busy="true" />
+          <div className="h-full flex-1" aria-busy="true" />
         )}
       </div>
     </section>
@@ -395,70 +425,61 @@ function PhoneSheet({
     );
   }
 
-  const full = sheet.state === "full";
+  if (sheet.state === "full") {
+    return (
+      <FullScreenBoard
+        testId="board-sheet"
+        dataState="full"
+        layers={layers}
+        current={current}
+        status={status}
+        alt={alt}
+        // A phone opens the drawing at a readable scale and scrolls to the highlight.
+        autoScale={(fit) => Math.min(1, Math.max(0.9, fit))}
+        onClose={() => dispatch({ type: "closeFull" })}
+      />
+    );
+  }
+
   return (
     <section
       aria-label="Board"
       data-testid="board-sheet"
       data-state={sheet.state}
-      className={cn(
-        "flex shrink-0 flex-col bg-slate-100",
-        full ? "fixed inset-0 z-50" : "basis-[46%] border-foreground/15 border-b",
-      )}
+      className="flex shrink-0 basis-[46%] flex-col border-foreground/15 border-b bg-slate-100"
     >
       <header className="flex shrink-0 items-center gap-2 px-4 py-2">
-        {/* Close sits first: the top-right corner is where floating overlays
-            (CopilotKit's dev inspector, browser UI) tend to land. */}
-        {full ? (
-          <button
-            type="button"
-            className={TOOL}
-            onClick={() => dispatch({ type: "closeFull" })}
-            aria-label="Close board"
-            data-testid="board-close"
-          >
-            ✕
-          </button>
-        ) : null}
         <h2 className={PANE_HEADING}>Board</h2>
         <p className={cn(PANE_STATUS, "flex-1")} data-testid="board-status">
           {status}
         </p>
-        {full ? null : (
-          <>
-            <button
-              type="button"
-              className={TOOL}
-              onClick={() => dispatch({ type: "full" })}
-              aria-label="Show board full screen"
-              data-testid="board-full"
-            >
-              ⤢
-            </button>
-            <button
-              type="button"
-              className={TOOL}
-              onClick={() => dispatch({ type: "collapse" })}
-              aria-label="Hide board"
-              data-testid="board-collapse"
-            >
-              ⌃
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className={TOOL}
+          onClick={() => dispatch({ type: "full" })}
+          aria-label="Show board full screen"
+          data-testid="board-full"
+        >
+          ⤢
+        </button>
+        <button
+          type="button"
+          className={TOOL}
+          onClick={() => dispatch({ type: "collapse" })}
+          aria-label="Hide board"
+          data-testid="board-collapse"
+        >
+          ⌃
+        </button>
       </header>
-      {full ? (
-        <FullBoard layers={layers} current={current} alt={alt} />
-      ) : (
-        <CameraBoard
-          layers={layers}
-          current={current}
-          alt={alt}
-          zoomed={zoomed}
-          onToggleZoom={() => setZoomed((z) => !z)}
-          onOpenFull={() => dispatch({ type: "full" })}
-        />
-      )}
+      <CameraBoard
+        layers={layers}
+        current={current}
+        alt={alt}
+        zoomed={zoomed}
+        onToggleZoom={() => setZoomed((z) => !z)}
+        onOpenFull={() => dispatch({ type: "full" })}
+      />
     </section>
   );
 }
@@ -489,8 +510,8 @@ function CameraBoard({
   let focused: Camera | null = null;
   if (current && view.w > 0) {
     const image = { w: current.width, h: current.height };
-    whole = fitCamera(view, image, MAX_ZOOM);
-    if (current.focus) focused = focusCamera(view, image, current.focus, { maxScale: MAX_ZOOM });
+    whole = fitCamera(view, image, FIT_MAX);
+    if (current.focus) focused = focusCamera(view, image, current.focus, { maxScale: FIT_MAX });
   }
   const canZoom =
     focused !== null &&
@@ -537,49 +558,229 @@ function CameraBoard({
   );
 }
 
-/** Full screen: the drawing at a readable scale (≥ 0.9), scrolled natively; pinch zooms the page. */
-function FullBoard({
+/**
+ * Full screen, on laptops and phones: the board covers the app, with the
+ * zoomable drawing. ✕ or Escape closes it.
+ */
+function FullScreenBoard({
+  testId,
+  dataState,
+  layers,
+  current,
+  status,
+  alt,
+  autoScale,
+  onClose,
+}: {
+  testId: string;
+  dataState?: string;
+  layers: BoardImageLayer[];
+  current: BoardImageLayer | null;
+  status: string;
+  alt: string;
+  autoScale: (fit: number) => number;
+  onClose: () => void;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCloseRef.current();
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previous?.focus?.();
+    };
+  }, []);
+  return (
+    <section
+      aria-label="Board"
+      data-testid={testId}
+      data-state={dataState}
+      className="fixed inset-0 z-50 flex flex-col bg-slate-100"
+    >
+      <header className="flex shrink-0 items-center gap-2 px-4 py-2">
+        {/* Close sits first: the top-right corner is where floating overlays
+            (CopilotKit's dev inspector, browser UI) tend to land. */}
+        <button
+          ref={closeRef}
+          type="button"
+          className={TOOL}
+          onClick={onClose}
+          aria-label="Close board"
+          title="Close (Esc)"
+          data-testid="board-close"
+        >
+          ✕
+        </button>
+        <h2 className={PANE_HEADING}>Board</h2>
+        <p className={cn(PANE_STATUS, "flex-1")} data-testid="board-status">
+          {status}
+        </p>
+      </header>
+      <div className="flex min-h-0 flex-1 bg-white">
+        {current ? (
+          <ZoomBoard layers={layers} current={current} alt={alt} autoScale={autoScale} />
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+/** Space around the drawing inside its scroll area. */
+const ZOOM_PAD = 12;
+
+/**
+ * The drawing in a scroll area with − / percentage / + buttons. Until the
+ * student zooms it shows `autoScale(fit)`, where `fit` shows the whole drawing;
+ * the percentage button goes back to that. Zooming keeps the point in the middle
+ * of the view in place — or, from the whole drawing, moves to the highlight.
+ * A chosen zoom survives the tutor's changes; a new highlight out of view is
+ * scrolled into it.
+ */
+function ZoomBoard({
   layers,
   current,
   alt,
+  autoScale,
 }: {
   layers: BoardImageLayer[];
-  current: BoardImageLayer | null;
+  current: BoardImageLayer;
   alt: string;
+  autoScale: (fit: number) => number;
 }) {
   const [ref, view] = useSize<HTMLDivElement>();
-  const scale =
-    current && view.w > 0
-      ? Math.max(0.9, fitCamera(view, { w: current.width, h: current.height }).scale)
-      : 1;
-  // Opening on a larger-than-screen drawing: scroll the highlight into the middle.
-  const focus = current?.focus;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState<number | null>(null);
+  const anchor = useRef<{ x: number; y: number } | null>(null);
   const ready = view.w > 0;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once per opened image.
+  const image = { w: current.width, h: current.height };
+  const inner = { w: view.w - 2 * ZOOM_PAD, h: view.h - 2 * ZOOM_PAD };
+  const fit = ready ? fitCamera(inner, image, Number.POSITIVE_INFINITY).scale : 1;
+  const auto = autoScale(fit);
+  const scale = zoom ?? auto;
+  const lowest = Math.min(fit, auto);
+  const zoomIn = nextZoom(scale, lowest, "in");
+  const zoomOut = nextZoom(scale, lowest, "out");
+
+  const zoomTo = (next: number | null) => {
+    const el = ref.current;
+    const content = contentRef.current;
+    if (el && content) {
+      const whole = scale <= fit + 0.01;
+      const focus = current.focus;
+      anchor.current =
+        whole && focus
+          ? { x: focus.x + focus.w / 2, y: focus.y + focus.h / 2 }
+          : {
+              x: (el.scrollLeft + el.clientWidth / 2 - content.offsetLeft) / scale,
+              y: (el.scrollTop + el.clientHeight / 2 - content.offsetTop) / scale,
+            };
+    }
+    setZoom(next);
+  };
+
+  // After a zoom: bring the anchor point back to the middle of the view.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: per new scale.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const content = contentRef.current;
+    const a = anchor.current;
+    anchor.current = null;
+    if (!el || !content || !a) return;
+    el.scrollTo({
+      left: a.x * scale + content.offsetLeft - el.clientWidth / 2,
+      top: a.y * scale + content.offsetTop - el.clientHeight / 2,
+    });
+  }, [scale]);
+
+  // Each new image: a highlight that is not fully in view scrolls into the
+  // middle (the zoom stays as the student set it).
+  const focus = current.focus;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per image.
   useEffect(() => {
     const el = ref.current;
-    if (!el || !focus || !ready) return;
+    const content = contentRef.current;
+    if (!el || !content || !focus || !ready) return;
+    const left = focus.x * scale + content.offsetLeft;
+    const top = focus.y * scale + content.offsetTop;
+    const inView =
+      left >= el.scrollLeft &&
+      top >= el.scrollTop &&
+      left + focus.w * scale <= el.scrollLeft + el.clientWidth &&
+      top + focus.h * scale <= el.scrollTop + el.clientHeight;
+    if (inView) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({
-      left: (focus.x + focus.w / 2) * scale - el.clientWidth / 2,
-      top: (focus.y + focus.h / 2) * scale - el.clientHeight / 2,
+      left: left + (focus.w * scale) / 2 - el.clientWidth / 2,
+      top: top + (focus.h * scale) / 2 - el.clientHeight / 2,
+      behavior: still ? "auto" : "smooth",
     });
-  }, [current?.key, ready]);
+  }, [current.key, ready]);
+
+  const percent = Math.round(scale * 100);
   return (
-    // A flex container with an auto-margin child centres a small drawing and
-    // still scrolls a large one from its edge.
-    <div
-      ref={ref}
-      className="flex min-h-0 flex-1 overflow-auto bg-white"
-      data-testid="board-full-view"
-    >
-      {current ? (
+    <div className="relative flex min-h-0 min-w-0 flex-1">
+      {/* A flex container with an auto-margin child centres a small drawing and
+          still scrolls a large one from its edge. */}
+      <div
+        ref={ref}
+        className="relative flex min-h-0 min-w-0 flex-1 overflow-auto"
+        style={{ padding: ZOOM_PAD }}
+        data-testid="board-zoom-view"
+      >
         <div
+          ref={contentRef}
           className="relative m-auto shrink-0"
-          style={{ width: current.width * scale, height: current.height * scale }}
+          data-testid="board-zoom-content"
+          style={{
+            width: ready ? current.width * scale : 0,
+            height: ready ? current.height * scale : 0,
+          }}
         >
           <BoardImageStack layers={layers} alt={alt} fit="fill" />
         </div>
-      ) : null}
+      </div>
+      <fieldset
+        aria-label="Zoom"
+        className="absolute right-3 bottom-3 flex items-center gap-1 rounded-full border border-foreground/15 bg-background/95 p-1 shadow-sm"
+      >
+        <button
+          type="button"
+          className={ZOOM_BUTTON}
+          onClick={() => zoomOut !== null && zoomTo(zoomOut)}
+          disabled={zoomOut === null}
+          aria-label="Zoom out"
+          title="Zoom out"
+          data-testid="board-zoom-out"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          className={cn(ZOOM_BUTTON, "w-14 font-normal tabular-nums")}
+          onClick={() => zoomTo(null)}
+          disabled={zoom === null}
+          aria-label={`Zoom ${percent}%. Fit the drawing`}
+          title="Fit the drawing"
+          data-testid="board-zoom-fit"
+        >
+          {percent}%
+        </button>
+        <button
+          type="button"
+          className={ZOOM_BUTTON}
+          onClick={() => zoomIn !== null && zoomTo(zoomIn)}
+          disabled={zoomIn === null}
+          aria-label="Zoom in"
+          title="Zoom in"
+          data-testid="board-zoom-in"
+        >
+          +
+        </button>
+      </fieldset>
     </div>
   );
 }
