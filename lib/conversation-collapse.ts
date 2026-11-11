@@ -4,7 +4,7 @@ import { appliedBoardInvocation, BOARD_TOOL_NAME } from "@/lib/board/calls";
 // Pure helpers for turning stored Mastra messages into AG-UI messages and for
 // collapsing the "replayed history" duplicates. No DB or Mastra imports, so the
 // conversation viewer (`lib/code-stats-store.ts`) can render a clean transcript
-// from rows that hold telescoped replays. See docs/tutor-codes.md ("Only the new
+// from rows that hold telescoped replays. See docs/codes.md ("Only the new
 // turn is persisted").
 
 // A stored Mastra message: the v2 UIMessage envelope. The top-level `content`

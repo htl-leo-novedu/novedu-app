@@ -330,7 +330,7 @@ that anyone who can reach the instance can sign in as anyone — use sample data
 From source, put `NOVEDU_AUTH_MODE=demo` in `.env.local` together with empty
 `AZURE_CLIENT_ID=`, `AZURE_CLIENT_SECRET=`, `AZURE_TENANT_ID=` and `TEACHER_GROUP_ID=`
 lines and a `DATABASE_URL` naming a database of its own (a demo build refuses a database
-that ever had a Microsoft sign-in, and an Entra build refuses a demo database), then
+holding Microsoft sign-in accounts, and an Entra build refuses a demo database), then
 restart `npm run dev` — the mode is fixed when the server starts. The published Docker
 image also comes as **`ghcr.io/htl-leo-novedu/novedu-app:demo`** (and `:<version>-demo`): the
 same app built in demo mode, which the image can never leave. It needs only
@@ -378,7 +378,7 @@ fake's models once at boot.
 | `npm run lint` / `npm run format` | Biome lint only / format-write only. |
 | `npm run typecheck` | All three workspaces: `tsc --noEmit` (app) + `tsc -p cli` + `astro check` (docs site). |
 | `npm run test` | Vitest (unit + component). (`test:unit` / `test:component` for one project.) |
-| `npm run test:e2e` | Playwright end-to-end tests against the fake LLM (all specs except `@live-llm`). |
+| `npm run test:e2e` | Playwright end-to-end tests against the fake LLM (all specs except `@live-llm` and `@demo`; a demo build runs only the `@demo` specs). |
 | `npm run test:e2e:ci` | Hermetic + `@live-db` (against a Postgres container and the fake LLM); skips `@live-llm`, `@live-storage` and `@live-telemetry`. (`test:e2e:db` / `test:e2e:storage` / `test:e2e:telemetry` run one live group.) |
 | `npm run test:e2e:live-llm` | The `@live-llm` specs against the real providers in `.env`. |
 | `npm run db:generate` | Generate a Drizzle migration after editing `lib/db/schema.ts` (commit the result in `drizzle/`). |

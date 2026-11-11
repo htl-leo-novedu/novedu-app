@@ -76,8 +76,8 @@ tutor_instructions: |
 ## The module — `lib/prompt-fragments/`
 
 The single owner of Handlebars: fragment-content rendering, the isolated host-template
-engine, placement checking, fragment schemas, and the load pipeline. Extracted out of
-`lib/tutors/` so no kind owns it. The public surface is the
+engine, placement checking, fragment schemas, and the load pipeline — shared by every
+kind, owned by none. The public surface is the
 `lib/prompt-fragments/index.ts` barrel; consumers import from `@/lib/prompt-fragments`
 and never re-implement any of it.
 
@@ -145,8 +145,8 @@ and never re-implement any of it.
   namespace); `UNKNOWN_TEXT_FILE_ALIAS` for an undeclared alias; `from` beyond the line
   count is `TEXT_FILE_RANGE_OUT_OF_BOUNDS` **always** (an empty splice would silently drop
   material), `to` beyond it only under the **`strict`** (authoring) flag — runtime clamps;
-  `UNUSED_TEXT_FILE` warns on a declared text file no marker places. `resolveAndMerge`
-  is untouched. Fragment placements skip the file logic and vice versa.
+  `UNUSED_TEXT_FILE` warns on a declared text file no marker places.
+  Fragment placements skip the file logic and vice versa.
 - **`text-files.ts`** — a small **Handlebars-free** pure module, the SINGLE source of
   truth for line semantics used by BOTH `checkPlacements` (bounds) and the render
   `fileResolver` (slice), so a range can never validate differently than it renders.
@@ -180,11 +180,10 @@ if `handlebars` is imported — or `COMPILE_OPTIONS` referenced — outside the 
 a rename). No consumer touches Handlebars; they all go through
 `assembleFragmentPrompt`.
 
-Adding `{{file}}` did **not** touch the invariant: text-file content is spliced
+`{{file}}` stays inside the invariant: text-file content is spliced
 **verbatim and never compiled**, so `text-files.ts` does pure string slicing and stays
-out of the three-importer set. The `file` helper lives on the same isolated instance
-`host-template.ts` already owns — no new Handlebars importer, no change to
-`isolation.unit.test.ts`.
+out of the three-importer set. The `file` helper lives on the isolated instance
+`host-template.ts` owns.
 
 ## The document-level fragment block
 
@@ -215,11 +214,10 @@ deliberately ignores real defaults — it only proves every declared variable re
 
 ### Accepted-but-inert fields
 
-The fragment library's per-fragment **`version`** (now **optional**, consumed by
+The fragment library's per-fragment **`version`** (**optional**, consumed by
 nothing) and the optional **`classification`** block (`type` + `override_allowed`)
 validate but drive nothing. Don't assume versioning or override semantics exist — none
-do today. (`priority`, the document-level `fragments:` list, and its `bind` / `required`
-/ `variables` are **gone** — replaced by inline placement.)
+do today.
 
 ## Error model
 
@@ -264,7 +262,7 @@ All four kinds resolve one document-level block + their host text through the sh
   structured data, not prompt text — the quiz loader merely calls the existing
   `assembleFragmentPrompt` seam once more per included quiz (with the SOURCE's own
   block, relative to the SOURCE url) to render that source's `instructions` into the
-  imported questions' `sourcePreamble`. The Handlebars importer set is unchanged.
+  imported questions' `sourcePreamble`. It adds no Handlebars importer.
 - **Writing** (`docs/writing.md`) — `loadWriting` (`lib/writing-fetch.ts`) renders the
   `instructions` host text and stores the result back as `instructions`.
 - **Coding** (`docs/coding.md`) — `loadCoding` (`lib/coding-fetch.ts`) does the same for
@@ -315,4 +313,4 @@ YAML itself — and the 200 KB cap bounds an embedded file.
 
 Text-file content is **strictly less powerful** than a fragment: it is spliced
 **verbatim and never compiled**, so fetched material can never execute template logic —
-a literal `{{` in course material is inert. The change only narrows the surface.
+a literal `{{` in course material is inert. Text files only narrow the surface.

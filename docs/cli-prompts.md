@@ -37,11 +37,10 @@ Two guards keep it that way, both in `lib/prompt-dump.unit.test.ts`:
 
 - a **purity guard** — the dump seam and the pure modules it reaches for
   import nothing from `app/**`, the DB, or `lib/llm/model.ts`, and carry no
-  `"use server"` directive. Enforced twice over: a per-file grep of the documented
-  seam modules, plus a walk of the **entire transitive import closure** of
-  `lib/prompt-dump.ts` (every specifier form — relative paths, side-effect
-  imports, `export … from`, dynamic `import()`), so a server-only import N levels
-  deep fails too. This is load-bearing: `app/mastra/scch.ts` performs a
+  `"use server"` directive. Enforced by a walk of the **entire transitive import closure** of
+  every `cli/src/**` module (every specifier form — relative paths, side-effect
+  imports, `export … from`, dynamic `import()`), which must reach each documented
+  seam module, so a server-only import N levels deep fails too. This is load-bearing: `app/mastra/scch.ts` performs a
   **top-level `await` network call at import time** and is pulled in transitively
   through `lib/llm/model.ts`, so a single `app/` import would break the CLI. The
   walk runs on the shared `tests/import-graph.ts` (`walkClosure`), which the CLI

@@ -385,7 +385,7 @@ startup — see `docs/database.md`.
 The overall approach (layers, the `@live` boundary, the no-infra patterns) is in
 **`docs/testing.md`**. Writing-specifics:
 
-- **Unit** — the new pure seams: the `writing` validator stub, the
+- **Unit** — the pure seams: the strict `writing` validator (`lib/writing-validate.ts`), the
   `readAnonymousFlag` default-`false` branch, `parseWriting` + `toPublicWriting`
   (the server-only `instructions`/`model` are dropped), the descriptor / module
   dispatch (the runtime-route gate accepts `writing` and builds its context, and

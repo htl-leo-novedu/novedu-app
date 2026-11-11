@@ -33,7 +33,7 @@ of any activity schema, and the optional-provider probes in `lib/health.ts`.
 
 `model` is free text for all three; a wrong name fails at runtime. There is no live
 model discovery for Foundry or OpenRouter (SCCH's dropdown discovery in
-`app/mastra/scch.ts` is unchanged and SCCH-only). Foundry and OpenRouter are both
+`app/mastra/scch.ts` is SCCH-only). Foundry and OpenRouter are both
 **optional**: without `AZURE_FOUNDRY_ENDPOINT` / `OPENROUTER_API_KEY` the app boots
 and runs without that provider — everything provider-specific is built lazily on
 first use, and `foundryConfigured()` / `openrouterConfigured()` gate the
@@ -152,7 +152,7 @@ emit, so their thinking reaches the browser through the identical path (still
 teacher-only — the stripping happens downstream, `docs/chat.md`).
 
 **The version-line trap.** `@ai-sdk/openai-compatible` is **pinned exactly** in
-`package.json` (`2.0.72`). The `2.x` line is the one built on `@ai-sdk/provider`
+`package.json` (no caret range). The `2.x` line is the one built on `@ai-sdk/provider`
 v3 — the ai-sdk v6 generation this app runs. npm's `latest` dist-tag on that
 package is `3.x` (provider v4) and must NOT be installed here; a caret range
 alone is not protection enough for a dependency whose major line tracks a

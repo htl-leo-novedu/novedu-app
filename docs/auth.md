@@ -365,7 +365,8 @@ the context's session id.
 
 ## e2e session minting
 
-e2e tests bypass interactive login entirely: `e2e/auth.setup.ts` upserts the test
+e2e tests bypass interactive login entirely: `e2e/auth.setup.ts` (through `mintSession`,
+`e2e/principal.utils.ts`) upserts the test
 principals directly into `novedu_user` (name, email, `is_teacher`) through `e2e/db.ts`,
 inserts a `novedu_session` row for each (a random token, `expires_at` a day out), and
 mints the matching cookie value through `e2e/session-cookie.ts` — `${token}.${sig}`

@@ -106,7 +106,7 @@ Three `src/pages/` routes over one builder (`src/lib/llms.ts`), deliberately
 hand-rolled rather than plugin-driven: the corpus is plain Markdown with no MDX or
 components, so the agent-facing output is the corpus **verbatim** — no HTML→Markdown
 round trip, and no plugin whose `llms.txt` is only a list of bundle files.
-(`starlight-llms-txt` was evaluated and dropped for exactly that reason; the
+(`starlight-llms-txt` is not used for exactly that reason; the
 alternatives fare worse — `@wave-rf/starlight-llm-tools` peer-depends on
 `starlight-glossary`, which this site deliberately does not have.)
 
@@ -140,7 +140,7 @@ The **corpus contract is pinned by
 `teacher-docs/src/lib/corpus-contract.unit.test.ts`** over the real corpus:
 required frontmatter, resolvable `related:` slugs, no body H1. It is picked up
 by the root vitest `unit` project (`**/*.unit.test.ts`), so it runs in
-`npm test` and `qa` with no extra wiring (the file declares the `node` vitest
+`npm test` and `qa` with no extra wiring (in that project's `node`
 environment). `npm run docs:build` is the build-level check on top: schema
 validation, dead-slug build failure, Pagefind index, and the post-build
 `teacher-docs/scripts/verify-dist.mjs` output check (which also covers the llms.txt surface —
@@ -183,7 +183,7 @@ it — and is not served by the Next.js app at all. The moving parts:
   image it promotes (the image's `APP_GIT_SHA`), so docs.novedu.at describes the
   app that app.novedu.at runs, and a rollback rolls the guide back too. The build
   writes that commit to `/version.txt`, which the workflow polls after the upload.
-  A commit from before this hosting (no `staticwebapp.config.json`) leaves the
+  A commit without `teacher-docs/public/staticwebapp.config.json` leaves the
   guide as it is. Because the image version is the release unit,
   `docker-publish.yml` still builds an image for a guide-only change.
 - **`cookie@2`**: npm cannot hoist every workspace dep to the root — a package

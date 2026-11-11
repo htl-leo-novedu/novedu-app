@@ -9,8 +9,8 @@ storage (`app/mastra/index.ts`), the Drizzle setup (`lib/db/`), or any of the
 ## Auth rule (password OR Entra ID, chosen from the URL)
 
 The connection config is built in ONE place — **`buildPoolConfig()` in
-`lib/db/pool.ts`** — imported by every consumer (Drizzle, the Mastra store, the
-e2e helper); never re-implement the parse/override at a call site. It parses
+`lib/db/pool.ts`**, which `getPool()` uses — every consumer (Drizzle, the Mastra
+store, the e2e helper) takes its pool from `getPool()`; never re-implement the parse/override at a call site. It parses
 `DATABASE_URL` and chooses the auth mode **from the URL itself**:
 
 1. **Password auth** — the URL carries a password

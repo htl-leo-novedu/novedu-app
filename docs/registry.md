@@ -267,8 +267,7 @@ registry line → `codes sync` → reference it by key.
   `cli/src/commands/codes.unit.test.ts`: reuse + mint in one run (one GET, the
   POST bodies, the lock content), partial failure (continues, keeps the previous
   code, exit 1), `--dry-run`, `--json`, `--lock`, and every hard failure as JSON
-  on stderr. Registry and lock live in a `fs.mkdtemp` directory — the only CLI
-  unit tests that touch the filesystem; keep that pattern in that file.
+  on stderr. Registry and lock live in a `fs.mkdtemp` directory.
 - **Integration** — `cli/test/sync.integration.test.ts` runs the built binary
   against the fixtures server's fake `/api/codes`
   (`test-fixtures/serve.mjs`: GET lists, POST mints deterministic `synced0001…`

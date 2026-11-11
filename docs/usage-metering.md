@@ -115,8 +115,8 @@ SSE would miss tokens.
 
 On `span_ended` the pure `mapSpanToUsage`:
 
-- `MODEL_GENERATION`: reads `attributes.usage` — the `UsageStats` shape in
-  `@mastra/core@1.47.0`: `inputCached = inputDetails.cacheRead ?? 0`,
+- `MODEL_GENERATION`: reads `attributes.usage` — Mastra's `UsageStats` shape:
+  `inputCached = inputDetails.cacheRead ?? 0`,
   `inputNew = inputTokens − inputCached`, `output = outputTokens`. Uses
   `MODEL_GENERATION` **only** (never `MODEL_STEP`) to avoid double-counting. The
   same span's typed `attributes.model`/`attributes.provider` (stamped by Mastra

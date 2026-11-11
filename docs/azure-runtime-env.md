@@ -704,11 +704,10 @@ such default; there the group is a plain admin.
 ## Data in the dev stage
 
 `novedu_dev` and the dev image share hold a **copy of the prototype's data**
-— the single app that ran at `novedu.at` before these stages — taken when that
-app was stopped, so teachers and students can continue
-activities that started there (the prod stage started empty). It is real student and
+— the single app that ran at `novedu.at` before these stages — so teachers and students can continue
+activities that started there (the prod stage holds none of it). It is real student and
 teacher data: treat the dev stage like production when it comes to exporting or
-sharing what is in it. Everything created on dev since then lives beside it.
+sharing what is in it. Data created on dev lives beside it.
 
 The copy differs from the prototype's data in four deliberate ways:
 
