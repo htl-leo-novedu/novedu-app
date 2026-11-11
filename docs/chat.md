@@ -279,7 +279,8 @@ locally. CI already runs the reload round-trip `e2e/tutor-reload-roundtrip.spec.
 and `e2e/reasoning-visibility.spec.ts` against the fake LLM (`docs/testing.md`);
 the local real-LLM run adds what the fake cannot: a real thinking model's
 reasoning stream (the `@live-llm` twin of the reasoning-visibility teacher leg)
-and the provider smoke tests.
+and the provider smoke tests. The dark theme rests on CopilotKit's own `.dark`
+palette; `e2e/settings.spec.ts` checks the chat turns dark (docs/styling.md, "Theme").
 
 ### Previous conversations (per-user tutors only)
 

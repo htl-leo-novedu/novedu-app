@@ -276,7 +276,7 @@ function LaptopPane({
     <section
       aria-label="Board"
       data-testid="board-pane"
-      className="flex min-h-0 min-w-0 flex-[1.35] flex-col border-foreground/15 border-l bg-slate-100"
+      className="flex min-h-0 min-w-0 flex-[1.35] flex-col border-foreground/15 border-l bg-canvas"
     >
       <header className="flex shrink-0 items-center gap-3 px-4 py-2">
         <h2 className={PANE_HEADING}>Board</h2>
@@ -327,7 +327,7 @@ function BoardRail({ unseen, onOpen }: { unseen: boolean; onOpen: () => void }) 
       onClick={onOpen}
       aria-label={unseen ? "Show board (changed)" : "Show board"}
       data-testid="board-rail"
-      className="relative flex w-11 shrink-0 cursor-pointer flex-col items-center gap-3 border-foreground/15 border-l bg-slate-100 pt-3 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2"
+      className="relative flex w-11 shrink-0 cursor-pointer flex-col items-center gap-3 border-foreground/15 border-l bg-canvas pt-3 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2"
     >
       <span aria-hidden="true" className="font-semibold text-sm">
         ‹
@@ -387,7 +387,7 @@ function PhoneSheet({
         aria-label="Board"
         data-testid="board-sheet"
         data-state="peek"
-        className="flex h-[60px] shrink-0 items-center gap-3 border-foreground/15 border-b bg-slate-100 px-4"
+        className="flex h-[60px] shrink-0 items-center gap-3 border-foreground/15 border-b bg-canvas px-4"
       >
         <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded border border-foreground/15 bg-white">
           {current ? (
@@ -446,7 +446,7 @@ function PhoneSheet({
       aria-label="Board"
       data-testid="board-sheet"
       data-state={sheet.state}
-      className="flex shrink-0 basis-[46%] flex-col border-foreground/15 border-b bg-slate-100"
+      className="flex shrink-0 basis-[46%] flex-col border-foreground/15 border-b bg-canvas"
     >
       <header className="flex shrink-0 items-center gap-2 px-4 py-2">
         <h2 className={PANE_HEADING}>Board</h2>
@@ -599,7 +599,7 @@ function FullScreenBoard({
       aria-label="Board"
       data-testid={testId}
       data-state={dataState}
-      className="fixed inset-0 z-50 flex flex-col bg-slate-100"
+      className="fixed inset-0 z-50 flex flex-col bg-canvas"
     >
       <header className="flex shrink-0 items-center gap-2 px-4 py-2">
         {/* Close sits first: the top-right corner is where floating overlays

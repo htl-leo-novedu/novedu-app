@@ -15,7 +15,7 @@ export async function StatusBar() {
   const { studentMode, effectiveTeacher } = await getTeacherView();
 
   return (
-    <header className="flex shrink-0 items-center justify-between gap-4 bg-slate-900 px-5 py-2 text-white">
+    <header className="flex shrink-0 items-center justify-between gap-4 bg-slate-900 px-5 py-2 text-white dark:border-white/10 dark:border-b">
       <NavMenu isTeacher={effectiveTeacher} />
       <UserMenu
         user={session?.user ? { ...session.user, isTeacher: effectiveTeacher } : null}

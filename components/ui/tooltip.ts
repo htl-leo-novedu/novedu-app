@@ -3,4 +3,4 @@
 // calendar day tooltip and the teacher board's column explanation; callers add
 // their own positioning via cn().
 export const TOOLTIP_SURFACE =
-  "rounded-lg bg-slate-900 px-2.5 py-2 text-white text-xs leading-snug shadow-lg";
+  "rounded-lg bg-slate-900 px-2.5 py-2 text-white text-xs leading-snug shadow-lg dark:bg-slate-700";

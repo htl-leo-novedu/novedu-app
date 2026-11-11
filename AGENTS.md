@@ -148,9 +148,10 @@ Read before touching: `app/images/**`, `app/api/images/**`, `app/api/image-conte
 
 ### Styling → `docs/styling.md`
 
-Read before touching: `app/globals.css`, `components/ui/**`, `lib/utils.ts`, `lib/keyboard-shortcuts.ts`, `app/layout.tsx`, `components/app-chrome.tsx`, any keyboard shortcut, or any non-trivial `className` work.
+Read before touching: `app/globals.css`, `components/ui/**`, `lib/utils.ts`, `lib/keyboard-shortcuts.ts`, `lib/theme*.ts`, `app/layout.tsx`, `components/app-chrome.tsx`, any keyboard shortcut, any colour, or any non-trivial `className` work.
 
-- Tailwind v4, CSS-first: all config in `app/globals.css`; light-only. App CSS stays inside the declared layers — an unlayered rule silently breaks CopilotKit's utilities.
+- Tailwind v4, CSS-first: all config in `app/globals.css`. App CSS stays inside the declared layers — an unlayered rule silently breaks CopilotKit's utilities.
+- Light and dark theme per device (cookie `novedu-theme`, the Settings page's Appearance section): the pre-paint script in `lib/theme.ts` owns `<html class="dark">` — never set it from React. Colours are tokens first; a stock palette class gets a `dark:` partner.
 - A recipe used in ≥2 places becomes a cva primitive in `components/ui/`, consumed via `cn()`; no `@apply`.
 - The status bar is rendered by the root layout through `AppChrome`, which drops it on the bare routes `/sign-in` and `/device`.
 - Keyboard shortcuts (Ctrl/⌘+Enter submits a multi-line field, Ctrl/⌘+S saves an editor page) go only through `lib/keyboard-shortcuts.ts` — never a hand-rolled key handler.

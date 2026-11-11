@@ -41,7 +41,7 @@ export function ImageLightbox({
       ) : (
         // biome-ignore lint/performance/noImgElement: hosted images are arbitrary external blobs (incl. SVG), not bundled assets — next/image's optimizer/loader doesn't apply.
         <img
-          className="block min-h-0 max-w-full object-contain"
+          className="block min-h-0 max-w-full object-contain dark:bg-white"
           src={image.url}
           alt={alt}
           onError={() => setFailed(true)}

@@ -210,7 +210,7 @@ Colors follow docs/styling.md — the dataviz-validated hues live **only** as
 `--chart-*` tokens in `app/globals.css` (shadcn's `--chart-1..N` convention, so
 shadcn's chart components drop in later); components carry **no bare hex**. Because an
 SVG `fill` attribute does not resolve a CSS custom property,
-`components/charts/chart-colors.ts` reads the tokens with `getComputedStyle` and hands
+`components/charts/chart-colors.ts` (`useChartColors`) reads the tokens with `getComputedStyle` and hands
 Recharts concrete strings; chart **chrome** (grid/axis/legend/tooltip) uses
 `currentColor` + opacity or token-based HTML styles off the `foreground` ramp.
 
@@ -222,8 +222,9 @@ tooltip/legend styles, `legendText`), `chart-frame.tsx` (`ChartFrame` — the si
 passed) and `format.ts` (fixed en-US `formatCount` / `formatCompact`). The section
 cards and their notices are `components/dashboard-ui.tsx`. Each chart stays a plain
 Recharts component composed from these — there is no generic chart abstraction. The bar chart's companion table and the pies'
-legends are the dataviz **"relief"** that keeps the two sub-3:1 hues legible. The app
-is **light-only**. The code pie is top-9 + "Other"; only the first 8 hues are
+legends are the dataviz **"relief"** that keeps the two sub-3:1 hues legible. Dark mode
+has its own `--chart-*` steps (`:root.dark`), validated against the dark card;
+`useChartColors()` re-reads the tokens when the theme changes. The code pie is top-9 + "Other"; only the first 8 hues are
 CVD-validated and a 10-slice pie is at the readability limit, so `N` is a single
 constant (`foldTopN`) if a ranked bar or top-8 is later preferred. The model and
 provider pies both use the pie's rank-colored `variant="model"`: neither models

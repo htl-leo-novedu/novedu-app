@@ -7,7 +7,7 @@ import {
   TOOLTIP_CONTENT_STYLE,
   TOOLTIP_LABEL_STYLE,
 } from "@/components/charts/chart-chrome";
-import { resolveChartColors } from "@/components/charts/chart-colors";
+import { useChartColors } from "@/components/charts/chart-colors";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { formatCount } from "@/components/charts/format";
 import { CODE_MODULES } from "@/lib/code-modules/types";
@@ -35,7 +35,7 @@ export function TokensPieChart({
   // Read the CSS tokens on every render (cheap): an empty read during SSR is
   // harmless (Recharts paints nothing measurable server-side) and a later client
   // render self-corrects — unlike a `useMemo([])` that would freeze an empty read.
-  const colors = resolveChartColors();
+  const colors = useChartColors();
 
   const colorFor = (slice: Slice, index: number): string => {
     if (slice.key === OTHER_KEY) return colors.other;

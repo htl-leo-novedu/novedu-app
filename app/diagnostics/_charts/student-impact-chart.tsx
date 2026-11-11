@@ -11,7 +11,7 @@ import {
   X_AXIS_PROPS,
   Y_AXIS_PROPS,
 } from "@/components/charts/chart-chrome";
-import { resolveChartColors } from "@/components/charts/chart-colors";
+import { useChartColors } from "@/components/charts/chart-colors";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { formatCount } from "@/components/charts/format";
 import { formatDurationMs } from "@/lib/diagnostics-report";
@@ -25,7 +25,7 @@ const FAILED = "Failed chat turns";
 const P95 = "Chat turn p95";
 
 export function StudentImpactChart({ bins, spanMs }: { bins: ImpactBin[]; spanMs: number }) {
-  const colors = resolveChartColors();
+  const colors = useChartColors();
   return (
     <ChartFrame className="h-64">
       <ComposedChart data={bins} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>

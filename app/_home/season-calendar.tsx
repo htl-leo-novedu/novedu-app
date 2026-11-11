@@ -296,7 +296,7 @@ export function SeasonCalendar({
                       {/* The count bubble sits on a 16px disc corner, so its numeral
                           is below the type scale's smallest step. */}
                       {cell.pins.length > 1 ? (
-                        <span className="absolute -top-2 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-foreground px-1 font-bold text-[0.625rem] text-white ring-2 ring-card">
+                        <span className="absolute -top-2 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-foreground px-1 font-bold text-[0.625rem] text-background ring-2 ring-card">
                           {cell.pins.length}
                         </span>
                       ) : null}

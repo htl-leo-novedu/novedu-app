@@ -216,7 +216,7 @@ Novedu is a working tool that a school uses mid-lesson. Its surfaces are near-bl
 
 The student start page (`/`) is the one surface where the workbench is allowed to glow. It keeps the same shell, cards and type, and adds the brand blue, a family colour per badge ladder, and amber for "new since your last visit". The page's spine is a 26-week activity calendar with earned badges pinned to the day they were reached. Rewards are pinned, never popped: no overlay, no confetti, no motion beyond a small hover lift on the pins.
 
-Density is moderate to high: 14px body text, 36px controls, 16px between page sections. The system is light-only by design and never follows the OS colour scheme.
+Density is moderate to high: 14px body text, 36px controls, 16px between page sections. The system has a light and a dark theme; each device picks Light, Dark or "Same as device" on the Settings page (docs/styling.md, "Theme"). This file describes the light theme; the dark one is the same system on near-black paper.
 
 **Key Characteristics:**
 - Ink-on-white cards on a slate-100 canvas, under a slate-900 status bar.
@@ -240,7 +240,7 @@ A neutral ink-and-paper base carries the whole app; saturated colour enters only
 
 ### Tertiary
 - **Calendar heat ramp** (`heat-0` to `heat-3`): day intensity for 0, 1, 2 to 3, and 4 or more active hours, stepping from cool slate to Novedu Deep Blue. `heat-0` doubles as the empty track of every meter and the inactive streak square.
-- **Chart palette** (`chart-1` to `chart-9`, `chart-other`): the categorical series colours for the teacher dashboards, validated for colour-vision deficiency on the light surface. Slots 1 to 8 are the validated order; slot 9 is only the ninth pie slice; `chart-other` is the muted "Other" grey. Charts read these tokens, never a bare hex.
+- **Chart palette** (`chart-1` to `chart-9`, `chart-other`): the categorical series colours for the teacher dashboards, validated for colour-vision deficiency on the light surface, with their own dark steps validated on the dark card. Slots 1 to 8 are the validated order; slot 9 is only the ninth pie slice; `chart-other` is the muted "Other" grey. Charts read these tokens, never a bare hex.
 
 The shipped start page draws its calendar ramp from the brand blue and its streak green from `fam-rhythm`, not from the chart palette; the two sets are deliberately separate.
 
@@ -396,7 +396,7 @@ Feather-style inline SVGs: 24px viewBox, 2px round-capped stroke in `currentColo
 - **Do** promote any look used in two places into `components/ui/` or the owning shared recipe (`app/_home/home-ui.ts` for the start page), as docs/styling.md requires.
 
 ### Don't:
-- **Don't** add dark-mode variants or follow the OS colour scheme; the theme is light-only.
+- **Don't** set the `dark` class from React or add a colour that has no dark value: every token has one in `:root.dark`, and a stock palette class carries a `dark:` partner.
 - **Don't** put a bare hex in a component, use `@apply`, or write app CSS outside the declared layers.
 - **Don't** give a resting card a shadow; shadows belong only to menus, tooltips and calendar pins.
 - **Don't** use amber for warnings, emphasis or selection; warnings use `warning`, selection uses ink.

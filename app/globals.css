@@ -20,8 +20,14 @@
 @source "../components";
 @source "../lib";
 
-/* Hard-coded light theme — intentionally independent of the system color scheme.
-   Plain values live on :root; `@theme inline` below maps them onto Tailwind
+/* Dark mode is class-based: the `dark` class on <html> (set by the pre-paint
+   script, lib/theme.ts) switches the `:root.dark` token block below, the
+   `dark:` variant, and CopilotKit's own `.dark [data-copilotkit]` palette and
+   `cpk:dark:` utilities together (docs/styling.md, "Theme"). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The light theme. Plain values live on :root (`:root.dark` below overrides
+   them for dark mode); `@theme inline` maps them onto Tailwind
    tokens. Names follow shadcn/ui so its components can drop in later unchanged.
    Derived tints (borders, muted text, hovers) are expressed at the point of use
    with opacity modifiers on `foreground` (e.g. `border-foreground/25`) — see
@@ -48,14 +54,17 @@
   --input: oklch(0.87 0 0);
   --ring: oklch(0.708 0 0);
   --radius: 0.5rem;
+  /* The page canvas behind content cards (PAGE_CANVAS, components/page-main.tsx):
+     slate-100. */
+  --canvas: oklch(0.968 0.007 247.896);
 
   /* Data-viz categorical palette (dataviz skill, validated with
      scripts/validate_palette.js for the light surface — worst adjacent CVD ΔE
      24.2, well clear of the ≥12 target). Slots 1–8 are the validated hue order;
      slot 9 is an extended step used only as the code pie's 9th slice, and
      `--chart-other` is the muted "Other" gray. shadcn's chart components read
-     `--chart-*`, so these drop in unchanged when shadcn lands. Light-only, like
-     the rest of the theme; charts read these tokens (never a bare hex in a
+     `--chart-*`, so these drop in unchanged when shadcn lands. Dark mode has its
+     own steps (`:root.dark`); charts read these tokens (never a bare hex in a
      component — see docs/styling.md). */
   --chart-1: #2a78d6;
   --chart-2: #1baf7a;
@@ -102,7 +111,65 @@
   --fam-authoring: #9c36b5;
 }
 
+/* Dark mode. The neutral tokens are shadcn's neutral dark palette — the same
+   values CopilotKit's `.dark [data-copilotkit]` block uses, so the chat and the
+   app match. Status colours are the light 400 steps: they read as text on the
+   dark surfaces, and a status fill carries `text-background`, not white. */
+:root.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: #f87171;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --canvas: oklch(0.18 0 0);
+
+  /* Validated with the dataviz skill's scripts/validate_palette.js against the
+     dark card (#171717), slots 1–8: all checks pass — worst adjacent CVD ΔE 8.4,
+     normal-vision ΔE 19.5, all ≥ 3:1. Slot 9 (the code pie's 9th slice only) is
+     the light palette's brown stepped for the dark surface. */
+  --chart-1: #3987e5;
+  --chart-2: #199e70;
+  --chart-3: #c98500;
+  --chart-4: #4c701a;
+  --chart-5: #9085e9;
+  --chart-6: #cc1a0a;
+  --chart-7: #d243ad;
+  --chart-8: #d95926;
+  --chart-9: #9e511e;
+
+  /* Start page: the brand blue lifted to read as a link and a meter fill on
+     the dark card; the amber notice tints and the calendar ramp inverted
+     (darkest = no activity); the secret disc lifted off the near-black card. */
+  --brand-deep: #6aa6e8;
+  --amber-wash: #3a2a0c;
+  --amber-line: #6b4a12;
+  --amber-halo: #4d3810;
+  --amber-ink: #fbd38d;
+  --heat-0: #1e293b;
+  --heat-1: #1e3a5f;
+  --heat-2: #2f6aa8;
+  --heat-3: #74a8d6;
+  --fam-coding: #6250d6;
+  --fam-secret: #334155;
+}
+
 @theme inline {
+  --color-canvas: var(--canvas);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --color-background: var(--background);
@@ -167,9 +234,12 @@
 @layer base {
   html {
     height: 100%;
-    /* Force the light color scheme so form controls (e.g. the model <select>) and
-       scrollbars don't render in the OS dark palette. */
+    /* Native form controls (e.g. the model <select>, checkboxes) and scrollbars
+       follow the app's theme, never the OS scheme on its own. */
     color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
 
   html,

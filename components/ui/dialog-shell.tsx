@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 // its entire content — the shell resets it so a dialog reads the same from
 // every mount point.
 const dialogShellVariants = cva(
-  "m-auto w-[min(48rem,92vw)] flex-col overflow-hidden whitespace-normal rounded-xl border border-foreground/15 bg-background p-0 text-foreground backdrop:bg-foreground/45 open:flex",
+  "m-auto w-[min(48rem,92vw)] flex-col overflow-hidden whitespace-normal rounded-xl border border-foreground/15 bg-background p-0 text-foreground backdrop:bg-foreground/45 open:flex dark:backdrop:bg-black/60",
   {
     variants: {
       size: {

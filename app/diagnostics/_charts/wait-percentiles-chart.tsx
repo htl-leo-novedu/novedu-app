@@ -10,7 +10,7 @@ import {
   X_AXIS_PROPS,
   Y_AXIS_PROPS,
 } from "@/components/charts/chart-chrome";
-import { resolveChartColors } from "@/components/charts/chart-colors";
+import { useChartColors } from "@/components/charts/chart-colors";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { formatDurationMs } from "@/lib/diagnostics-report";
 import type { ProviderSeries } from "@/lib/diagnostics-shape";
@@ -32,7 +32,7 @@ export function WaitPercentilesChart({
   series: ProviderSeries[];
   spanMs: number;
 }) {
-  const colors = resolveChartColors();
+  const colors = useChartColors();
   const rows: Row[] = (series[0]?.bins ?? []).map((bin, i) => {
     const row: Row = { t: bin.t };
     series.forEach((s, j) => {

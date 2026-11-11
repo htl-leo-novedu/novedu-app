@@ -11,7 +11,7 @@ import {
   X_AXIS_PROPS,
   Y_AXIS_PROPS,
 } from "@/components/charts/chart-chrome";
-import { resolveChartColors } from "@/components/charts/chart-colors";
+import { useChartColors } from "@/components/charts/chart-colors";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { formatCompact, formatCount } from "@/components/charts/format";
 import { type LlmBin, OUTCOME_LABELS, OUTCOMES, type Outcome } from "@/lib/diagnostics-shape";
@@ -32,7 +32,7 @@ const SLOT: Record<Outcome, number | "other"> = {
 };
 
 export function CallsByOutcomeChart({ bins, spanMs }: { bins: LlmBin[]; spanMs: number }) {
-  const colors = resolveChartColors();
+  const colors = useChartColors();
   return (
     <ChartFrame className="h-56">
       <BarChart data={bins} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

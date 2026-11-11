@@ -4,6 +4,8 @@ import { AppChrome } from "@/components/app-chrome";
 import { EnvironmentRibbon } from "@/components/environment-ribbon";
 import { StatusBar } from "@/components/status-bar";
 import { BRAND } from "@/lib/brand";
+import { THEME_SCRIPT } from "@/lib/theme";
+import { getTheme } from "@/lib/theme-server";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -35,8 +37,25 @@ export default async function RootLayout({
     ribbon = <DemoRibbon />;
   }
 
+  // The device's colour theme (lib/theme.ts): rendered as `data-theme`; the
+  // inline script turns it into the `dark` class before the first paint. The
+  // script changes `<html>`'s class before hydration, hence the warning opt-out
+  // (it covers this element's attributes only).
+  const theme = await getTheme();
+
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      data-theme={theme}
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: a static constant with no interpolated value (lib/theme.ts)
+          dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
+        />
+      </head>
       <body>
         <AppChrome>
           <StatusBar />
