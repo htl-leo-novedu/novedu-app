@@ -19,7 +19,7 @@ export function Main({ className, ...props }: ComponentProps<"main">) {
 // width, 100vw = the window) and its vertical py-3, so the gray reaches the
 // status bar and the window edges. Shared by PageBody (scrolling pages) and
 // the writing surface (viewport-bounded, no scroll).
-export const PAGE_CANVAS = "mx-[calc((100%-100vw)/2)] -my-3 min-h-0 flex-1 bg-slate-100";
+export const PAGE_CANVAS = "mx-[calc((100%-100vw)/2)] -my-3 min-h-0 flex-1 bg-canvas";
 
 // The page's scrollable content region below its header row: the app-wide
 // gutter (px-5) and scroll rhythm live here ONCE — list pages (via DataList),

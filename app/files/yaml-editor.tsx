@@ -5,6 +5,7 @@ import { yaml } from "@codemirror/lang-yaml";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { type ChangeEvent, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { useIsDark } from "@/lib/use-is-dark";
 import { cn } from "@/lib/utils";
 
 // CodeMirror 6 editor (via @uiw/react-codemirror), shared by the `/files` create
@@ -24,6 +25,12 @@ import { cn } from "@/lib/utils";
 // default no-wrap so its indentation structure stays aligned.
 const YAML_EXTENSIONS = [yaml()];
 const MARKDOWN_EXTENSIONS = [markdown(), EditorView.lineWrapping];
+// In dark mode CodeMirror's built-in dark theme brings its own bluish surface;
+// this lets the wrapper's `bg-background` show instead, as in light mode.
+const DARK_SURFACE = EditorView.theme({
+  "&": { backgroundColor: "transparent" },
+  ".cm-gutters": { backgroundColor: "transparent" },
+});
 
 export function YamlEditor({
   value,
@@ -47,11 +54,12 @@ export function YamlEditor({
    * and then GROWS with its content (the page scrolls, not the editor). */
   fill?: boolean;
 }) {
+  const dark = useIsDark();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const extensions = useMemo(
-    () => (language === "markdown" ? MARKDOWN_EXTENSIONS : YAML_EXTENSIONS),
-    [language],
-  );
+  const extensions = useMemo(() => {
+    const base = language === "markdown" ? MARKDOWN_EXTENSIONS : YAML_EXTENSIONS;
+    return dark ? [...base, DARK_SURFACE] : base;
+  }, [language, dark]);
 
   async function onUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -103,6 +111,7 @@ export function YamlEditor({
           extensions={extensions}
           editable={!disabled}
           onChange={onChange}
+          theme={dark ? "dark" : "light"}
         />
       </div>
     </div>

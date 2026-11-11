@@ -107,7 +107,10 @@ export function NotConfiguredCard() {
 export function TelemetryModeBanner({ mode }: { mode: TelemetryMode }) {
   return (
     <p
-      className={cn(BANNER, "border-amber-200 bg-amber-50 text-amber-900")}
+      className={cn(
+        BANNER,
+        "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200",
+      )}
       data-testid="diagnostics-telemetry-banner"
     >
       This server does not send its telemetry to Application Insights right now (mode:{" "}

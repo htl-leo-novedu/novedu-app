@@ -62,7 +62,7 @@ export type ActionMenuItem =
 const PANEL =
   "m-0 whitespace-normal rounded-lg border border-foreground/15 bg-background p-1 text-left font-normal text-foreground text-sm normal-case tracking-normal shadow-lg " +
   // Phone: a bottom sheet over a dimmed page.
-  "max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:w-full max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-2xl max-md:p-2 max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-md:backdrop:bg-foreground/45 " +
+  "max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:w-full max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-2xl max-md:p-2 max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))] max-md:backdrop:bg-foreground/45 max-md:dark:backdrop:bg-black/60 " +
   // md+: dropped from the trigger (positions set in `place`).
   "md:inset-auto md:top-[var(--menu-top)] md:left-[var(--menu-left)] md:min-w-48 md:max-w-80";
 

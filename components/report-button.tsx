@@ -56,7 +56,7 @@ function reactionToggleClass(reaction: ReportReaction, selected: boolean): strin
     return cn(
       base,
       selected
-        ? "border-destructive bg-destructive text-white"
+        ? "border-destructive bg-destructive text-background"
         : "border-destructive/45 text-destructive not-disabled:hover:bg-destructive/10",
     );
   }

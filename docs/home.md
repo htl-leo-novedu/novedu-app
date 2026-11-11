@@ -389,10 +389,15 @@ the Finish page store the attempt's **counts** — never an answer — in
 ## Settings page
 
 `/settings`, reached from the user menu by every signed-in user in either role. A
-list of sections, each backed by a column of `novedu_user_settings` (a table of
-its own: `novedu_user` belongs to better-auth; a missing row means every default).
-The page and its actions act only on the session user's own row — no teacher gate,
-no bearer route.
+list of sections. Per-user preferences are columns of `novedu_user_settings` (a
+table of its own: `novedu_user` belongs to better-auth; a missing row means every
+default); the page and its actions act only on the session user's own row — no
+teacher gate, no bearer route.
+
+- **Appearance**: Light, Dark or "Same as device" (the default). A preference of
+  the **device**, not the account: the cookie `novedu-theme`, written by
+  `setThemeAction` — no database, no user id (docs/styling.md, "Theme"). It
+  applies at once.
 
 - **Quiz results**: the switch "Save my quiz results for my personal statistics"
   (`save_quiz_results`, the Finish page's "Always") with the same privacy notice,

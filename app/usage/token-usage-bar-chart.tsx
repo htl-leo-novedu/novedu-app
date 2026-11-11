@@ -11,7 +11,7 @@ import {
   X_AXIS_PROPS,
   Y_AXIS_PROPS,
 } from "@/components/charts/chart-chrome";
-import { resolveChartColors } from "@/components/charts/chart-colors";
+import { useChartColors } from "@/components/charts/chart-colors";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { formatCompact, formatCount } from "@/components/charts/format";
 import type { TokenBucket } from "@/lib/usage-range";
@@ -34,7 +34,7 @@ const SERIES = [
 export function TokenUsageBarChart({ data }: { data: TokenBucket[] }) {
   // Read the CSS tokens on every render (cheap) rather than freezing the first read
   // in a `useMemo([])` — a client render self-corrects an empty SSR read.
-  const colors = resolveChartColors();
+  const colors = useChartColors();
   return (
     <ChartFrame>
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

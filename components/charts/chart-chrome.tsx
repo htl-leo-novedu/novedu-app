@@ -3,7 +3,7 @@
 // `currentColor` + opacity off the foreground ramp (the chart frame sets
 // `text-foreground`); Recharts renders the tooltip and legend as HTML, so CSS
 // custom properties and color-mix() DO resolve there — token-based, no bare hex
-// (docs/styling.md). Series colors are `resolveChartColors()` (chart-colors.ts).
+// (docs/styling.md). Series colors are `useChartColors()` (chart-colors.ts).
 // Plain props objects, spread onto the Recharts elements:
 //
 //   <CartesianGrid {...GRID_PROPS} />

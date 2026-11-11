@@ -14,12 +14,12 @@ export const badgeVariants = cva(
     variants: {
       tone: {
         neutral: "bg-foreground/10 text-foreground/80",
-        red: "bg-red-600/15 text-red-800",
-        blue: "bg-blue-600/15 text-blue-800",
-        green: "bg-emerald-600/15 text-emerald-800",
-        orange: "bg-orange-500/20 text-orange-800",
-        purple: "bg-purple-500/20 text-purple-800",
-        teal: "bg-teal-600/15 text-teal-800",
+        red: "bg-red-600/15 text-red-800 dark:text-red-300",
+        blue: "bg-blue-600/15 text-blue-800 dark:text-blue-300",
+        green: "bg-emerald-600/15 text-emerald-800 dark:text-emerald-300",
+        orange: "bg-orange-500/20 text-orange-800 dark:text-orange-300",
+        purple: "bg-purple-500/20 text-purple-800 dark:text-purple-300",
+        teal: "bg-teal-600/15 text-teal-800 dark:text-teal-300",
       },
       solid: {
         true: "text-white",

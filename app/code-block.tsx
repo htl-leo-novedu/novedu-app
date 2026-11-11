@@ -2,8 +2,9 @@
 
 import type { ComponentProps } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useCopyToClipboard } from "@/components/use-copy-to-clipboard";
+import { useIsDark } from "@/lib/use-is-dark";
 import { cn } from "@/lib/utils";
 
 // Renders a fenced code block: a header (language label + copy button) above a
@@ -11,9 +12,8 @@ import { cn } from "@/lib/utils";
 // multi-line snippets. Inline code (no language fence) falls through to a plain
 // <code>.
 //
-// The theme is hard-coded to the light Prism theme (oneLight) and the surrounding
-// chrome uses fixed light colors — it intentionally does NOT follow the system
-// color scheme.
+// The Prism theme follows the app's colour theme (oneLight / oneDark, via
+// `useIsDark`); the surrounding chrome pairs fixed grays with `dark:` partners.
 export function CodeBlock({
   className,
   children,
@@ -21,6 +21,7 @@ export function CodeBlock({
   node: _node,
   ...rest
 }: ComponentProps<"code"> & { node?: unknown }) {
+  const dark = useIsDark();
   const match = /language-(\w+)/.exec(className ?? "");
   const text = String(children).replace(/\n$/, "");
 
@@ -38,18 +39,17 @@ export function CodeBlock({
 
   return (
     // `not-prose` exempts the block from the surrounding markdown `prose` styles —
-    // Prism + this chrome own everything inside. The fixed grays pair with the
-    // hard-coded oneLight syntax theme (light-only by design).
-    <div className="not-prose my-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-      <div className="flex items-center justify-between border-gray-200 border-b bg-gray-100 py-1.5 pr-2 pl-3">
-        <span className="font-mono font-semibold text-gray-600 text-xs tracking-wide">
+    // Prism + this chrome own everything inside.
+    <div className="not-prose my-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-foreground/15 dark:bg-foreground/[0.03]">
+      <div className="flex items-center justify-between border-gray-200 border-b bg-gray-100 py-1.5 pr-2 pl-3 dark:border-foreground/15 dark:bg-foreground/5">
+        <span className="font-mono font-semibold text-gray-600 text-xs tracking-wide dark:text-foreground/60">
           {language}
         </span>
         <CopyButton text={text} />
       </div>
       <SyntaxHighlighter
         language={language}
-        style={oneLight}
+        style={dark ? oneDark : oneLight}
         showLineNumbers={multiline}
         wrapLongLines
         PreTag="div"
@@ -60,7 +60,7 @@ export function CodeBlock({
           padding: "0.75rem",
           fontSize: "0.85rem",
         }}
-        lineNumberStyle={{ color: "#afb8c1", minWidth: "2.2em" }}
+        lineNumberStyle={{ color: dark ? "#5c6370" : "#afb8c1", minWidth: "2.2em" }}
       >
         {text}
       </SyntaxHighlighter>
@@ -76,7 +76,7 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-0.5 font-semibold text-gray-600 text-xs transition-colors hover:bg-gray-100 hover:text-gray-900",
+        "inline-flex cursor-pointer items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-0.5 font-semibold text-gray-600 text-xs transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-foreground/25 dark:bg-background dark:text-foreground/60 dark:hover:bg-foreground/5 dark:hover:text-foreground",
         copied && "border-success text-success",
       )}
       onClick={() => copy(text)}

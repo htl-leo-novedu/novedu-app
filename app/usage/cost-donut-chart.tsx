@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart } from "recharts";
-import { resolveChartColors } from "@/components/charts/chart-colors";
+import { useChartColors } from "@/components/charts/chart-colors";
 import { ChartFrame } from "@/components/charts/chart-frame";
 import { formatPercent, formatUsd } from "@/components/charts/format";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ export interface CostSplit {
 export function CostDonutChart({ cost, rangeLabel }: { cost: CostSplit; rangeLabel: string }) {
   // Read the CSS tokens on every render, like the other charts: an empty SSR read
   // self-corrects on the client.
-  const colors = resolveChartColors();
+  const colors = useChartColors();
   const share = (value: number) => (cost.total > 0 ? value / cost.total : 0);
   const slices = CATEGORIES.map((c) => ({ ...c, value: cost[c.key] }));
 

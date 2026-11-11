@@ -35,7 +35,7 @@ export function ContentImage({ image }: { image: ResolvedImage }) {
         >
           {/* biome-ignore lint/performance/noImgElement: hosted images are arbitrary external blobs (incl. SVG), not bundled assets — next/image's optimizer/loader doesn't apply. */}
           <img
-            className="block max-h-88 max-w-full rounded-lg border border-foreground/15 object-contain"
+            className="block max-h-88 max-w-full rounded-lg border border-foreground/15 object-contain dark:bg-white"
             src={image.url}
             alt={alt}
             onError={() => setFailed(true)}

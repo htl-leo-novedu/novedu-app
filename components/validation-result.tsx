@@ -44,7 +44,7 @@ export function ErrorList({ errors }: { errors: ValidationError[] }) {
           return (
             <li
               key={`${err.code}-${err.fragmentId ?? ""}-${err.questionId ?? ""}-${err.variable ?? ""}-${err.message}`}
-              className={`${ITEM} border border-red-200 bg-red-50`}
+              className={`${ITEM} border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/50`}
             >
               <span className={CODE_CHIP}>{err.code}</span>
               <span className="flex-1">{err.message}</span>
@@ -104,7 +104,7 @@ export function WarningList({ warnings }: { warnings: ValidationWarning[] }) {
           return (
             <li
               key={`${warn.code}-${warn.fragmentId ?? ""}-${warn.variable ?? ""}-${warn.message}`}
-              className={`${ITEM} border border-amber-200 bg-amber-50`}
+              className={`${ITEM} border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50`}
             >
               <span className={CODE_CHIP}>{warn.code}</span>
               <span className="flex-1">{warn.message}</span>

@@ -64,7 +64,7 @@ export function UserMenu({
           </span>
           <button
             type="submit"
-            className="cursor-pointer rounded-full border border-amber-200 bg-background px-2.5 py-0.5 font-semibold text-amber-800 text-xs hover:bg-amber-100"
+            className="cursor-pointer rounded-full border border-amber-200 bg-white px-2.5 py-0.5 font-semibold text-amber-800 text-xs hover:bg-amber-100"
           >
             Exit
           </button>

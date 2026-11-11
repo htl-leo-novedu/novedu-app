@@ -96,7 +96,7 @@ export function AttentionBar({ counters }: { counters: AttentionCounter[] }) {
             return (
               <span
                 key={c.id}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-emerald-600/15 pr-3.5 pl-2.5 font-semibold text-emerald-800 text-sm max-sm:w-full"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-emerald-600/15 pr-3.5 pl-2.5 font-semibold text-emerald-800 text-sm max-sm:w-full dark:text-emerald-300"
               >
                 <CheckIcon className="size-4 text-success" />
                 {copy.clear}
