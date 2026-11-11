@@ -36,7 +36,8 @@ function usageStatement(userId: string): SQL {
            sum(u.writing_saves) AS "writingSaves",
            sum(u.coding_requests) AS "codingRequests",
            count(DISTINCT extract(hour FROM u.hour AT TIME ZONE ${HOME_TIME_ZONE}))
-             FILTER (WHERE u.coding_requests > 0) AS "codingHours"
+             FILTER (WHERE u.coding_requests > 0) AS "codingHours",
+           sum(u.board_drawings) AS "boardDrawings"
     FROM novedu_usage_by_user u
     WHERE u.user_id = ${userId}
     GROUP BY 1
@@ -62,6 +63,7 @@ export async function loadStudentUsage(userId: string): Promise<UsageDay[] | und
       writingSaves: number | string;
       codingRequests: number | string;
       codingHours: number | string;
+      boardDrawings: number | string;
     }>(usageStatement(userId));
     return res.rows.map((row) => ({
       date: row.day,
@@ -71,6 +73,7 @@ export async function loadStudentUsage(userId: string): Promise<UsageDay[] | und
       writingSaves: Number(row.writingSaves),
       codingRequests: Number(row.codingRequests),
       codingHours: Number(row.codingHours),
+      boardDrawings: Number(row.boardDrawings),
     }));
   } catch (error) {
     reportStoreFailure(STORE, "load usage", error);

@@ -12,6 +12,7 @@ import {
   KeyIcon,
   LayersIcon,
   MoonIcon,
+  PresentationIcon,
   RotateCcwIcon,
   SendIcon,
   ShareIcon,
@@ -49,6 +50,7 @@ const ICONS: Record<BadgeIcon, ComponentType<SVGProps<SVGSVGElement>>> = {
   activity: ActivityIcon,
   moon: MoonIcon,
   inbox: InboxIcon,
+  board: PresentationIcon,
 };
 
 /** Family → its colour as a background utility (tokens in app/globals.css). */

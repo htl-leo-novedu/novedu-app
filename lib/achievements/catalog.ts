@@ -87,7 +87,8 @@ export type BadgeIcon =
   | "users"
   | "activity"
   | "moon"
-  | "inbox";
+  | "inbox"
+  | "board";
 
 export type Outcome =
   | { earned: true; qualifiedOn: LocalDate }
@@ -450,6 +451,17 @@ export const STUDENT_CATALOG: readonly StudentAchievement[] = [
     xp: 50,
     needs: ["reports"],
     evaluate: (facts) => milestone(need(facts.reports, "reports"), 1),
+  },
+  {
+    ...secret,
+    id: "first-drawing",
+    order: 3,
+    icon: "board",
+    name: "On the Board",
+    criterion: "A tutor drew on the board for you",
+    xp: 50,
+    needs: ["usage"],
+    evaluate: (facts) => bestDay(need(facts.usage, "usage"), (d) => d.boardDrawings, 1),
   },
 ];
 

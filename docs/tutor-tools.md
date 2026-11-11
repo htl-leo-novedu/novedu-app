@@ -64,6 +64,10 @@ the run's Mastra context:
 A run without a thread (the eval tutor, `docs/cli-eval.md`) uses only its own
 calls. Nothing new is stored: the state IS the replay of stored tool calls.
 
+The binding also meters: after a successful `board` call of a conversation it
+counts one board drawing (`meterBoardDrawing`, `docs/usage-metering.md`),
+fire-and-forget, so a lost count never changes the tool's result.
+
 ## Invariants
 
 - **The name enum is the validation seam.** An unknown tool name is a
@@ -110,7 +114,7 @@ picks the calls up on its own.
   has an entry), executor logic with injected RNG and prior calls, schema
   rejections.
 - `app/mastra/tutor-tools.unit.test.ts` — the binding's prior calls (stored +
-  this run, deduplicated; none without a thread).
+  this run, deduplicated; none without a thread) and its metering.
 - `lib/tutors/load.unit.test.ts` — `tools` normalization + unknown-name
   rejection through the real loader.
 - `app/mastra/tutor-agent.unit.test.ts` — per-request tool resolution: empty

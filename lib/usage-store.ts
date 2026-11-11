@@ -19,7 +19,7 @@ import { reportStoreFailure } from "@/lib/store-failure";
 //
 // SERVER-ONLY: uses the database. Never import from client components.
 
-/** The eight metric deltas; any omitted field defaults to 0 (a no-op increment). */
+/** The nine metric deltas; any omitted field defaults to 0 (a no-op increment). */
 interface UsageDeltas {
   inputTokensNew?: number;
   inputTokensCached?: number;
@@ -29,6 +29,7 @@ interface UsageDeltas {
   quizAnswers?: number;
   writingSaves?: number;
   codingRequests?: number;
+  boardDrawings?: number;
 }
 
 /**
@@ -89,6 +90,7 @@ async function bumpByCode(
       quizAnswers: d.quizAnswers ?? 0,
       writingSaves: d.writingSaves ?? 0,
       codingRequests: d.codingRequests ?? 0,
+      boardDrawings: d.boardDrawings ?? 0,
     })
     .onConflictDoUpdate({
       target: [usageByCode.code, usageByCode.hour],
@@ -101,6 +103,7 @@ async function bumpByCode(
         quizAnswers: sql`${usageByCode.quizAnswers} + excluded.quiz_answers`,
         writingSaves: sql`${usageByCode.writingSaves} + excluded.writing_saves`,
         codingRequests: sql`${usageByCode.codingRequests} + excluded.coding_requests`,
+        boardDrawings: sql`${usageByCode.boardDrawings} + excluded.board_drawings`,
         provider: sql`COALESCE(${usageByCode.provider}, excluded.provider)`,
         model: sql`COALESCE(${usageByCode.model}, excluded.model)`,
       },
@@ -124,6 +127,7 @@ async function bumpByUser(userId: string, hour: Date, d: UsageDeltas): Promise<v
       quizAnswers: d.quizAnswers ?? 0,
       writingSaves: d.writingSaves ?? 0,
       codingRequests: d.codingRequests ?? 0,
+      boardDrawings: d.boardDrawings ?? 0,
     })
     .onConflictDoUpdate({
       target: [usageByUser.userId, usageByUser.hour],
@@ -136,6 +140,7 @@ async function bumpByUser(userId: string, hour: Date, d: UsageDeltas): Promise<v
         quizAnswers: sql`${usageByUser.quizAnswers} + excluded.quiz_answers`,
         writingSaves: sql`${usageByUser.writingSaves} + excluded.writing_saves`,
         codingRequests: sql`${usageByUser.codingRequests} + excluded.coding_requests`,
+        boardDrawings: sql`${usageByUser.boardDrawings} + excluded.board_drawings`,
       },
     });
 }
@@ -221,6 +226,22 @@ export function recordUserMessage(input: {
     new Date(),
     { userMessages: 1 },
     "recordUserMessage",
+  );
+}
+
+/** +1 board drawing (a successful `board` call) for a code and its student. Never throws. */
+export function recordBoardDrawing(input: {
+  code: string;
+  module: string;
+  userId: string;
+}): Promise<void> {
+  return record(
+    input.code,
+    input.module,
+    input.userId,
+    new Date(),
+    { boardDrawings: 1 },
+    "recordBoardDrawing",
   );
 }
 

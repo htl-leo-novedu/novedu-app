@@ -17,6 +17,8 @@ export interface UsageDay {
   codingRequests: number;
   /** Distinct Vienna-local hours of the day with a coding request. */
   codingHours: number;
+  /** Successful board drawings by a tutor. */
+  boardDrawings: number;
 }
 
 /** Weeks shown in the heatmap (the current ISO week and the 25 before it). */

@@ -25,6 +25,7 @@ const day = (date: string, extra: Partial<UsageDay> = {}): UsageDay => ({
   writingSaves: 0,
   codingRequests: 0,
   codingHours: 0,
+  boardDrawings: 0,
   ...extra,
 });
 
@@ -97,6 +98,7 @@ describe("catalog shape", () => {
       "full-stack",
       "in-the-zone",
       "bug-hunter",
+      "first-drawing",
     ]);
     expect(STUDENT_CATALOG.every((a) => a.hidden === (a.family === "secret"))).toBe(true);
   });
@@ -258,6 +260,20 @@ describe("Secret rules", () => {
       day("2026-09-04", { codingRequests: 3, codingHours: 5 }),
     ];
     expect(run("in-the-zone", usage)).toEqual({ earned: true, qualifiedOn: "2026-09-03" });
+  });
+
+  it("On the Board: the first day a tutor drew on the board", () => {
+    expect(run("first-drawing", [day("2026-09-01", { userMessages: 4 })])).toEqual({
+      earned: false,
+      current: 0,
+      target: 1,
+    });
+    const usage = [
+      day("2026-09-01", { userMessages: 4 }),
+      day("2026-09-03", { userMessages: 2, boardDrawings: 3 }),
+      day("2026-09-04", { userMessages: 1, boardDrawings: 1 }),
+    ];
+    expect(run("first-drawing", usage)).toEqual({ earned: true, qualifiedOn: "2026-09-03" });
   });
 });
 

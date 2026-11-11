@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 // The binding imports the store, which imports the DB pool; the tests inject
 // the store seam instead, so the module is never touched.
 vi.mock("@/lib/tutor-board-store", () => ({ loadThreadBoardCalls: vi.fn() }));
+// Likewise the usage store: the metering tests inject the recorder.
+vi.mock("@/lib/usage-store", () => ({ recordBoardDrawing: vi.fn() }));
 
-const { priorCallsFor, selectTutorTools } = await import("./tutor-tools");
+const { meterBoardDrawing, priorCallsFor, selectTutorTools } = await import("./tutor-tools");
 
 const call = (id: string, title: string, ok = true, state = "result") => ({
   type: "tool-invocation",
@@ -78,6 +80,58 @@ describe("priorCallsFor", () => {
       { loadThreadCalls: async () => [{ id: "c1", input: input("a") }] },
     );
     expect(prior.priorCalls).toEqual([]);
+  });
+});
+
+describe("meterBoardDrawing", () => {
+  const usage = (values: Record<string, unknown>) => ({
+    get: (key: string) => values[key],
+  });
+  const attributed = usage({ usageCode: "code1", usageUserId: "user-1", usageModule: "tutor" });
+  const inThread = { agent: { toolCallId: "c1", threadId: "t", resourceId: "code1" } };
+  const ok = { ok: true, board: "" };
+
+  it("counts a successful board call of a conversation once, for its code and student", () => {
+    const record = vi.fn(async () => {});
+    meterBoardDrawing("board", ok, { ...inThread, requestContext: attributed }, record);
+    expect(record).toHaveBeenCalledExactlyOnceWith({
+      code: "code1",
+      module: "tutor",
+      userId: "user-1",
+    });
+  });
+
+  it("counts nothing for a rejected call or another tool", () => {
+    const record = vi.fn(async () => {});
+    const context = { ...inThread, requestContext: attributed };
+    meterBoardDrawing("board", { ok: false, errors: ["x"] }, context, record);
+    meterBoardDrawing("random_number", { ok: true }, context, record);
+    meterBoardDrawing("board", undefined, context, record);
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it("counts nothing without a thread (the eval tutor)", () => {
+    const record = vi.fn(async () => {});
+    meterBoardDrawing(
+      "board",
+      ok,
+      { agent: { toolCallId: "c1" }, requestContext: attributed },
+      record,
+    );
+    meterBoardDrawing("board", ok, undefined, record);
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it("counts nothing without the full usage attribution", () => {
+    const record = vi.fn(async () => {});
+    meterBoardDrawing("board", ok, inThread, record);
+    meterBoardDrawing(
+      "board",
+      ok,
+      { ...inThread, requestContext: usage({ usageCode: "code1", usageModule: "tutor" }) },
+      record,
+    );
+    expect(record).not.toHaveBeenCalled();
   });
 });
 

@@ -1,0 +1,2 @@
+ALTER TABLE "novedu_usage_by_code" ADD COLUMN "board_drawings" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "novedu_usage_by_user" ADD COLUMN "board_drawings" integer DEFAULT 0 NOT NULL;

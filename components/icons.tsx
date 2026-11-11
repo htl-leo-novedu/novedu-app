@@ -212,6 +212,15 @@ export const ZapIcon = (props: SVGProps<SVGSVGElement>) => (
   </Icon>
 );
 
+/** A board on its stand — the hidden "On the Board" badge (start page). */
+export const PresentationIcon = (props: SVGProps<SVGSVGElement>) => (
+  <Icon {...props}>
+    <path d="M2 3h20" />
+    <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" />
+    <path d="m7 21 5-5 5 5" />
+  </Icon>
+);
+
 /** Crossed-out eye — secret badges stay hidden until earned (start page). */
 export const EyeOffIcon = (props: SVGProps<SVGSVGElement>) => (
   <Icon {...props}>
