@@ -96,8 +96,7 @@ input**. Steps:
    rejection wording, `CODE_REJECTION_MESSAGES` in `lib/activity-gate.ts`) — an expired code
    blocks reporting mid-session, consistent with `submitAnswer`.
 4. **`verifyThreadToken(threadToken, { code, userId, threadId }, getThreadTokenSecret())`**
-   — this is the **first server action to call `verifyThreadToken`**, its designed
-   use. The stateless HMAC over `(code, sessionUserId, threadId)` proves the reporter
+   — the token's designed use (as in `resumeTutorThread`, `lib/tutor-actions.ts`). The stateless HMAC over `(code, sessionUserId, threadId)` proves the reporter
    owns the reported thread; a leaked token+threadId is useless to anyone but its
    owner. Mismatch → a generic "cannot be reported" message.
 5. The soft cap (`countChatReports`, below).
@@ -169,8 +168,8 @@ error.
 
 - `insertChatReport` / `insertQuizReport` → `boolean`.
 - `countChatReports` / `countQuizReports` → `number | undefined` (the soft-cap checks).
-- `listReports({ status, reaction?, search?, codeCreatedBy? })` → `ReportListRow[] |
-  undefined` — the inbox query, filtered **in the database** (`docs/filtered-lists.md`)
+- `listReports({ status, reaction?, search?, codeCreatedBy?, paging?, sort? })` →
+  `PagedResult<ReportListRow> | undefined` — the inbox query, filtered **in the database** (`docs/filtered-lists.md`)
   by resolution status (`open` = `resolved_at IS NULL`, `resolved` = NOT NULL, `all`),
   reaction, a `containsAny` free-text search (description, reporter user id + name,
   code, code note), and — for "Only my codes" — the code's creating teacher. LEFT-JOINs

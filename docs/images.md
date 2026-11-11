@@ -481,8 +481,8 @@ The overall approach (layers, the `@live` boundary, the no-infra patterns) is in
   created), a signed-out redirect and an invalid-session case, the benign/evil
   SVG regression (a malicious SVG stays inert both inlined and navigated to
   directly), delete, and reuse of a deleted name minting a new, different id.
-  The harness provisions its own root (`e2e/image-root.setup.ts`, the
-  `image-root` Playwright setup project) before the dev server boots against
+  The harness provisions its own root (`e2e/image-root.setup.ts`, run by the
+  `setup` Playwright project) before the dev server boots against
   it (`playwright.config.ts` passes `IMAGE_STORAGE_ROOT` to the `npm run dev`
   webServer); `e2e/image-root.utils.ts`'s `assertServerImageRoot` fails a spec
   with an actionable message if a reused dev server booted against a different

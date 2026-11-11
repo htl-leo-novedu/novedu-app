@@ -197,7 +197,7 @@ instructions: |
    non-`coding` module → `401`.
 3. `loadCoding(entry.fileUrl)` (`lib/coding-fetch.ts`, via the shared
    `appHostedFetcher`) → `502` on failure.
-4. `resolveChatEndpoint(loaded.coding.provider)` resolves the upstream and **starts**
+4. `resolveChatEndpoint(llm.provider)` (`llm` = `effectiveLlm(entry, loaded.coding)`) resolves the upstream and **starts**
    the `authHeader()` acquisition (a static key for SCCH and OpenRouter, or a bounded
    Entra token for Foundry
    — docs/ai-models.md) so the token round trip overlaps the body read; a missing env
@@ -260,7 +260,7 @@ The little-coder connection block (`_coding/coding-connection.tsx`: base URL
 (`<origin>/api/coding/v1`), the key, the model ref, a ready-to-paste `models.json`
 snippet, a run command — each with a copy button — plus a link to little-coder's
 *configuring models* docs) is **shared by both** rendering surfaces below,
-parameterized by whose personal key it is fed. It receives only non-secret
+parameterized by whose personal key it is fed. Besides the viewer's own key it receives only non-secret
 values; the system prompt + real model never reach it.
 
 - **Student `/<code>`** (`render-coding.tsx`, Entra-gated web view): calls

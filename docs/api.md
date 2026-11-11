@@ -401,8 +401,8 @@ API surface besides `GET /api/version` and better-auth's own endpoints.
   never enters them — each channel gates itself and passes the verified
   `userId` in). Listing needs no
   service: `listCodes` / `listFiles` / `listImages` are already transport-agnostic, and every
-  `reports` operation is likewise a bare `lib/report-store.ts` call (the added
-  `getReportById` plus the existing `listReports` / `setReportsResolved`) — no
+  `reports` operation is likewise a bare `lib/report-store.ts` call (`listReports` /
+  `getReportById` / `setReportsResolved`) — no
   service layer, auth never enters the store.
 
 ## CLI: `cli/src/auth.ts` + commands

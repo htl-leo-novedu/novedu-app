@@ -411,7 +411,7 @@ Flow: the service container starts (the `postgres:18` image creates
 connections, and nothing else → `npm run
 test:e2e:ci` runs hermetic + `@live-db` against the **same** dev server and
 container — the hermetic specs' session minting (`e2e/auth.setup.ts`,
-`mintSessionToken`) writes `novedu_user`/`novedu_session` rows here too, it just
+`mintSession`) writes `novedu_user`/`novedu_session` rows here too, it just
 never touches any other app table; the Playwright `webServer` boots `npm
 run dev`, whose startup creates the `mastra` schema, applies the `novedu_*`
 migrations and creates the `mastra.*` tables (`instrumentation.ts`). The app's

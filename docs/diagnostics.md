@@ -127,7 +127,7 @@ types, and no host literal. Queries use the table names of the App Insights
 
 | Query | Source | Notes |
 |---|---|---|
-| `llmCalls` | `dependencies`, `type == "HTTP" and name endswith "/chat/completions"` | Per bin and host, plus whole-range totals as rows with `t == null` (a `union`). Outcome by `toint(resultCode)`: empty/0 no response, 429, ≥ 500, ≥ 400, else OK. |
+| `llmCalls` | `dependencies`, `type =~ "HTTP" and name endswith "/chat/completions"` | Per bin and host, plus whole-range totals as rows with `t == null` (a `union`). Outcome by `toint(resultCode)`: empty/0 no response, 429, ≥ 500, ≥ 400, else OK. |
 | `llmErrorBreakdown` | same prelude, non-OK | By host × `resultCode`, `top 20 by errors`. |
 | `llmFailedSample` | same prelude, non-OK | `top 50 by timestamp desc`. |
 | `chatFailures` | `dependencies`, `target == "exception"`, `customDimensions["novedu.area"] == "chat-run"` | By bin, `novedu.module`, `novedu.chat.failure`, `novedu.chat.run_error_code`. |

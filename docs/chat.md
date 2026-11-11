@@ -422,7 +422,7 @@ the runtime, not in React:
   writer**, so both are `filter`ed (rxjs) against the `EventType` enum's whole
   reasoning family — the five `REASONING_*` events `@ag-ui/mastra` actually
   emits, plus `REASONING_MESSAGE_CHUNK` / `REASONING_ENCRYPTED_VALUE` — and the
-  legacy `THINKING_*` names, which the enum no longer defines but
+  legacy `THINKING_*` names, which the enum does not define but
   `@ag-ui/client` still upgrades to `REASONING_*` in the browser.
   `isRunning` / `stop` delegate untouched.
   Dropping each START…END group **symmetrically** keeps the browser's
@@ -511,8 +511,8 @@ it describes the run, not a phase of it.
 Every photo a student picks — in the tutor chat and in the quiz's photo answers
 alike — is **decoded, straightened, bounded and re-encoded in the browser**
 before it is base64-inlined into a run. `normalizeStudentImage` is the one entry
-point; `lib/answer-images.ts` keeps the constants and the server-authoritative
-`validateAnswerImages` and stays free of DOM code, because `lib/quiz-actions.ts`
+point; `lib/answer-images.ts` keeps the send limits (`MAX_IMAGE_BYTES`,
+`MAX_IMAGES_PER_ANSWER`) and the server-authoritative `validateAnswerImages` and stays free of DOM code, because `lib/quiz-actions.ts`
 (`"use server"`) imports it.
 
 Three things a phone hands over that the pipeline must handle (GitHub #26):
@@ -738,7 +738,7 @@ module.
   returns `{ "x-code": code, "x-thread-token": token }` exactly (a cheap guard on
   the header names the backend re-reads).
 
-The refactor is behavior-preserving, so the live e2e specs are coverage, not
+The live e2e specs are coverage, not
 duplication — they drive the **real** CopilotKit end-to-end (which the component
 layer mocks away), per module: `e2e/tutor-chat-reply.spec.ts`, `e2e/quiz.spec.ts`,
 `e2e/writing.spec.ts` (and `e2e/chat-no-replay-persistence.spec.ts`). Those that

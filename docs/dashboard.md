@@ -20,8 +20,8 @@ the shared chart building blocks in `components/charts/**` and
   its header and Total row stay in place while only the bucket rows scroll
   (`ListTable`'s `footer` + `sticky`, docs/filtered-lists.md).
 - Four **donut pies**: total tokens per **module** (tutor/quiz/writing/coding), per
-  **code** (top 9 + "Other"), per **model** (top 9 + "Other"; a NULL model —
-  metered before models were recorded — shows as "(unknown)"), and per **LLM
+  **code** (top 9 + "Other"), per **model** (top 9 + "Other"; a NULL model
+  shows as "(unknown)"), and per **LLM
   provider** (`docs/ai-models.md`; a NULL provider likewise "(unknown)"). The
   provider pie is the **cost split** — model ids are not provider-disjoint (the
   same id can be served by more than one provider), so the model pie cannot stand
@@ -91,9 +91,10 @@ crosses the wire, and **read once where the shape allows**:
   count is far below that). Its own read, not a fold of the model query, so a slow
   or failed one degrades only its own card; `ModelsSection` issues the two in
   parallel.
-- `getScchTokensByModel({ range, now })` — `WHERE provider = 'SCCH'` (the app-level
-  label the recorder stamps), `GROUP BY model`, the three token sums per model; a
-  NULL model comes back as `null`. Feeds the cost card. Rows with a NULL provider
+- `getModelTokensForProvider({ range, now, provider })` — `WHERE provider = <provider>`
+  (the app-level label the recorder stamps), `GROUP BY model`, the three token sums per
+  model; a NULL model comes back as `null`. Called with `SCCH` and with `OpenRouter`,
+  once per cost card. Rows with a NULL provider
   are not attributable and stay out.
 - `getDashboardKpis({ range, now })` — one round trip, two windowed subselects, feeds
   **both KPI tiles**.
@@ -104,7 +105,7 @@ The dashboard is **server-first**, matching the repo's stats convention
 (`conversation-stats.tsx` → `getCodeStats`): each section is an async **server**
 component that reads the store directly and passes data as **props** to thin client
 chart children — there is deliberately **no client `fetch('/api/*')`** and so **no
-`/api/usage/*` route to gate** (the page's `isEffectiveTeacher()` is the whole gate).
+`/api/usage/*` route to gate** (the page's `requireTeacherPage()` is the whole gate).
 
 "Load immediately with loading indicators" is React `<Suspense>` streaming: the page
 shell + range tabs flush instantly and each section streams in independently behind
@@ -251,7 +252,7 @@ ids to Hugging Face (and fetch OpenRouter's public list).
   failures); `app/usage/page.unit.test.tsx` (the teacher gate) and the section
   server components via `renderToStaticMarkup` (incl. the token table's Total row
   and every state of both cost cards).
-- **Component** — the bar + pie charts render props-driven in the `vitest-browser`
+- **Component** — the bar + pie charts render props-driven in the `component`
   project (real Chromium), through the shared `renderChart` harness
   (`tests/render-chart.tsx`: stylesheet, fixed-width frame, pointer parked off the
   chart so no tooltip duplicates a legend label); the cost donut likewise. The

@@ -143,8 +143,8 @@ and any fragility around exact self-URL string matching.
 The sibling/external part — "app-hosted URL → DB, anything else → real fetch" — is
 the shared **`appHostedFetcher`** (`lib/app-hosted-fetcher.ts`), the **one
 definition** of that resolution. `selfFetcher` wraps it (adding only the unsaved-
-buffer special case), and the quiz loader (`lib/quiz-fetch.ts`) imports the same
-function — it is a plain module, not `"use server"`, so every server module can
+buffer special case), and the module loaders (quiz / writing / coding, through
+`loadAppHostedYaml` in `lib/app-hosted-yaml.ts`) reach the same function — it is a plain module, not `"use server"`, so every server module can
 reuse it. Validation parity with the
 rest of the app:
 
@@ -235,8 +235,8 @@ params, not in memory (see `docs/filtered-lists.md`).
   the `@live` `e2e/file-and-tutor-code-crud.spec.ts`, which covers file CRUD).
 - `tests/component/file-forms.browser.test.tsx` — the Validate button wiring
   (errors / passed note / warnings, and no save).
-- `e2e/files.spec.ts` — the auth gate (hermetic, runs in CI) and a single `@live`
-  create → list → update → soft-delete lifecycle (writes the real DB).
+- `e2e/files.spec.ts` — the create form's validation (hermetic, runs in CI); the
+  `/files` auth gate is in `e2e/permissions.spec.ts`.
 - `lib/app-hosted-fetcher.unit.test.ts` — the app-hosted resolution: own-origin file
   from the DB with no network call, `404` / `503`, foreign URLs fetched.
 - `e2e/tutor-hosted.spec.ts` (`@live-db`, CI, fake LLM) — an uploaded tutor placing a

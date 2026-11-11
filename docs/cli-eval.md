@@ -39,8 +39,7 @@ Read this before touching `lib/eval-schema.ts`, `lib/eval-validate.ts`,
 Strict schema (`lib/eval-schema.ts`), a **discriminated union on `kind`** whose editor
 schema is generated to `activities/evals/eval-yaml.schema.json` by
 `npm run generate:schemas`. `kind` is **optional**: omitted (or `quiz`) selects the
-golden-answer shape, so every eval file written before the tutor kind existed stays valid
-byte-for-byte. Both shapes share the one `$schema` modeline.
+golden-answer shape, so a quiz eval file needs no `kind` line. Both shapes share the one `$schema` modeline.
 
 ### The quiz kind
 
@@ -68,8 +67,8 @@ questions:
   `novedu-cli prompts --kind quiz` prints).
 - Golden answers are **teacher-authored synthetic data** — nothing a student ever
   wrote is involved, and nothing is stored anywhere.
-- Text only: a question with `imageInput` can be evaluated on its typed answers, but
-  photo cases are out of scope for v1.
+- Text only: a question with `imageInput` can be evaluated on its typed answers;
+  golden answers cannot carry photos.
 
 ### The tutor kind
 
@@ -817,7 +816,8 @@ reporting the real `cli/package.json` version by default (so a run is warning-fr
 a `cliVersion` option serving a different one, which is how the mismatch warning is
 exercised end to end.
 
-The judge's degrade breaker is covered ONLY in `cli/src/eval-run.unit.test.ts`, where the
+The judge's degrade breaker is covered only by unit tests (`cli/src/eval-run.unit.test.ts`,
+`cli/src/commands/eval.unit.test.ts`), where the
 retry seams are in-process: tripping it through the built binary would mean exhausting
 real retry budgets (minutes of backoff) or shipping a test-only timing override in the
 CLI, and neither is worth an integration re-proof of unit-tested logic.

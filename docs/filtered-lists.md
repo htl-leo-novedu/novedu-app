@@ -199,8 +199,8 @@ join-free and the COUNT can never drift from the rows.
 `listOwners` is a `SELECT DISTINCT created_by, COALESCE(name, created_by)`.
 Two things are load-bearing:
 
-- It gets the list's **base conditions only** (`isNull(validUntil)`, the known-module
-  guard), never the active search/module filter — otherwise the owner a teacher just
+- It gets the list's **base conditions only** (files/images: `isNull(validUntil)`; codes: the
+  known-module guard), never the active search/module filter — otherwise the owner a teacher just
   picked could vanish from the control that picked them.
 - The ORDER BY repeats the **selected** COALESCE expression: Postgres requires every
   `ORDER BY` term of a `SELECT DISTINCT` to appear in the select list. Ordering by
@@ -343,7 +343,7 @@ export async function listFiles(opts?: { search?; createdBy?; paging?: Paging })
         return window ? query.limit(window.limit).offset(window.offset) : query;
       },
     });
-  } catch (error) { console.error(…); return undefined; }   // unchanged never-throw contract
+  } catch (error) { console.error(…); return undefined; }   // the never-throw contract
 }
 ```
 
@@ -453,8 +453,8 @@ Two rules hold in every store:
   It is the helper's last argument rather than something each store remembers to
   append, so a new list cannot forget it.
 
-`sort` is optional, so the four bearer API routes (`docs/api.md`) stay unsorted and
-their JSON is unchanged.
+`sort` is optional, so the four bearer API routes (`docs/api.md`) return the
+default order.
 
 ### Which columns are sortable
 
@@ -464,7 +464,7 @@ Actions columns, and `/codes`' **Interactions**, which is a page-scoped aggregat
 the Mastra-owned tables computed after the page is read (so it cannot be an `ORDER BY`
 term).
 
-`/reports` orders `Code` and `Student` by the JOINed `codes.note` / `users.displayName`
+`/reports` orders `Code` and `Student` by the JOINed `codes.note` / `authUsers.name`
 — the values those cells lead with. Codes with an empty note therefore group together.
 
 **NULL ordering** follows Postgres's default: NULLs sort **LAST ascending, FIRST

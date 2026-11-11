@@ -85,7 +85,7 @@ function attribution(span: AnyExportedSpan): {
  * or lacks the attribution keys. Pure (no I/O) so it unit-tests over fake spans.
  *
  * - `MODEL_GENERATION`: the per-generation token aggregate. `UsageStats` in
- *   @mastra/core@1.47.0 → `inputCached = inputDetails.cacheRead`, `inputNew =
+ *   @mastra/core → `inputCached = inputDetails.cacheRead`, `inputNew =
  *   inputTokens - cached`, `output = outputTokens` (already includes reasoning).
  *   We use `MODEL_GENERATION` ONLY (never `MODEL_STEP`) to avoid double-counting.
  * - `TOOL_CALL` / `CLIENT_TOOL_CALL` / `MCP_TOOL_CALL`: one tool call, no tokens.

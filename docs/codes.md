@@ -245,14 +245,16 @@ the tutor agent (the descriptor puts it on the RequestContext as
 `tutor-provider-override`/`tutor-model-override`/`tutor-reasoning-override`;
 `app/mastra/tutor-agent.ts` applies it), the quiz
 discussion + writing `buildRequestContext`s, the quiz grader (`submitAnswer`),
-and the coding proxy. Each gates `providerUnavailableReason` on the EFFECTIVE
-provider. Usage metering needs no extra wiring — the exporter reads the actually
+and the coding proxy. The tutor agent and both `buildRequestContext`s gate
+`providerUnavailableReason` on the EFFECTIVE provider; the coding proxy answers
+`500` when `resolveChatEndpoint` fails for it. Usage metering needs no extra wiring — the exporter reads the actually
 resolved provider/model off the MODEL_GENERATION span (`docs/ai-models.md`), and
 the coding proxy meters the effective pair explicitly.
 
 Past those checks the route makes its **one role-dependent choice**: which
 CopilotKit `AgentRunner` feeds the SSE writer. An effective teacher gets the
-library's own `InMemoryAgentRunner`; everyone else gets `ReasoningStrippingRunner`
+module's base runner unfiltered (the library's `InMemoryAgentRunner`, inside
+`HistorySnapshotRunner` for a tutor); everyone else gets it wrapped in `ReasoningStrippingRunner`
 (`app/api/copilotkit/reasoning-runner.ts`), which drops every AG-UI `REASONING_*`
 frame from both `run` and `connect`, so a thinking model's chain of thought is
 never written to a student's stream. It **fails closed** (stripping is the
@@ -305,7 +307,7 @@ open-ended code (no start / no end → a null bound). The create pipeline lives 
 **`lib/code-service.ts`** (`createCodeForUser` — a plain server module that takes
 the verified `userId`; auth never enters it): it validates the input, gates an
 LLM override's provider, then runs `validateCodeFile(module, …)` (the Layer-2
-validator for the module's `fileKind`), **freezes** `anonymous`/`title` from the
+validator for the module's `fileKind`), **freezes** `anonymous` from the
 result, and inserts the row. TWO thin channel shells call it with identical
 semantics: the web form's `createCodeAction` (`lib/code-actions.ts`,
 `requireTeacherUserId` + FormData + redirect) and the bearer
@@ -532,9 +534,9 @@ messages by id, so that run stores no duplicate rows, but the model sees the
 re-sent history on top of the recalled window for that one turn. Otherwise the
 model's whole view of the conversation is the recalled `lastMessages` window
 (currently **40** ≈ 20 exchanges — `chatMemory()` in `app/mastra/agent-context.ts`,
-shared by every chat agent); raise it if longer sessions must see further back. Older conversations (recorded when
-Mastra stored the re-sent history under fresh ids) hold telescoped duplicates; the
-viewer collapses them on read (see below).
+shared by every chat agent); raise it if longer sessions must see further back. Conversations whose stored rows
+repeat the re-sent history as telescoped runs are collapsed by the viewer on read
+(see below).
 
 ## Stats & conversation viewer
 
@@ -642,9 +644,9 @@ in-page discussion live in `app/[code]/_quiz/`.
   `{{fragment}}`/`{{file}}` markers in textual order) into the server-only
   `Quiz.instructionsPreamble` and the rendered `Quiz.discussionInstructions` (a
   fetch / consistency / assembly failure in EITHER host fails the load closed).
-  `buildGradingPrompt` (`lib/quiz-actions.ts`) prepends the preamble ahead of the
+  `buildGradingPrompt` (`lib/quiz-grading-prompt.ts`) prepends the preamble ahead of the
   fixed grading frame + the question's `evaluation`, and
-  `buildDiscussionInstructions` (`lib/code-modules/quiz.ts`) prepends it ahead of
+  `buildDiscussionInstructions` (`lib/quiz-discussion-prompt.ts`) prepends it ahead of
   the discussion system prompt — so a shared safety/persona fragment governs both.
   `evaluation` stays a plain per-question string — no markers there;
   `instructionsPreamble` is server-only and `toPublicQuiz` never copies it (nor
@@ -654,8 +656,8 @@ in-page discussion live in `app/[code]/_quiz/`.
   `fragment_files` refs; the alias additionally may not contain `/`) and pull in
   **ALL** of their questions, fresh on every load — the canonical use is a
   final/overall quiz over per-chapter quizzes, which never goes stale when a
-  chapter is edited. Semantics, all implemented at IMPORT time inside `loadQuiz`
-  (`lib/quiz-fetch.ts`) so downstream a compound quiz is just a `Quiz` with more
+  chapter is edited. Semantics, all implemented at IMPORT time inside `resolveQuiz`
+  (`lib/quiz-resolve.ts`, reached through `loadQuiz`) so downstream a compound quiz is just a `Quiz` with more
   questions:
   - **Namespacing:** imported question ids become `"<alias>/<id>"` — collisions
     across chapters are impossible; the strict gate rejects OWN ids containing `/`
@@ -807,8 +809,8 @@ in-page discussion live in `app/[code]/_quiz/`.
   by construction — the catalog's executors are pure / injected-effect
   (`docs/tutor-tools.md`) and an eval run is teacher-initiated.
 - **Discussion** is **non-negotiably in-page**: clicking "Chat about this" opens a
-  native modal `<dialog>` over the page (`quiz-runner.tsx` drives
-  `showModal()`/`close()`; Escape, a Close button, and a backdrop click all close
+  native modal `<dialog>` over the page (`quiz-runner.tsx` sets `open` on the shared
+  `DialogShell`, `components/ui/dialog-shell.tsx`, which drives `showModal()`/`close()`; Escape, a Close button, and a backdrop click all close
   it; closing keeps the thread so "Continue discussion" reopens it, and Next /
   Finish drop it). `startDiscussion` (`lib/quiz-actions.ts`, verifies the code)
   mints a `threadId`, signs the thread-token `(code, userId, threadId)`, and
