@@ -148,6 +148,7 @@ describe("student-facts-store", () => {
         writingSaves: "0",
         codingRequests: "7",
         codingHours: "1",
+        boardDrawings: "4",
       },
     ];
     await expect(loadStudentUsage("u1")).resolves.toEqual([
@@ -159,6 +160,7 @@ describe("student-facts-store", () => {
         writingSaves: 0,
         codingRequests: 7,
         codingHours: 1,
+        boardDrawings: 4,
       },
     ]);
   });

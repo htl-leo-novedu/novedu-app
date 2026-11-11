@@ -41,6 +41,7 @@ const day = (date: string, extra: Partial<UsageDay> = {}): UsageDay => ({
   writingSaves: 0,
   codingRequests: 0,
   codingHours: 0,
+  boardDrawings: 0,
   ...extra,
 });
 

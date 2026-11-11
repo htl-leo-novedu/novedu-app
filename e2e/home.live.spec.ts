@@ -12,7 +12,7 @@ import { deletePrincipal, signInFreshStudent } from "./principal.utils";
 // and that the strip is gone once the badges were marked seen — plus the facts
 // store against the real database: the Vienna-day grouping across the autumn
 // clock change and the idempotent grant insert. The second test covers coding:
-// requests, a key, the two coding badges that read them, and a secret badge.
+// requests, a key, the two coding badges that read them, and two secret badges.
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -110,6 +110,7 @@ test("the start page shows seeded activity, pins a badge on its day, and clears 
       writingSaves: 0,
       codingRequests: 0,
       codingHours: 0,
+      boardDrawings: 0,
     });
     expect(usage?.some((d) => d.date === addDays(today, -3))).toBe(false);
 
@@ -156,6 +157,12 @@ test("coding requests and a coding key earn the Coding badges and a secret one",
         [principal.id, hour],
       );
     }
+    // keyDay: a chat in which the tutor drew on the board — On the Board.
+    await query(
+      `INSERT INTO novedu_usage_by_user (user_id, hour, user_messages, board_drawings)
+       VALUES ($1, $2, 1, 2)`,
+      [principal.id, bucket(keyDay, 9)],
+    );
     // One key, issued on keyDay (no code row needed: the table has no FK).
     await query(
       `INSERT INTO novedu_coding_keys (code, user_id, api_key, created_at)
@@ -176,16 +183,19 @@ test("coding requests and a coding key earn the Coding badges and a secret one",
     await expect(coding.locator('[data-badge="coding-first-request"]')).toContainText("Earned");
     const secret = page.locator('[data-family="secret"]');
     await expect(secret.locator('[data-badge="in-the-zone"]')).toContainText("In the Zone");
+    await expect(secret.locator('[data-badge="first-drawing"]')).toContainText("On the Board");
     await expect(secret).not.toContainText("Full Stack");
 
     const stored = await query<{ achievement_id: string; qualified_on: string }>(
       `SELECT achievement_id, qualified_on::text AS qualified_on FROM novedu_achievements
-       WHERE user_id = $1 AND achievement_id IN ('coding-connected', 'in-the-zone')
+       WHERE user_id = $1
+         AND achievement_id IN ('coding-connected', 'first-drawing', 'in-the-zone')
        ORDER BY achievement_id`,
       [principal.id],
     );
     expect(stored).toEqual([
       { achievement_id: "coding-connected", qualified_on: keyDay },
+      { achievement_id: "first-drawing", qualified_on: keyDay },
       { achievement_id: "in-the-zone", qualified_on: zoneDay },
     ]);
 

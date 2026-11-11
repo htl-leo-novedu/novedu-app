@@ -32,6 +32,7 @@ vi.mock("@/lib/telemetry", () => ({ recordError: mocks.recordError }));
 
 import {
   hourBucket,
+  recordBoardDrawing,
   recordLlmUsage,
   recordQuizAnswer,
   recordUserMessage,
@@ -59,6 +60,7 @@ const COUNTER_KEYS = [
   "quizAnswers",
   "writingSaves",
   "codingRequests",
+  "boardDrawings",
 ];
 
 beforeEach(() => {
@@ -250,10 +252,23 @@ describe("discrete counters", () => {
     );
   });
 
-  it("the by-code ON CONFLICT set carries the 8 counters plus provider/model; by-user carries only the 8", async () => {
+  it("the by-code ON CONFLICT set carries the 9 counters plus provider/model; by-user carries only the 9", async () => {
     await recordUserMessage({ code: CODE, module: "writing", userId: USER });
     expect(Object.keys(setOf(0)).sort()).toEqual([...COUNTER_KEYS, "provider", "model"].sort());
     expect(Object.keys(setOf(1)).sort()).toEqual([...COUNTER_KEYS].sort());
+  });
+
+  it("recordBoardDrawing bumps board_drawings on both tables", async () => {
+    await recordBoardDrawing({ code: CODE, module: "tutor", userId: USER });
+    expect(mocks.insert).toHaveBeenCalledTimes(2);
+    expect(mocks.insertValues).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ code: CODE, module: "tutor", boardDrawings: 1, userMessages: 0 }),
+    );
+    expect(mocks.insertValues).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ userId: USER, boardDrawings: 1, userMessages: 0 }),
+    );
   });
 
   it("recordQuizAnswer bumps quiz_answers with module 'quiz'", async () => {

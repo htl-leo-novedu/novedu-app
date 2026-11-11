@@ -123,8 +123,9 @@ Families on the page:
   Request (the first day with a coding request), coding days 5/20, Toolbelt (keys
   for 3 coding activities).
 - **Secret** (`hidden`) — Full Stack (chat, quiz, writing and coding inside one
-  ISO week), In the Zone (coding in 3 different local hours of one day) and Bug
-  Hunter (an own report was resolved, dated to the resolution day). The
+  ISO week), In the Zone (coding in 3 different local hours of one day), Bug
+  Hunter (an own report was resolved, dated to the resolution day) and On the
+  Board (a tutor drew on the board, dated to the first day with a drawing). The
   column shows only earned ones plus the note "Secret badges show up here once you
   earn them."; an unearned secret badge is never in Almost there, the Badges
   section, or any page data.
@@ -167,7 +168,7 @@ independently.
 
 - **Usage** (`loadStudentUsage`) — `novedu_usage_by_user` grouped by Vienna-local
   day over the whole history: active hours, the per-day counters (messages, quiz
-  answers, writing saves, coding requests) and the coding hours. A range scan on
+  answers, writing saves, coding requests, board drawings) and the coding hours. A range scan on
   the PK `(user_id, hour)`.
 - **Keys** (`listOwnKeyDates`, `lib/coding-key-store.ts`) — the Vienna-local issue
   dates of the user's own coding keys, oldest first; nothing else leaves the
@@ -449,7 +450,8 @@ parameters (user ids, counts), so `reportStoreFailure` logs and records a fixed
   seeded rows with their dates, the strip cleared once seen, nothing granted
   twice) and `e2e/home.live.spec.ts` (`@live-db`: seeded usage and
   grant, the strip cleared after the visit, DST grouping; seeded coding
-  requests and a key earning the Coding badges and In the Zone), `e2e/settings.spec.ts`
+  requests and a key earning the Coding badges and In the Zone, a board drawing
+  earning On the Board), `e2e/settings.spec.ts`
   (`@live-db`: reached from the user menu, the switch persists) and
   `e2e/quiz-results.live.spec.ts` (`@live-db`: the prune under two concurrent saves,
   a save racing a code delete, `always` rolling back, an automatic save racing the

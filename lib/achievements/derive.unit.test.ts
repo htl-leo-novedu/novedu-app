@@ -22,6 +22,7 @@ const day = (date: string, activeHours = 1, extra: Partial<UsageDay> = {}): Usag
   writingSaves: 0,
   codingRequests: 0,
   codingHours: 0,
+  boardDrawings: 0,
   ...extra,
 });
 

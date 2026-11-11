@@ -19,6 +19,7 @@ const EMPTY_DAY = {
   writingSaves: 0,
   codingRequests: 0,
   codingHours: 0,
+  boardDrawings: 0,
 };
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 };
 

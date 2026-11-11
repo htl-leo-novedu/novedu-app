@@ -222,7 +222,10 @@ camera animation.
 
 ## Invariants
 
-- No new table or column: the board is the replay of stored tool calls.
+- No table or column holds the board: it is the replay of stored tool calls. The
+  only trace outside the messages is a count — every successful call of a
+  conversation is metered as one board drawing (`docs/usage-metering.md`), which
+  the start page's secret badge On the Board reads (`docs/home.md`).
 - A student never sees a board error: a rejected call changes nothing visible, a
   failed render keeps the last good image.
 - No SVG markup on the page; no external request from the student's browser except
@@ -242,7 +245,7 @@ camera animation.
   text.
 - `lib/tutor-tools/catalog.unit.test.ts` — the executor on prior calls.
 - `app/mastra/tutor-tools.unit.test.ts` — prior calls from storage + the run,
-  deduplicated, without a thread for evals.
+  deduplicated, without a thread for evals; the metering of successful calls.
 - `lib/conversation-collapse.unit.test.ts` — the snapshot's board-call shape.
 - `app/_tutor/board/sheet.unit.test.ts` — the sheet rules, the camera and the zoom
   steps.
@@ -250,5 +253,5 @@ camera animation.
   with the real renderer (zoom steps and limits, full screen with ✕ and Escape),
   and the geometry pin.
 - `e2e/tutor-board.spec.ts` — laptop and phone against the fake LLM's
-  `[tool:board {…}]` marker; `e2e/tutor-reload-roundtrip.spec.ts` — the board
+  `[tool:board {…}]` marker, and the metered drawings of the laptop run; `e2e/tutor-reload-roundtrip.spec.ts` — the board
   comes back after a reload, once.

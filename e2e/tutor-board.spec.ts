@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { BOARD_TUTOR_URL, mintTutorCode } from "./code.utils";
+import { query } from "./db";
 import { watchErrors, withoutNetworkNoise } from "./page.utils";
 
 // The tutor board end to end (docs/tutor-board.md): a tutor granted `tools:
@@ -53,7 +54,8 @@ test.describe("laptop", () => {
     tag: ["@live", "@live-db"],
   }, async ({ page }) => {
     const errors = watchErrors(page);
-    await page.goto(`/${await mintTutorCode({ tutor: BOARD_TUTOR_URL })}`);
+    const code = await mintTutorCode({ tutor: BOARD_TUTOR_URL });
+    await page.goto(`/${code}`);
     await expect(page.getByTestId("copilot-chat-textarea")).toBeVisible();
     // No board before the first drawing: the chat looks as always.
     await expect(page.getByTestId("board-pane")).toHaveCount(0);
@@ -102,6 +104,18 @@ test.describe("laptop", () => {
     await page.getByTestId("board-pill").last().click();
     await expect(page.getByTestId("board-pane")).toBeVisible();
     await expect(page.getByTestId("board-status")).toHaveText("Added 1 part");
+
+    // Metering (docs/usage-metering.md): the three successful calls count as
+    // board drawings, the rejected one does not. Written off the response path.
+    await expect
+      .poll(async () => {
+        const rows = await query<{ drawings: string | null }>(
+          `SELECT sum(board_drawings) AS drawings FROM novedu_usage_by_code WHERE code = $1`,
+          [code],
+        );
+        return Number(rows[0]?.drawings ?? 0);
+      })
+      .toBe(3);
 
     // Start over: a fresh thread, so an empty board and no pane.
     await page.getByRole("button", { name: "Start over" }).click();

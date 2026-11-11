@@ -10,6 +10,10 @@
 // this run's calls Mastra has not stored yet, deduplicated by tool-call id. A run
 // without a thread (the eval tutor) starts from its own calls only — an empty
 // board per eval turn.
+//
+// A successful `board` call in a conversation is metered here
+// (`meterBoardDrawing`, docs/usage-metering.md): the binding is the one place
+// that sees both the tool's result and the request's usage attribution.
 
 import { createTool, type ToolAction } from "@mastra/core/tools";
 import { type BoardCall, boardCallsFromStored } from "@/lib/board/calls";
@@ -23,6 +27,8 @@ import {
   type TutorToolName,
   tutorToolCatalog,
 } from "@/lib/tutor-tools";
+import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { recordBoardDrawing } from "@/lib/usage-store";
 
 // biome-ignore lint/suspicious/noExplicitAny: heterogeneous tool map — per-tool types live on each instance.
 type AnyMastraTool = ToolAction<any, any, any, any, any>;
@@ -35,6 +41,8 @@ export interface ToolCallAgentContext {
     resourceId?: string;
     getMessages?: () => readonly { role?: unknown; content?: unknown }[];
   };
+  /** The request's context; carries the usage attribution (lib/usage-context-keys.ts). */
+  requestContext?: { get(key: string): unknown };
 }
 
 /** The thread store seam, swappable in tests. */
@@ -68,18 +76,41 @@ export async function priorCallsFor(
   return { priorCalls: calls };
 }
 
+/**
+ * Counts a successful `board` call of a conversation as one board drawing
+ * (docs/usage-metering.md). A run without a thread (the eval tutor) or without
+ * usage attribution counts nothing. Fire-and-forget: the recorder never throws.
+ */
+export function meterBoardDrawing(
+  name: string,
+  result: unknown,
+  context: ToolCallAgentContext | undefined,
+  record: typeof recordBoardDrawing = recordBoardDrawing,
+): void {
+  if (name !== "board" || (result as { ok?: unknown } | undefined)?.ok !== true) return;
+  if (!context?.agent?.threadId) return;
+  const code = context.requestContext?.get(USAGE_CODE);
+  const userId = context.requestContext?.get(USAGE_USER_ID);
+  const module = context.requestContext?.get(USAGE_MODULE);
+  if (typeof code !== "string" || typeof userId !== "string" || typeof module !== "string") return;
+  void record({ code, module, userId });
+}
+
 function bind(def: AnyTutorToolDef): AnyMastraTool {
   return createTool({
     id: def.name,
     description: def.description,
     inputSchema: def.inputSchema,
     outputSchema: def.outputSchema,
-    execute: async (input, context) =>
-      def.execute(
+    execute: async (input, context) => {
+      const result = await def.execute(
         input,
         defaultTutorToolDeps,
         def.stateful ? await priorCallsFor(context as ToolCallAgentContext) : NO_PRIOR_CALLS,
-      ),
+      );
+      meterBoardDrawing(def.name, result, context as ToolCallAgentContext);
+      return result;
+    },
   });
 }
 

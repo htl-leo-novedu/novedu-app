@@ -31,8 +31,9 @@ bucket). Trade-off: "student X's usage on code Y" is unanswerable, by design.
 
 Columns: `input_tokens_new` / `input_tokens_cached` / `output_tokens` are `bigint`
 token sums (`output_tokens` already includes reasoning tokens); `tool_calls` /
-`user_messages` / `quiz_answers` / `writing_saves` / `coding_requests` are `int`
-counts — the last three reveal only the *kind* of activity in an hour, never which
+`user_messages` / `quiz_answers` / `writing_saves` / `coding_requests` /
+`board_drawings` are `int`
+counts — the last four reveal only the *kind* of activity in an hour, never which
 activity. `hour` is the
 UTC top-of-hour bucket. `usage_by_code` additionally carries two nullable
 attribution columns — `provider` (the LLM provider label: `SCCH`,
@@ -85,6 +86,7 @@ keeps its first-seen value — negligible for a cost aggregate).
 | tokens + coding requests — coding proxy | the coding route | taps the passthrough response for the `usage` chunk; both tables, `coding_requests` `+1` per metered response |
 | tokens — CLI evals | `POST /api/eval/grade`, `POST /api/eval/respond` and `POST /api/eval/judge` | the same exporter path (they run `quizEvaluator` / `evalTutor` / `evalJudge`), all tagged with the `cli-eval` sentinel keys below — grading, tutor-generation and judging tokens land in the SAME buckets on purpose (`docs/cli-eval.md`) |
 | user messages | CopilotKit route (`run`) | `after()` → `recordUserMessage` |
+| board drawings | the tutor tool binding (`meterBoardDrawing`, `app/mastra/tutor-tools.ts`) | `recordBoardDrawing`, `+1` per successful `board` call of a conversation, attributed via the tool call's `requestContext`; a run without a thread (the eval tutor) counts nothing |
 | quiz answers | `submitAnswer` (`lib/quiz-actions.ts`) | `after()` → `recordQuizAnswer` on a successful grade |
 | writing saves | `saveWriting` (`lib/writing-actions.ts`) | `after()` → `recordWritingSave` after a successful save |
 
