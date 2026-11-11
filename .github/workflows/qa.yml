@@ -87,7 +87,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - run: npx playwright install --with-deps chromium
+      # `--with-deps` adds a few fonts through apt; every library Chromium needs
+      # is already on the runner image. When the Ubuntu mirrors are unreachable,
+      # install the browser alone instead of failing the job.
+      - run: timeout 120 npx playwright install --with-deps chromium || npx playwright install chromium
 
       - run: npm run check
 
@@ -153,7 +156,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - run: npx playwright install --with-deps chromium
+      # `--with-deps` adds a few fonts through apt; every library Chromium needs
+      # is already on the runner image. When the Ubuntu mirrors are unreachable,
+      # install the browser alone instead of failing the job.
+      - run: timeout 120 npx playwright install --with-deps chromium || npx playwright install chromium
 
       # The postgres:18 image creates the `novedu` database itself; the app
       # creates the `mastra` schema and every table at boot (instrumentation.ts).
@@ -220,7 +226,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - run: npx playwright install --with-deps chromium
+      # `--with-deps` adds a few fonts through apt; every library Chromium needs
+      # is already on the runner image. When the Ubuntu mirrors are unreachable,
+      # install the browser alone instead of failing the job.
+      - run: timeout 120 npx playwright install --with-deps chromium || npx playwright install chromium
 
       - name: Wait for Postgres
         run: node scripts/ci/wait-for-db.mjs
