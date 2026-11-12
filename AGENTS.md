@@ -13,6 +13,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Do **not** push to GitHub unless the user explicitly asks.
 - `CLAUDE.md` is a symlink to **`AGENTS.md`** — edit `AGENTS.md`.
 - ALL documentation (`docs/**`, `teacher-docs/**`, READMEs, activity guides) describes the **current state only** — no change history, no migration notes, no version-gated remarks ("needs ≥ x", "since version y"). The app is an MVP under heavy development; assume the latest app and CLI are what everyone runs. Describing a live compatibility *mechanism* is fine (e.g. "an outdated CLI rejects unknown provider names — use `npx @novedu/cli@latest`"); naming versions is not.
+- `presentations/` collects talks given about Novedu (`YYYY-MM-DD-<event>-<title>`, Markdown source + PDF). They are dated snapshots, not documentation — never update them to match the code, and never treat them as a source of truth about the app.
 - Load the **`mastra`** skill before any Mastra work; never rely on cached APIs. Register every agent/tool/workflow/scorer in `app/mastra/index.ts`; use the `dev`/`build` package scripts, never raw `mastra dev`/`mastra build`. Never send a report to Mastra's feedback endpoint (the skill's `references/feedback.md`) without the user's explicit OK for that report.
 - Research current docs before non-trivial work with **Drizzle** ([llms.txt](https://orm.drizzle.team/llms.txt)), **Tailwind v4** (context7 via `ctx7` — CSS-first, differs from training data), or **Recharts** (context7 `/recharts/recharts`).
 
