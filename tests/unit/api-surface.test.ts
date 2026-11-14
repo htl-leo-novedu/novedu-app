@@ -22,6 +22,9 @@ const NON_BEARER_HANDLERS: Record<string, string> = {
   "GET /api/image-content/[id]": "cookie-session image bytes (getSession per request)",
   "GET /api/health": "cookie-session teacher probe (requireEffectiveTeacher)",
   "GET /api/lti/jwks": "public Moodle key set, the public key only",
+  "GET /api/lti/login": "public LTI login start (Moodle sends the browser), no session",
+  "POST /api/lti/login": "public LTI login start (Moodle sends the browser), no session",
+  "POST /api/lti/launch": "public LTI launch, verified against Moodle's signed message",
 };
 
 describe("proxy.ts matcher", () => {
