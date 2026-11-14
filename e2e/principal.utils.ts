@@ -124,6 +124,8 @@ async function signInFresh(
 export async function deletePrincipal(id: string): Promise<void> {
   await query(`DELETE FROM novedu_user_settings WHERE user_id = $1`, [id]);
   await query(`DELETE FROM novedu_quiz_results WHERE user_id = $1`, [id]);
+  await query(`DELETE FROM novedu_moodle_targets WHERE user_id = $1`, [id]);
+  await query(`DELETE FROM novedu_moodle_links WHERE user_id = $1`, [id]);
   await query(`DELETE FROM novedu_achievements WHERE user_id = $1`, [id]);
   await query(`DELETE FROM novedu_session WHERE user_id = $1`, [id]);
   await query(`DELETE FROM novedu_user WHERE id = $1`, [id]);
