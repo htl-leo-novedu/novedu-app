@@ -7,6 +7,8 @@ description: Publish novedu into production
 
 **Check whether the CLI must be republished** — but *not* by "are there changes under `./cli`". The CLI's `validate`, `prompts` and `eval` commands bundle app code (`lib/prompt-fragments`, the `*-validate` modules, `lib/tutors`, the prompt builders and eval schemas) into `dist/main.js` at build time, so the published `@novedu/cli` goes stale whenever those change, even with no `./cli` diff. Republish if the release touches any module the CLI imports (`grep -rhoE "@/lib/[^\"']+" cli/src`) or anything they import. If the user already decided, follow that; if borderline, ask.
 
+**Moodle hand-in:** CI tests it only against a fake platform. When the release changes the Moodle code (`lib/moodle-*`, `app/lti`, `app/api/lti`, the quiz Finish page or receipts in `submitAnswer`, sign-in or `proxy.ts`, the `jose` package), say so and offer a run of the `novedu-moodle-test` skill against a local Moodle; Rainer decides.
+
 **Note:** the teacher guide (`teacher-docs/`) is not in the image — `promote.yml` builds it from the promoted image's commit and uploads it to https://docs.novedu.at, so no extra publish step exists for docs. A `teacher-docs/**` change still needs this whole flow to reach docs.novedu.at: `docker-publish.yml` builds an image for it by design (the image version is the release unit), and the promotion publishes the guide. Verify with `https://docs.novedu.at/version.txt` (the commit the guide was built from).
 
 **Steps:**

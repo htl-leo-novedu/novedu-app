@@ -146,6 +146,7 @@ function entry(overrides: Partial<CodeEntry> = {}): CodeEntry {
     origin: null,
     anonymous: true,
     llm: null,
+    moodle: false,
     createdAt: new Date("2026-06-09T09:00:00Z"),
     ...overrides,
   };
@@ -154,9 +155,10 @@ function entry(overrides: Partial<CodeEntry> = {}): CodeEntry {
 // The DB-row shape the store reads: the entry's `llm` override flattened into
 // the three nullable columns.
 function toRow(e: CodeEntry): Record<string, unknown> {
-  const { llm, ...rest } = e;
+  const { llm, moodle, ...rest } = e;
   return {
     ...rest,
+    moodleEnabled: moodle,
     llmProvider: llm?.provider ?? null,
     llmModel: llm?.model ?? null,
     llmReasoning: llm?.reasoning ?? null,
@@ -436,6 +438,7 @@ describe("createCode", () => {
     origin: "http://localhost:3000",
     anonymous: false,
     llm: null,
+    moodle: false,
   };
 
   it("stores the row under the creating teacher and returns the code", async () => {
@@ -457,8 +460,14 @@ describe("createCode", () => {
       llmProvider: null,
       llmModel: null,
       llmReasoning: null,
+      moodleEnabled: false,
     });
     expect(fake.state.inserted[0]?.createdAt).toBeInstanceOf(Date);
+  });
+
+  it("stores the Moodle switch", async () => {
+    await createCode("teacher-sub-1", { ...data, moodle: true });
+    expect(fake.state.inserted[0]).toMatchObject({ moodleEnabled: true });
   });
 
   it("stores the LLM override pair in the two columns", async () => {
@@ -699,7 +708,56 @@ describe("windowStatusCondition", () => {
   });
 });
 
+describe("validateCodeRequest: the Moodle switch", () => {
+  const valid = {
+    file: "https://example.com/quiz.yaml",
+    start: "",
+    end: "",
+    note: "",
+    llmProvider: "",
+    llmModel: "",
+    llmReasoning: "",
+  };
+  const moodleOf = (input: Partial<Parameters<typeof validateCodeRequest>[0]>) => {
+    const result = validateCodeRequest({ ...valid, ...input });
+    return result.ok ? result.payload.moodle : result.message;
+  };
+
+  it("is off when absent, blank or false", () => {
+    expect(moodleOf({ module: "quiz" })).toBe(false);
+    expect(moodleOf({ module: "quiz", moodle: "" })).toBe(false);
+    expect(moodleOf({ module: "quiz", moodle: false })).toBe(false);
+    expect(moodleOf({ module: "tutor", moodle: false })).toBe(false);
+  });
+
+  it("is on for a quiz from a checkbox or a boolean", () => {
+    expect(moodleOf({ module: "quiz", moodle: "on" })).toBe(true);
+    expect(moodleOf({ module: "quiz", moodle: true })).toBe(true);
+  });
+
+  it("refuses it for any other module", () => {
+    for (const module of ["tutor", "writing", "coding", undefined]) {
+      expect(moodleOf({ module, moodle: true })).toBe(
+        "Only quiz codes can hand in results to Moodle.",
+      );
+    }
+  });
+
+  it("refuses a value that is not a switch", () => {
+    expect(moodleOf({ module: "quiz", moodle: 1 })).toBe(
+      "The Moodle switch must be true or false.",
+    );
+  });
+});
+
 describe("getCode", () => {
+  it("reads the Moodle switch of a quiz, and never of another module", async () => {
+    fake.state.rows = [toRow(entry({ module: "quiz", moodle: true }))];
+    await expect(getCode("a1b2c3d4e5")).resolves.toMatchObject({ moodle: true });
+    fake.state.rows = [{ ...toRow(entry({ module: "tutor" })), moodleEnabled: true }];
+    await expect(getCode("a1b2c3d4e5")).resolves.toMatchObject({ moodle: false });
+  });
+
   it("returns the row regardless of who created it (no ownership check)", async () => {
     const row = entry({ createdBy: "another-teacher" });
     fake.state.rows = [toRow(row)];
@@ -829,6 +887,7 @@ describe("updateCode", () => {
     validUntil: new Date("2026-07-01T10:00:00Z"),
     note: "edited",
     llm: null,
+    moodle: false,
   };
 
   it("updates only the window + note + LLM override (never the url/anonymous/createdBy)", async () => {
@@ -842,7 +901,13 @@ describe("updateCode", () => {
       llmProvider: null,
       llmModel: null,
       llmReasoning: null,
+      moodleEnabled: false,
     });
+  });
+
+  it("writes the Moodle switch", async () => {
+    await updateCode("a1b2c3d4e5", { ...data, moodle: true });
+    expect(fake.state.updated[0]).toMatchObject({ moodleEnabled: true });
   });
 
   it("stores an override pair into the two columns", async () => {

@@ -46,6 +46,7 @@ interface CreateOptions {
   llmProvider?: string;
   llmModel?: string;
   llmReasoning?: string;
+  moodle?: boolean;
 }
 
 interface ListOptions {
@@ -217,6 +218,10 @@ export function registerCodes(program: Command): void {
       "--llm-reasoning <level>",
       `LLM override reasoning effort (${REASONING_LEVELS.join(", ")}; needs the provider/model pair)`,
     )
+    .option(
+      "--moodle",
+      "students can hand in results to Moodle (quiz codes only; change it later on the code's edit page)",
+    )
     .option(...SERVER_OPTION)
     .action(async (options: CreateOptions) => {
       // --start/--end pass through verbatim; the API enforces the explicit-offset
@@ -238,6 +243,7 @@ export function registerCodes(program: Command): void {
           ...(options.start === undefined ? {} : { validFrom: options.start }),
           ...(options.end === undefined ? {} : { validUntil: options.end }),
           ...(options.note === undefined ? {} : { note: options.note }),
+          ...(options.moodle ? { moodle: true } : {}),
           ...(llmGiven
             ? {
                 llm: {

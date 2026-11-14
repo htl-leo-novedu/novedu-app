@@ -32,6 +32,7 @@ A **code** is a `[a-z0-9-]` string (1–32 chars; `generateCode()` mints 10 rand
 | `origin` | **documentation-only**: where the code was created (DEV vs PROD rows). Lookups never read it — a code created on localhost works in production, since all environments share the database |
 | `anonymous` | the activity YAML's `anonymous` flag (default is module-specific — tutor/quiz `true`, writing `false`, coding always `true`), **frozen at create time** — a later YAML edit does NOT update it. Governs whether the stats page shows per-student data |
 | `llm_provider` / `llm_model` / `llm_reasoning` | the code's optional **LLM override**: when set, it replaces the activity YAML's whole `llm:` block for every request served under this code. The pair is **both-or-nothing** — either both NULL (the YAML's `llm:` block applies) or both set; model ids are provider-specific, so validation rejects a lone half. `llm_reasoning` is the optional third member (a `REASONING_LEVELS` literal, docs/ai-models.md): it requires the pair, and an override WITHOUT one drops the YAML's level too (wholesale). Surfaced as `CodeEntry.llm` and applied via `effectiveLlm` (`lib/code-store.ts`); a corrupt stored pair is logged and read as no override, a corrupt stored reasoning is logged and dropped while the pair survives. Editable on `/codes/edit` (NOT frozen) |
+| `moodle_enabled` | the **Moodle hand-in switch** (`docs/moodle.md`), default `false`, only ever `true` for a quiz (validation refuses it for another module, and a non-quiz row reads as `false`). Surfaced as `CodeEntry.moodle`. Editable on `/codes/edit` (NOT frozen); inert while the server has no Moodle connection |
 | `created_at` | creation time |
 
 Indexes: PK on `code`; `created_by` (the teacher list); `module` (the
@@ -282,7 +283,8 @@ below. All runtime endpoints the app does not use (`/threads/*`, `/transcribe`,
 - **`/`** is the start page (`docs/home.md`). On the student page (and for a
   teacher in view-as-student mode) its Continue section holds the code field
   (`CodeEntryForm`, `app/code-entry.tsx`): it accepts a bare code or a pasted full
-  URL (the client extracts the last path segment; format-only validation against
+  URL (the client extracts the last path segment with `extractCode`,
+  `lib/code-input.ts`, shared with the Moodle code picker; format-only validation against
   `[a-z0-9-]{1,32}`), with the user's **recently used codes** as one-click
   shortcuts below it. The teacher dashboard has no code field.
 - Recents live in SQL (`novedu_recent_codes`, PK `user_id` + `code`,
@@ -301,7 +303,10 @@ below. All runtime endpoints the app does not use (`/threads/*`, `/transcribe`,
 "Create code" shortcut — `/share-tutor` and `/share-quiz` both 308-redirect
 here): a **module** selector + the file URL + optional note + window as
 `datetime-local` (converted to unix seconds IN THE BROWSER — the only place the
-teacher's timezone is known) + the optional **LLM override** (below). **Either
+teacher's timezone is known) + the optional **LLM override** (below) + for a
+quiz, while the server has a Moodle connection, the checkbox **"Students can hand
+in results to Moodle"** (off by default; help text "Students can hand in while the
+code is valid. To set a deadline, set the code's end date."; `docs/moodle.md`). **Either
 window field may be left blank** for an
 open-ended code (no start / no end → a null bound). The create pipeline lives in
 **`lib/code-service.ts`** (`createCodeForUser` — a plain server module that takes
@@ -343,7 +348,9 @@ coding. The origin comes from `CODE_ORIGIN` (read
 first), then `TUTOR_CODE_ORIGIN` (fallback), then the request's forwarded/host headers
 (fine for dev); it is display-only.
 
-The form has three groups: the activity (module, YAML URL, note), its LLM, and the
+The form has three groups: the activity (module, YAML URL, note, and the Moodle
+checkbox where it applies — the module select is controlled, so the checkbox
+follows it), its LLM, and the
 availability window. The LLM group opens with the activity YAML's own `llm:` block in
 a read-only field, **Activity's LLM (from the YAML)**, in BOTH modes —
 `provider · model · reasoning`, the reasoning reading "provider default" when the YAML
@@ -375,8 +382,11 @@ for it.
 
 **Editing** (`/codes/edit/[code]`, the SAME `CodeForm` in `mode="edit"` →
 `updateCodeAction` → `updateCode`) changes only the **note**, the
-**availability window**, and the **LLM override** (set or cleared as a
-whole, reasoning level included; same validation + availability gate as create). The module and the file
+**availability window**, the **LLM override** (set or cleared as a
+whole, reasoning level included; same validation + availability gate as create),
+and for a quiz the **Moodle hand-in switch**. The checkbox is sent with a hidden
+`moodleField` marker; a save without the marker (the form showed no checkbox
+because the server has no Moodle connection) keeps the stored switch. The module and the file
 URL are shown **read-only** and
 are never submitted, so the frozen `anonymous` flag (which the file implies) stays
 valid and no YAML re-validation is needed.
@@ -486,7 +496,7 @@ novedu_reports.user_id      = novedu_user.id (the reporting student — see belo
 - **user → userchat → history**: filter `novedu_user_chats` by `user_id`, join
   `mastra_threads`/`mastra_messages` via `thread_id`.
 
-`novedu_user_chats` is the ONLY place tying users to chats — with **three
+`novedu_user_chats` is the ONLY place tying users to chats — with **four
 sanctioned exceptions**: `novedu_reports`, where a student who files a report
 voluntarily waives anonymity (their user id is stored even under an anonymous code,
 behind an explicit on-form notice; `docs/reports.md`); `novedu_coding_keys`,
@@ -495,7 +505,11 @@ behind an explicit on-page notice (`docs/coding.md`); and `novedu_quiz_results`,
 where a student who chooses to save a finished quiz's counts on the Finish page
 (behind the notice that only they can see it) stores them with their user id even
 under an anonymous code. That store has no teacher reader at all — not even an
-aggregate — and is deleted with its code (`docs/home.md`). The teacher dashboard
+aggregate — and is deleted with its code (`docs/home.md`); and
+`novedu_moodle_targets` (with `novedu_moodle_links`), where a student who confirmed on
+`/lti/link` that their Moodle and Novedu accounts are both theirs gets a hand-in
+target per code — again with no teacher reader, deleted with the code or by the
+student's own unlink (`docs/moodle.md`). The teacher dashboard
 counts a teacher's identified students through `chattersOfTeacherStatement`
 (`lib/user-chat-store.ts`, non-anonymous codes only) beside the writing and key
 stores' subselects; only counts and dates leave that statement (`docs/home.md`). It is

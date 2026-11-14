@@ -69,6 +69,7 @@ const ENTRY = {
   origin: "http://localhost:3000",
   anonymous: true,
   llm: null,
+  moodle: false,
   createdAt: new Date("2026-07-07T07:59:12Z"),
 };
 
@@ -82,6 +83,7 @@ const WIRE_ENTRY = {
   validFrom: "2026-07-07T08:00:00.000Z",
   validUntil: null,
   llm: null,
+  moodle: false,
   createdBy: "teacher-oid-1",
   ownerName: "Test Teacher",
   createdAt: "2026-07-07T07:59:12.000Z",
@@ -194,7 +196,19 @@ describe("POST /api/codes", () => {
       llmProvider: "",
       llmModel: "",
       llmReasoning: "",
+      moodle: false,
     });
+  });
+
+  it("passes the Moodle switch through and refuses a non-boolean", async () => {
+    await postRequest({ ...BODY, moodle: true }, await mint());
+    expect(mocks.createCodeForUser).toHaveBeenCalledWith(
+      "teacher-oid-1",
+      expect.objectContaining({ moodle: true }),
+    );
+    const res = await postRequest({ ...BODY, moodle: "yes" }, await mint());
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ message: "moodle must be true or false." });
   });
 
   it("converts an explicit non-UTC offset correctly", async () => {

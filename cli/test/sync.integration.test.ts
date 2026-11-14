@@ -106,6 +106,40 @@ activities:
     expect(readFileSync(lock, "utf8")).toBe(lockAfterFirst);
   });
 
+  it("mints with the Moodle switch and reports a later difference without minting again", async () => {
+    const registry = join(dir, "moodle-run.yaml");
+    const write = (moodle: boolean) =>
+      writeFileSync(
+        registry,
+        `base-url: "${baseUrl()}/"
+activities:
+  quizzes:
+    moodle-quiz:
+      file: quizzes/test-quiz.yaml
+      note: "moodle fixture"
+      start: 2026-10-01T00:00:00Z
+      moodle: ${moodle}
+`,
+        "utf8",
+      );
+    const sync = async () =>
+      JSON.parse(
+        (await runCli(["codes", "sync", registry, "--json", "--server", baseUrl()])).stdout,
+      );
+
+    write(true);
+    const first = await sync();
+    expect(first.entries[0].action).toBe("minted");
+
+    write(false);
+    const second = await sync();
+    expect(second.entries[0].action).toBe("reused");
+    expect(second.entries[0].code).toBe(first.entries[0].code);
+    expect(second.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: "moodle", key: "moodle-quiz" })]),
+    );
+  });
+
   it("emits the machine-readable report with --json", async () => {
     const registry = join(dir, "json-run.yaml");
     writeFileSync(

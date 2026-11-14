@@ -132,6 +132,13 @@ export const RegistryEntrySchema = z
         description:
           "Per-code LLM override replacing the activity YAML's own `llm:`. Provider and model must be given together; `reasoning` is optional on top of them.",
       }),
+    // Mint-only like `note`: sent when sync mints a code, never part of the match
+    // (docs/registry.md). Valid under `quizzes` only — `cli/src/registry.ts`
+    // checks the group, since one entry schema serves every group.
+    moodle: z.boolean({ error: "moodle must be true or false" }).optional().meta({
+      description:
+        "Quizzes only: students can hand in results to Moodle. Sent when a code is minted; not part of the match, so changing it keeps the published code (change the switch on the code's edit page).",
+    }),
   })
   .refine(
     (entry) => (entry.file === undefined) !== (entry.url === undefined),

@@ -1,6 +1,7 @@
 import { Main } from "@/components/page-main";
 import { requireTeacherPage } from "@/components/require-teacher-page";
 import { parseModuleParam } from "@/lib/code-modules/types";
+import { moodleAvailable } from "@/lib/moodle-config";
 import { CodeForm } from "../code-form";
 
 // Teacher-only: create a code that grants students time-windowed access to an
@@ -25,7 +26,12 @@ export default async function NewCodePage({
 
   return (
     <Main>
-      <CodeForm mode="create" initialModule={initialModule} initialFileUrl={fileParam} />
+      <CodeForm
+        mode="create"
+        initialModule={initialModule}
+        initialFileUrl={fileParam}
+        moodleAvailable={(await moodleAvailable()) !== undefined}
+      />
     </Main>
   );
 }

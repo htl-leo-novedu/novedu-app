@@ -83,6 +83,11 @@ services:
       SCCH_API_KEY: fake-llm
       # Optional: a real model through OpenRouter (docs/ai-models.md).
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # Optional: Moodle hand-in (docs/moodle.md). Off unless all four are set.
+      MOODLE_LTI_PRIVATE_KEY: ${MOODLE_LTI_PRIVATE_KEY:-}
+      MOODLE_LTI_ISSUER: ${MOODLE_LTI_ISSUER:-}
+      MOODLE_LTI_CLIENT_ID: ${MOODLE_LTI_CLIENT_ID:-}
+      MOODLE_LTI_DEPLOYMENT_ID: ${MOODLE_LTI_DEPLOYMENT_ID:-}
     volumes:
       - images:/var/lib/novedu
     ports:

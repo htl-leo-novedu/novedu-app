@@ -9,6 +9,7 @@ related:
   - 00-introduction/02-shareable-codes
   - 30-sharing-activities/01-creating-codes
   - 30-sharing-activities/05-deleting-codes
+  - 30-sharing-activities/11-moodle-hand-in
 ---
 
 Every code can carry a time window: a start time, an end time, or both. Outside the window the link doesn't open the activity, so you can hand out a code before the lesson and know it only works when you want it to. The window belongs to the code, not the activity, so two codes for the same activity can have different windows.
@@ -23,6 +24,8 @@ You set the window on the same form you use to create or edit a code. Two fields
 You enter both times in your own local time, exactly as you'd read them off your classroom clock. A typical lesson setup: set **Available from** to the start of the lesson and press **+1h**.
 
 If you set both times, the end must be after the start; the form tells you if it isn't.
+
+For a quiz whose results students hand in to Moodle, the end time is also the hand-in deadline; the chapter on handing in quiz results to Moodle has the details.
 
 ## Either bound is optional
 

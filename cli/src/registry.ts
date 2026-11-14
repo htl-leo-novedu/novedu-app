@@ -38,6 +38,11 @@ export interface RegistryEntry {
    * one rather than silently serving the old effort.
    */
   llm: { provider: LlmProvider; model: string; reasoning?: ReasoningLevel } | null;
+  /**
+   * The Moodle hand-in switch (quizzes only). Mint-only like `note`: sent when a code
+   * is minted, never part of the match.
+   */
+  moodle: boolean;
 }
 
 export interface RegistryIssue {
@@ -208,6 +213,13 @@ export function parseRegistry(text: string): RegistryResult {
       }
       const entry = parsed.data;
 
+      if (entry.moodle === true && module !== "quiz") {
+        errors.push(
+          issue("REGISTRY_SCHEMA_ERROR", `${entryPath}.moodle`, "is allowed under `quizzes` only"),
+        );
+        continue;
+      }
+
       if (entry.start && entry.end && Date.parse(entry.end) <= Date.parse(entry.start)) {
         errors.push(issue("REGISTRY_SCHEMA_ERROR", `${entryPath}.end`, "must be after `start`"));
         continue;
@@ -263,6 +275,7 @@ export function parseRegistry(text: string): RegistryResult {
               ...(entry.llm.reasoning ? { reasoning: entry.llm.reasoning } : {}),
             }
           : null,
+        moodle: entry.moodle === true,
       });
     }
   }

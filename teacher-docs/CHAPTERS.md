@@ -63,6 +63,7 @@ _Turning an activity into a code and handing it to a class._
 | 08 | Many activities at once: the activity registry | `docs/registry.md` (format + sync semantics), `cli/README.md` (`codes sync`) |
 | 09 | Your start page | `docs/home.md` (the *Teacher dashboard* section: counters, KPIs, top activities, school hours, teacher badges) |
 | 10 | Exporting a code's conversations | `docs/api.md` (the conversation export route), `docs/codes.md` (*Stats & conversation viewer*), `cli/README.md` (`codes export`) |
+| 11 | Handing in quiz results to Moodle | `docs/moodle.md` (behavior: the switch, picker, account link, Finish-page box, messages, stored data), `docs/codes.md` (the Moodle switch), `docs/registry.md` (`moodle`), `cli/README.md` (`codes create --moodle`) |
 
 ## 40: Working with AI agents
 _Using Novedu together with AI assistants and agents: the CLI skill, and the guide's machine-readable form. More AI topics land here over time._
@@ -81,6 +82,7 @@ _Running Novedu yourself: a local Novedu for evaluators, a development setup for
 | 01 | Trying Novedu locally | `compose.yaml`, `README.md` ("Try Novedu locally"), `docs/auth.md` ("Demo mode"), `docs/testing.md` ("Fake LLM"), `lib/llm/presets.ts`, `https://openrouter.ai/docs` |
 | 02 | Local development | `README.md` (prerequisites, "Demo login and the `:demo` image", scripts), `docs/testing.md` (scripts, "Demo login `@demo`", CI), `.github/workflows/qa.yml` (what CI runs), `playwright.config.ts` |
 | 03 | Azure AI models with a hard budget | `docs/azure-runtime-env.md` (*OpenRouter*: the workspace, BYOK, guardrail, budget, per-stage keys), `docs/ai-models.md` (OpenRouter provider, the allowlist paragraph), `lib/llm/upstream-error.ts` (the messages teachers see), `lib/health.ts` (the OpenRouter probe), `lib/llm/presets.ts`, `https://openrouter.ai/docs/guides/overview/auth/byok`, `https://openrouter.ai/docs/guides/features/guardrails`, `https://openrouter.ai/docs/guides/best-practices/spend-controls` |
+| 04 | Connecting Novedu to Moodle | `docs/moodle.md` (connection, key, the four settings, the public routes, pasted key), `docs/azure-runtime-env.md` (the settings on a stage), the Settings page's *Moodle connection* section, `.agents/skills/novedu-moodle-test/SKILL.md` (how the form was filled in a real run) |
 
 > Scope reminder for every chapter: the "Where to look" entries are engineer
 > references. Document only teacher-facing behavior, not how the app works inside

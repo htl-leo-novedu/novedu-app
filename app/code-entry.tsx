@@ -5,26 +5,7 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-
-// Accepts a bare code OR a pasted activity URL (`https://host/<code>`) and
-// extracts the code — the last non-empty path segment. Lowercased so a code
-// retyped from paper in caps still works. Returns undefined for input that
-// cannot be a code. Mirrors CODE_PATTERN (lib/code-store.ts): 1–32 chars of
-// [a-z0-9-], so future memorable codes are accepted too.
-export function extractCode(input: string): string | undefined {
-  let candidate = input.trim();
-  if (candidate === "") return undefined;
-  if (/^https?:\/\//i.test(candidate)) {
-    try {
-      const segments = new URL(candidate).pathname.split("/").filter(Boolean);
-      candidate = segments[segments.length - 1] ?? "";
-    } catch {
-      return undefined;
-    }
-  }
-  candidate = candidate.toLowerCase();
-  return /^[a-z0-9-]{1,32}$/.test(candidate) ? candidate : undefined;
-}
+import { extractCode } from "@/lib/code-input";
 
 // The start page's code entry form (app/_home/continue-section.tsx). Submitting
 // navigates to `/<code>`, where the server checks the code — this component

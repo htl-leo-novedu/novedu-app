@@ -122,7 +122,19 @@ describe("createCodeAction", () => {
       origin: "http://localhost:3000",
       anonymous: true,
       llm: null,
+      moodle: false,
     });
+  });
+
+  it("refuses the Moodle switch for a module other than quiz", async () => {
+    const data = formData();
+    data.set("moodle", "on");
+    const state = await createCodeAction({ status: "idle" }, data);
+    expect(state).toEqual({
+      status: "error",
+      message: "Only quiz codes can hand in results to Moodle.",
+    });
+    expect(mocks.createCode).not.toHaveBeenCalled();
   });
 
   it("passes the LLM override FormData fields through to the pipeline", async () => {
@@ -207,9 +219,46 @@ describe("updateCodeAction", () => {
       validUntil: new Date(END * 1000),
       note: "new",
       llm: null,
+      moodle: false,
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/codes");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/codes/edit/a1b2c3d4e5");
+  });
+
+  describe("the Moodle switch of a quiz", () => {
+    const quiz = { ...entry, module: "quiz", moodle: true };
+
+    it("switches it off when the checkbox was shown and left unticked", async () => {
+      mocks.getCode.mockResolvedValue(quiz);
+      const data = formData("n");
+      data.set("moodleField", "1");
+      await updateCodeAction("a1b2c3d4e5", { status: "idle" }, data);
+      expect(mocks.updateCode).toHaveBeenCalledWith(
+        "a1b2c3d4e5",
+        expect.objectContaining({ moodle: false }),
+      );
+    });
+
+    it("switches it on when ticked", async () => {
+      mocks.getCode.mockResolvedValue({ ...quiz, moodle: false });
+      const data = formData("n");
+      data.set("moodleField", "1");
+      data.set("moodle", "on");
+      await updateCodeAction("a1b2c3d4e5", { status: "idle" }, data);
+      expect(mocks.updateCode).toHaveBeenCalledWith(
+        "a1b2c3d4e5",
+        expect.objectContaining({ moodle: true }),
+      );
+    });
+
+    it("keeps the stored switch when the form did not show the checkbox", async () => {
+      mocks.getCode.mockResolvedValue(quiz);
+      await updateCodeAction("a1b2c3d4e5", { status: "idle" }, formData("n"));
+      expect(mocks.updateCode).toHaveBeenCalledWith(
+        "a1b2c3d4e5",
+        expect.objectContaining({ moodle: true }),
+      );
+    });
   });
 
   it("saves an edited LLM override pair (editable, unlike the module/file URL)", async () => {

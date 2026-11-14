@@ -12,6 +12,7 @@ related:
   - 30-sharing-activities/03-time-limitation
   - 30-sharing-activities/05-deleting-codes
   - 20-building-activities/02-available-llms
+  - 30-sharing-activities/11-moodle-hand-in
 ---
 
 With one or two activities, creating a code by hand is quick and there is nothing to organise. With twenty, it stops working. Every new quiz means the same ritual: check the file, build its address, create the code, copy the code, paste it into the chapter that links to it. Nothing in your material says which code belongs to which activity file, so a year later the only way to find out is to open each code in Novedu and compare addresses.
@@ -68,6 +69,8 @@ The example is the real registry shape used by the Creative Coding book, a TypeS
     reasoning: low
   ```
 
+- `moodle: true`, for an entry under `quizzes` only, ticks **Students can hand in results to Moodle** on the code (the chapter on handing in quiz results to Moodle explains the option). In any other group it is an error.
+
 You can also add your own extra lines to an entry, for example a chapter number. Anything the registry does not recognise is ignored, so annotate freely.
 
 ## Choose good names
@@ -122,11 +125,12 @@ Commit this file together with the registry. It is generated: never edit it by h
 
 ## What happens when you run it again
 
-Running the command again is the normal workflow, not something to be careful about. Whether an entry keeps its code or gets a new one follows three rules:
+Running the command again is the normal workflow, not something to be careful about. Whether an entry keeps its code or gets a new one follows these rules:
 
 - **Nothing changed, nothing happens.** An entry whose activity file, availability window, and model override still match one of your codes reuses that code. Editing the activity file itself changes nothing here: a code always points at the file's address, so students get your edits without a new code.
 - **A new window, or any change to the model override, means a new code.** That includes the reasoning level on its own: the same provider and model at a different thinking effort is a different code. The command never edits or deletes an existing code, so it creates a second one and reports the old one as superseded. The old code keeps working and keeps its statistics until you delete it in Novedu, which matters because links you have already handed to students still point at it.
 - **A different note changes nothing.** The note is a label for you, so it is not part of what makes a code match. Novedu keeps the note the code was created with.
+- **A different `moodle` value changes nothing either.** The Moodle option is set only when a code is created; the command reports "moodle differs" so you can change it on the code's edit page in Novedu.
 
 Removing an entry from the registry drops its name from the lock file on the next run. The code itself is untouched and still works; the command mentions it so you can decide whether to delete it.
 

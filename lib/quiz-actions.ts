@@ -9,6 +9,8 @@ import { QUIZ_VERDICT_SCHEMA } from "@/app/mastra/quiz-agents";
 import { validateAnswerImages } from "@/lib/answer-images";
 import { invalidateHome } from "@/lib/home-data";
 import { QUIZ_EVAL_CONTEXT, setLlmContext } from "@/lib/llm-context";
+import { moodleAvailable } from "@/lib/moodle-config";
+import { getReceiptSecret, type Receipt, signReceipt } from "@/lib/moodle-receipt";
 import { buildQuestionSeed, buildVerdictSeed } from "@/lib/quiz-discussion-prompt";
 import { buildAnswerMessage, buildGradingPrompt } from "@/lib/quiz-grading-prompt";
 import { type SaveMode, saveQuizResult as storeQuizResult } from "@/lib/quiz-result-store";
@@ -45,8 +47,12 @@ import { recordQuizAnswer } from "@/lib/usage-store";
 // runtime reference for a type-only re-export, which crashes the module at load
 // (import `QuizCodeInput` from `@/lib/quiz-verify` instead).
 
+/**
+ * `receipt` only on a Moodle-enabled code, when the runner sent the attempt id
+ * and the slot (docs/moodle.md); otherwise the answer is exactly as without Moodle.
+ */
 export type SubmitAnswerResult =
-  | { ok: true; result: QuizVerdict; feedback: string }
+  | { ok: true; result: QuizVerdict; feedback: string; receipt?: Receipt }
   | { ok: false; message: string };
 
 /** `saved: false` = an automatic save found the setting off; the Finish page asks instead. */
@@ -78,10 +84,20 @@ interface QuizSeedMessage {
  * `imageInput` allows them), or both. Re-verifies the quiz code, re-loads the
  * quiz, finds the question, and runs the stateless `quizEvaluator` for a
  * structured verdict. Returns the verdict + markdown feedback; nothing is
- * persisted — the images are discarded after grading.
+ * persisted — the images are discarded after grading. On a Moodle-enabled code,
+ * with the attempt id and the slot, it also returns a signed receipt for the
+ * Moodle hand-in (lib/moodle-receipt.ts).
  */
 export async function submitAnswer(
-  input: QuizCodeInput & { questionId: string; answer: string; images?: string[] },
+  input: QuizCodeInput & {
+    questionId: string;
+    answer: string;
+    images?: string[];
+    /** The runner's attempt uuid — sent only where a Moodle hand-in is possible. */
+    attemptId?: string;
+    /** The 0-based position in the attempt — sent with `attemptId`. */
+    slot?: number;
+  },
 ): Promise<SubmitAnswerResult> {
   const answer = typeof input.answer === "string" ? input.answer.trim() : "";
   if (!answer && (input.images === undefined || input.images.length === 0)) {
@@ -140,11 +156,39 @@ export async function submitAnswer(
     }
     // Count the answered question off the response path (the store never throws).
     after(() => recordQuizAnswer({ code: ctx.code, userId: ctx.userId }));
-    return { ok: true, result: object.result, feedback: object.feedback };
+    const receipt = await receiptFor(ctx, input, object.result);
+    return {
+      ok: true,
+      result: object.result,
+      feedback: object.feedback,
+      ...(receipt ? { receipt } : {}),
+    };
   } catch (error) {
     console.error("quiz-actions: grading failed", error);
     return { ok: false, message: "The answer could not be graded right now. Please try again." };
   }
+}
+
+/**
+ * The signed receipt of a graded answer — only where a Moodle hand-in is
+ * possible: Moodle available, the code switched on, a valid attempt uuid and a
+ * slot inside the attempt.
+ */
+async function receiptFor(
+  ctx: { code: string; userId: string; moodle: boolean; quiz: Parameters<typeof attemptLength>[0] },
+  input: { questionId: string; attemptId?: unknown; slot?: unknown },
+  verdict: QuizVerdict,
+): Promise<Receipt | undefined> {
+  const { attemptId, slot } = input;
+  if (typeof attemptId !== "string" || !UUID.test(attemptId)) return undefined;
+  if (!Number.isSafeInteger(slot) || (slot as number) < 0) return undefined;
+  if ((slot as number) >= attemptLength(ctx.quiz) || !ctx.moodle) return undefined;
+  if (!(await moodleAvailable())) return undefined;
+  return signReceipt(
+    { code: ctx.code, userId: ctx.userId, attemptId: attemptId.toLowerCase() },
+    { slot: slot as number, questionId: input.questionId, verdict },
+    getReceiptSecret(),
+  );
 }
 
 function safeVerdict(value: unknown): QuizVerdict {

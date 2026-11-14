@@ -1,9 +1,15 @@
+import { generateKeyPairSync } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
 import { defineConfig, devices } from "@playwright/test";
 import { STORAGE_STATE } from "./e2e/auth.constants";
 import { FAKE_LLM_BASE, FAKE_LLM_PORT } from "./e2e/fake-llm.constants";
 import { FIXTURES_BASE, FIXTURES_PORT } from "./e2e/fixtures.constants";
 import { E2E_IMAGE_ROOT } from "./e2e/image-root.constants";
+import {
+  FAKE_MOODLE_CLIENT_ID,
+  FAKE_MOODLE_DEPLOYMENT_ID,
+  FAKE_MOODLE_ISSUER,
+} from "./e2e/moodle.constants";
 import { parseAuthMode } from "./lib/auth-mode";
 
 // Two run modes share this file (docs/testing.md, "Fake LLM"):
@@ -69,6 +75,20 @@ export const fixturesServer = {
   timeout: 30 * 1000,
 };
 
+// The Moodle connection of the e2e server (docs/testing.md, "Moodle"): a
+// throwaway tool key generated at every load — never committed, never reused —
+// and the three connection values pointing at the fake platform that
+// e2e/moodle-roundtrip.live.spec.ts starts on its fixed port. Only the server
+// started from the main process sees the key.
+const MOODLE_ENV = {
+  MOODLE_LTI_PRIVATE_KEY: generateKeyPairSync("rsa", { modulusLength: 2048 })
+    .privateKey.export({ type: "pkcs8", format: "pem" })
+    .toString(),
+  MOODLE_LTI_ISSUER: FAKE_MOODLE_ISSUER,
+  MOODLE_LTI_CLIENT_ID: FAKE_MOODLE_CLIENT_ID,
+  MOODLE_LTI_DEPLOYMENT_ID: FAKE_MOODLE_DEPLOYMENT_ID,
+};
+
 // Entra mode (the default).
 const ENTRA_PROJECTS = [
   // Creates the two e2e principals in `novedu_user`/`novedu_session` and mints
@@ -107,6 +127,7 @@ const ENTRA_SERVERS = [
       SCCH_API_KEY: "fake-llm",
       USAGE_COST_HF_API_BASE: `${FIXTURES_BASE}/prices/hf/api`,
       USAGE_COST_OPENROUTER_MODELS_URL: `${FIXTURES_BASE}/prices/openrouter/models`,
+      ...MOODLE_ENV,
     },
     reuse: false,
   }),

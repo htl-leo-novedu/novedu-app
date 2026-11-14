@@ -18,6 +18,8 @@ export interface ServerCode {
   validFrom: string | null;
   validUntil: string | null;
   llm: { provider: string; model: string; reasoning: string | null } | null;
+  /** The Moodle hand-in switch; `false` when the server does not send it. */
+  moodle: boolean;
   createdAt: string | null;
 }
 
@@ -34,7 +36,7 @@ export interface SyncEntryResult {
 }
 
 export interface SyncWarning {
-  type: "duplicate" | "superseded" | "orphaned" | "note";
+  type: "duplicate" | "superseded" | "orphaned" | "note" | "moodle";
   message: string;
   key?: string;
   codes?: string[];
@@ -75,6 +77,7 @@ export function parseServerCodes(payload: unknown): ServerCode[] {
                   : null,
             }
           : null,
+      moodle: value.moodle === true,
       createdAt: typeof value.createdAt === "string" ? value.createdAt : null,
     });
   }
@@ -183,6 +186,7 @@ export function mintBody(entry: RegistryEntry): Record<string, unknown> {
     ...(entry.validUntil === null ? {} : { validUntil: entry.validUntil }),
     ...(entry.note === null ? {} : { note: entry.note }),
     ...(entry.llm === null ? {} : { llm: entry.llm }),
+    ...(entry.moodle ? { moodle: true } : {}),
   };
 }
 
@@ -226,6 +230,16 @@ export function collectWarnings(
         key: result.entry.key,
         codes: [matched.code],
         message: `${result.entry.key}: the existing code's note differs from the registry's — a note is never re-applied to a minted code`,
+      });
+    }
+    // Like the note, the Moodle switch is mint-only: never part of the match, and
+    // sync never changes a code, so a difference is reported for the teacher.
+    if (matched && matched.moodle !== result.entry.moodle) {
+      warnings.push({
+        type: "moodle",
+        key: result.entry.key,
+        codes: [matched.code],
+        message: `${result.entry.key}: moodle differs — change it on the code's edit page`,
       });
     }
   }

@@ -1,0 +1,1 @@
+ALTER TABLE "novedu_codes" ADD COLUMN "moodle_enabled" boolean DEFAULT false NOT NULL;
