@@ -164,8 +164,15 @@ any page, and its handler re-validates the session itself on top of that.
 **API-key routes.** The public coding routes `POST /api/coding/v1/chat/completions`
 and `GET /api/coding/v1/models` take neither a session token nor a cookie: a
 per-user coding API key authenticates them, under one gate that re-verifies the key
-row and the code row on every request (`docs/coding.md`). They are the only public
-API surface besides `GET /api/version` and better-auth's own endpoints.
+row and the code row on every request (`docs/coding.md`).
+
+**Moodle LTI routes.** `GET /api/lti/jwks`, `GET`/`POST /api/lti/login`,
+`POST /api/lti/launch` and `POST /api/lti/pick` are public too (proxy exclusion
+`api/lti(?:/|$)`): Moodle's server or a browser Moodle sends over calls them, and
+they verify Moodle's signed messages or Novedu's own signed tokens instead of a
+session; none reads or creates one. Without a Moodle connection all but the key
+set answer `404` (`docs/moodle.md`). Besides these, `GET /api/version` and
+better-auth's own endpoints, there is no public API surface.
 
 - **`GET /api/version`** (`app/api/version/route.ts`) — the ONE route in this list
   that is **public and unauthenticated** (proxy-excluded, no bearer gate): the
@@ -189,15 +196,18 @@ API surface besides `GET /api/version` and better-auth's own endpoints.
   optional. The web page spells the same narrowing `?owner=` (a user id, or `all`)
   and has no `mine` — `docs/filtered-lists.md`. Bare JSON
   array, newest first, of
-  `{ code, url, module, note, fileUrl, anonymous, validFrom, validUntil, llm, createdBy, ownerName, createdAt }`
+  `{ code, url, module, note, fileUrl, anonymous, validFrom, validUntil, llm, moodle, createdBy, ownerName, createdAt }`
   (`url` the shareable link, `llm` the override
-  `{ provider, model, reasoning? }` or `null`, `ownerName` the creator's display
+  `{ provider, model, reasoning? }` or `null`, `moodle` the Moodle hand-in switch,
+  `ownerName` the creator's display
   name or `null` — the name the `/codes` list shows).
 - **`POST /api/codes`** (same file, teacher-only) — mints a code through the
   SAME pipeline as the web form (`createCodeForUser`,
   `lib/code-service.ts`). JSON body
-  `{ module, fileUrl, validFrom?, validUntil?, note?, llm?: { provider, model, reasoning? } }`
-  (`reasoning` a `REASONING_LEVELS` literal, only valid with the pair — docs/ai-models.md);
+  `{ module, fileUrl, validFrom?, validUntil?, note?, llm?: { provider, model, reasoning? }, moodle? }`
+  (`reasoning` a `REASONING_LEVELS` literal, only valid with the pair — docs/ai-models.md;
+  `moodle` a boolean, default `false`, `true` only for a quiz, else `400` — accepted
+  whether or not the server has a Moodle connection, `docs/moodle.md`);
   the window bounds must be ISO 8601 **with an explicit offset or `Z`** — a
   naive datetime is rejected with 400 (it would otherwise silently be
   interpreted in the server's timezone). `201` + the same code object shape.
