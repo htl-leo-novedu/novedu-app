@@ -158,7 +158,6 @@ describe("unlinkMoodleAccount", () => {
   it("unlinks the session user on the configured Moodle", async () => {
     await expect(unlinkMoodleAccount()).resolves.toEqual({ ok: true });
     expect(mocks.unlinkOwn).toHaveBeenCalledWith(ISSUER, "u1");
-    expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings");
   });
 
   it("refuses without a session, without Moodle, and on a failure", async () => {

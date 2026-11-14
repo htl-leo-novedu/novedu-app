@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CODE_REJECTION_MESSAGES } from "@/lib/activity-gate";
@@ -189,7 +188,8 @@ export async function unlinkMoodleAccount(): Promise<UnlinkResult> {
       message: "Your Moodle account could not be unlinked right now. Please try again.",
     };
   }
+  // No revalidation: the Settings section stays mounted to confirm the unlink,
+  // and is gone on the next visit (it renders only while a link exists).
   linkEvent("unlinked");
-  revalidatePath("/settings");
   return { ok: true };
 }
