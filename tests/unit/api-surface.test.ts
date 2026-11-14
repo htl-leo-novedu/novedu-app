@@ -25,6 +25,7 @@ const NON_BEARER_HANDLERS: Record<string, string> = {
   "GET /api/lti/login": "public LTI login start (Moodle sends the browser), no session",
   "POST /api/lti/login": "public LTI login start (Moodle sends the browser), no session",
   "POST /api/lti/launch": "public LTI launch, verified against Moodle's signed message",
+  "POST /api/lti/pick": "public code picker answer, gated by the signed pick token",
 };
 
 describe("proxy.ts matcher", () => {
