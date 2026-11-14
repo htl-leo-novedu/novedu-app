@@ -162,6 +162,10 @@
             "model"
           ],
           "additionalProperties": {}
+        },
+        "moodle": {
+          "description": "Quizzes only: students can hand in results to Moodle. Sent when a code is minted; not part of the match, so changing it keeps the published code (change the switch on the code's edit page).",
+          "type": "boolean"
         }
       },
       "additionalProperties": {},

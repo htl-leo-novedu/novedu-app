@@ -31,6 +31,7 @@ function entry(overrides: Partial<RegistryEntry> = {}): RegistryEntry {
     validUntil: null,
     note: null,
     llm: null,
+    moodle: false,
     ...overrides,
   };
 }
@@ -45,6 +46,7 @@ function code(overrides: Partial<ServerCode> = {}): ServerCode {
     validFrom: null,
     validUntil: null,
     llm: null,
+    moodle: false,
     createdAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
@@ -221,6 +223,11 @@ describe("parseServerCodes", () => {
     // A server that never heard of the reasoning level reads as "no level", not as junk.
     expect(parsed[0]?.llm).toEqual({ provider: "SCCH", model: "m1", reasoning: null });
     expect(parsed[0]?.validUntil).toBe("2026-12-31T23:00:00.000Z");
+    // A server without the Moodle switch reads as off.
+    expect(parsed[0]?.moodle).toBe(false);
+    expect(
+      parseServerCodes([{ code: "c", module: "quiz", fileUrl: URL_A, moodle: true }])[0]?.moodle,
+    ).toBe(true);
   });
 
   it("reads the override's reasoning level, defensively", () => {
@@ -257,6 +264,15 @@ describe("parseServerCodes", () => {
 });
 
 describe("mintBody", () => {
+  it("sends the Moodle switch only when it is on", () => {
+    expect(mintBody(entry({ moodle: true }))).toEqual({
+      module: "quiz",
+      fileUrl: URL_A,
+      moodle: true,
+    });
+    expect(mintBody(entry({ moodle: false }))).not.toHaveProperty("moodle");
+  });
+
   it("sends only the fields the entry actually sets", () => {
     expect(mintBody(entry())).toEqual({ module: "quiz", fileUrl: URL_A });
     expect(
@@ -416,6 +432,23 @@ describe("collectWarnings", () => {
     const types = collectWarnings(results, [used, other], {}).map((warning) => warning.type);
 
     expect(types).not.toContain("note");
+  });
+
+  it("never matches on the Moodle switch, but reports a difference as info", () => {
+    expect(matchEntry(entry({ moodle: true }), [code({ moodle: false })])).toHaveLength(1);
+    const warnings = collectWarnings(
+      [{ entry: entry({ moodle: true }), action: "reused", code: "aaaaaaaaaa" }],
+      [code()],
+      {},
+    );
+    expect(warnings).toEqual([
+      {
+        type: "moodle",
+        key: "welcome",
+        codes: ["aaaaaaaaaa"],
+        message: "welcome: moodle differs — change it on the code's edit page",
+      },
+    ]);
   });
 
   it("stays silent when every entry matches exactly one code", () => {

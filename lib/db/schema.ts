@@ -88,6 +88,9 @@ export const codes = pgTable(
     llmProvider: varchar("llm_provider", { length: 32 }),
     llmModel: text("llm_model"),
     llmReasoning: varchar("llm_reasoning", { length: 16 }),
+    // Moodle hand-in switch (docs/moodle.md): quiz codes only, off by default,
+    // editable on /codes/edit. Every Moodle code path asks it.
+    moodleEnabled: boolean("moodle_enabled").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
   },
   // The teacher's "Codes" page (and the stats pages) list by creator, and every

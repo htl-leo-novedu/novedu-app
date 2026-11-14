@@ -48,6 +48,8 @@ export async function createCodeForUser(
     llmModel: unknown;
     /** The override pair's optional reasoning level; blank/absent for none. */
     llmReasoning: unknown;
+    /** The Moodle hand-in switch (quiz only); absent means off. */
+    moodle?: unknown;
   },
 ): Promise<CreateCodeServiceResult> {
   const module = input.module;
@@ -63,6 +65,8 @@ export async function createCodeForUser(
     llmProvider: input.llmProvider,
     llmModel: input.llmModel,
     llmReasoning: input.llmReasoning,
+    moodle: input.moodle,
+    module,
   });
   if (!validation.ok) return { ok: false, reason: "invalid", message: validation.message };
 
@@ -109,6 +113,7 @@ export async function createCodeForUser(
     origin,
     anonymous: result.anonymous,
     llm: validation.payload.llm,
+    moodle: validation.payload.moodle,
   });
   if (!stored.stored) {
     return {

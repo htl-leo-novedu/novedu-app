@@ -345,3 +345,63 @@ test("yaml llm: shows 'Reading…' while it reads, and a slow answer for an earl
   await expect.element(screen.getByText("SCCH · second · provider default")).toBeVisible();
   await expect.element(screen.getByText(/google\/gemma-4/)).not.toBeInTheDocument();
 });
+
+test("Moodle: the checkbox exists only for a quiz while Moodle is available", async () => {
+  created.length = 0;
+  const screen = await render(
+    <CodeForm mode="create" initialModule="tutor" moodleAvailable initialFileUrl={FILE_URL} />,
+  );
+  const checkbox = screen.getByLabelText("Students can hand in results to Moodle");
+  await expect.element(checkbox).not.toBeInTheDocument();
+
+  await screen.getByLabelText("Activity", { exact: true }).selectOptions("quiz");
+  await expect.element(checkbox).toBeVisible();
+  await expect.element(checkbox).not.toBeChecked();
+  await expect.element(checkbox).toHaveAccessibleDescription(/set the code's end date/);
+  await checkbox.click();
+  await screen.getByRole("button", { name: "Create code" }).click();
+
+  await vi.waitFor(() => expect(created).toHaveLength(1));
+  expect(created[0]?.get("moodle")).toBe("on");
+  expect(created[0]?.get("moodleField")).toBe("1");
+});
+
+test("Moodle: no checkbox without a Moodle connection, so an edit keeps the stored switch", async () => {
+  updated.length = 0;
+  const screen = await render(
+    <CodeForm
+      mode="edit"
+      code="abc"
+      initialModule="quiz"
+      initialFileUrl={FILE_URL}
+      initialMoodle
+    />,
+  );
+  await expect
+    .element(screen.getByLabelText("Students can hand in results to Moodle"))
+    .not.toBeInTheDocument();
+  await screen.getByRole("button", { name: "Save changes" }).click();
+  await vi.waitFor(() => expect(updated).toHaveLength(1));
+  expect(updated[0]?.formData.has("moodleField")).toBe(false);
+});
+
+test("Moodle: edit shows the stored switch and submits it unticked", async () => {
+  updated.length = 0;
+  const screen = await render(
+    <CodeForm
+      mode="edit"
+      code="abc"
+      initialModule="quiz"
+      initialFileUrl={FILE_URL}
+      moodleAvailable
+      initialMoodle
+    />,
+  );
+  const checkbox = screen.getByLabelText("Students can hand in results to Moodle");
+  await expect.element(checkbox).toBeChecked();
+  await checkbox.click();
+  await screen.getByRole("button", { name: "Save changes" }).click();
+  await vi.waitFor(() => expect(updated).toHaveLength(1));
+  expect(updated[0]?.formData.get("moodleField")).toBe("1");
+  expect(updated[0]?.formData.has("moodle")).toBe(false);
+});
