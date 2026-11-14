@@ -14,10 +14,18 @@ const STORE = "lib/moodle-store.ts";
 
 // Importer → the store functions it may import (types are free).
 const ALLOWED_IMPORTS: Record<string, string[]> = {
+  "app/[code]/render-quiz.tsx": ["getOwnTarget"],
   "app/lti/arrive/route.ts": ["storeTarget"],
   "app/settings/page.tsx": ["getOwnLink"],
   "lib/code-stats-store.ts": ["deleteTargetsForCode"],
-  "lib/moodle-actions.ts": ["linkAndStoreTarget", "storeTarget", "unlinkOwn"],
+  "lib/moodle-actions.ts": [
+    "getOwnLink",
+    "getOwnTarget",
+    "linkAndStoreTarget",
+    "markHandedIn",
+    "storeTarget",
+    "unlinkOwn",
+  ],
   "lib/moodle-arrival.ts": ["findLinkState"],
 };
 

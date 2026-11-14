@@ -15,6 +15,7 @@ import {
   normalizeStudentImage,
 } from "@/lib/image-normalize";
 import { onModEnter, SUBMIT_KEYSHORTCUTS, useShortcutHint } from "@/lib/keyboard-shortcuts";
+import type { Receipt } from "@/lib/moodle-receipt";
 import { startDiscussion, submitAnswer } from "@/lib/quiz-actions";
 import {
   type AttemptState,
@@ -37,6 +38,7 @@ import {
 import { buildRuntimeHeaders } from "@/lib/runtime-headers";
 import { cn } from "@/lib/utils";
 import { MarkdownRenderer } from "../../markdown-renderer";
+import { HandIn } from "./hand-in";
 import { QuizDiscussion } from "./quiz-discussion";
 import { SaveResult } from "./save-result";
 
@@ -81,11 +83,19 @@ export function QuizRunner({
   quiz,
   code,
   autoSave = false,
+  moodle,
 }: {
   quiz: ResolvedQuiz;
   code: string;
   /** The user's "save my quiz results" setting at page render (the server re-reads it). */
   autoSave?: boolean;
+  /**
+   * Present only where a Moodle hand-in is possible (docs/moodle.md): the code is
+   * switched on and this student has a hand-in target for it. Only then does the
+   * runner send the attempt id and slot with each answer and keep the signed
+   * receipts; without it every request is exactly as without Moodle.
+   */
+  moodle?: { handedInAt: string | null };
 }) {
   // Build the sequence on the CLIENT after mount: server and first client render
   // both use the authored order (no hydration mismatch), then the effect applies
@@ -104,8 +114,12 @@ export function QuizRunner({
     setOrder(sequence);
     setAttempt(startAttempt(sequence.length));
     setAttemptId(crypto.randomUUID());
+    receipts.current.clear();
     setReady(true);
   }, [quiz]);
+
+  // The signed receipt of each answered slot, for the Moodle hand-in. Memory only.
+  const receipts = useRef(new Map<number, Receipt>());
 
   // Drafts of skipped questions, keyed by SLOT (drill mode repeats a question in
   // several slots). Memory only — a reload drops them with the rest of the run.
@@ -187,6 +201,18 @@ export function QuizRunner({
             />
           ) : null
         }
+        handIn={
+          moodle && answered > 0 ? (
+            <HandIn
+              code={code}
+              attemptId={attemptId}
+              receipts={[...receipts.current.values()]}
+              counts={{ ...counts, unanswered: total - answered }}
+              total={total}
+              handedInAt={moodle.handedInAt}
+            />
+          ) : null
+        }
       />
     );
   }
@@ -229,16 +255,21 @@ export function QuizRunner({
     if ((!trimmed && images.length === 0) || grading) return;
     setGrading(true);
     setError(null);
+    const answeredSlot = slot;
     const res = await submitAnswer({
       code,
       questionId: question.id,
       answer: trimmed,
       images: images.map((image) => image.dataUrl),
+      ...(moodle && answeredSlot !== undefined ? { attemptId, slot: answeredSlot } : {}),
     });
     setGrading(false);
     if (!res.ok) {
       setError(res.message);
       return;
+    }
+    if (moodle && res.receipt && answeredSlot !== undefined) {
+      receipts.current.set(answeredSlot, res.receipt);
     }
     setVerdict({ result: res.result, feedback: res.feedback });
     setCounts((c) => ({ ...c, [res.result]: c[res.result] + 1 }));
@@ -530,6 +561,7 @@ function Summary({
   total,
   skipped,
   save,
+  handIn,
 }: {
   counts: VerdictCounts;
   answered: number;
@@ -537,6 +569,8 @@ function Summary({
   skipped: number;
   /** The save-to-statistics step; absent when nothing was answered. */
   save: ReactNode;
+  /** The Moodle hand-in box; absent where no hand-in is possible. */
+  handIn: ReactNode;
 }) {
   return (
     <div className={RUNNER}>
@@ -554,6 +588,7 @@ function Summary({
           <SummaryStat verdict="incorrect" count={counts.incorrect} label="wrong" />
         </div>
         {save}
+        {handIn}
         <p className={PROGRESS}>
           Reload the page to take the quiz again. Your answers are not stored.
         </p>

@@ -29,6 +29,8 @@ export type LoadedQuestion = {
    * LLM override or the quiz YAML's.
    */
   llm: { provider: LlmProvider; model: string; reasoning?: ReasoningLevel };
+  /** The code's Moodle hand-in switch (docs/moodle.md). */
+  moodle: boolean;
 };
 
 export type LoadedQuiz = Omit<LoadedQuestion, "question">;
@@ -54,6 +56,7 @@ export async function verifyAndLoadQuiz(
     fileUrl: entry.fileUrl,
     quiz: loaded.quiz,
     llm: effectiveLlm(entry, loaded.quiz),
+    moodle: entry.moodle,
   };
 }
 

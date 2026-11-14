@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
   linkAndStoreTarget: vi.fn(),
   storeTarget: vi.fn(),
   unlinkOwn: vi.fn(),
+  getOwnLink: vi.fn(),
+  getOwnTarget: vi.fn(),
+  markHandedIn: vi.fn(),
+  verifyAndLoadQuiz: vi.fn(),
+  postScore: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ getSession: mocks.getSession }));
@@ -37,10 +42,31 @@ vi.mock("@/lib/moodle-store", () => ({
   linkAndStoreTarget: mocks.linkAndStoreTarget,
   storeTarget: mocks.storeTarget,
   unlinkOwn: mocks.unlinkOwn,
+  getOwnLink: mocks.getOwnLink,
+  getOwnTarget: mocks.getOwnTarget,
+  markHandedIn: mocks.markHandedIn,
 }));
+vi.mock("@/lib/quiz-verify", () => ({
+  verifyAndLoadQuiz: mocks.verifyAndLoadQuiz,
+  attemptLength: (quiz: { questionCount?: number; questions: unknown[] }) =>
+    quiz.questionCount ?? quiz.questions.length,
+}));
+vi.mock("@/lib/activity-gate", () => ({
+  CODE_REJECTION_MESSAGES: {
+    expired: "This activity's availability window has ended.",
+    "lookup-failed": "Codes cannot be checked right now — try again in a moment.",
+  },
+}));
+vi.mock("@/lib/moodle-ags", () => ({ postScore: mocks.postScore }));
 vi.mock("@/lib/telemetry", () => ({ emitEvent: vi.fn(), recordError: vi.fn() }));
 
-import { confirmMoodleLink, declineMoodleLink, unlinkMoodleAccount } from "./moodle-actions";
+import {
+  confirmMoodleLink,
+  declineMoodleLink,
+  handInToMoodle,
+  unlinkMoodleAccount,
+} from "./moodle-actions";
+import { getReceiptSecret, signReceipt } from "./moodle-receipt";
 
 const ISSUER = "https://moodle.example.org";
 const ARRIVAL: ArrivalToken = {
@@ -147,5 +173,127 @@ describe("unlinkMoodleAccount", () => {
     vi.stubEnv("MOODLE_LTI_PRIVATE_KEY", "");
     resetMoodleConfigForTests();
     await expect(unlinkMoodleAccount()).resolves.toMatchObject({ ok: false });
+  });
+});
+
+describe("handInToMoodle", () => {
+  const ATTEMPT = "6f1c2d3e-0000-4000-8000-000000000001";
+  const QUIZ = { questions: [{ id: "q1" }, { id: "q2" }, { id: "q3" }, { id: "q4" }] };
+  const receipt = (
+    slot: number,
+    questionId: string,
+    verdict: "correct" | "partial" | "incorrect",
+  ) =>
+    signReceipt(
+      { code: "quiz-code1", userId: "u1", attemptId: ATTEMPT },
+      { slot, questionId, verdict },
+      getReceiptSecret(),
+    );
+  const handIn = async (receipts: unknown) =>
+    handInToMoodle({ code: "quiz-code1", attemptId: ATTEMPT, receipts });
+
+  beforeEach(() => {
+    mocks.verifyAndLoadQuiz.mockResolvedValue({
+      ok: true,
+      userId: "u1",
+      code: "quiz-code1",
+      quiz: QUIZ,
+      moodle: true,
+    });
+    mocks.getOwnLink.mockResolvedValue({ moodleUserId: "42", linkedAt: new Date() });
+    mocks.getOwnTarget.mockResolvedValue({ lineitemUrl: ARRIVAL.lineitem, handedInAt: null });
+    mocks.postScore.mockResolvedValue("ok");
+    mocks.markHandedIn.mockResolvedValue(true);
+  });
+
+  it("counts the receipts on the server and posts score and comment to the target", async () => {
+    const result = await handIn([
+      receipt(0, "q1", "correct"),
+      receipt(1, "q2", "partial"),
+      receipt(2, "q3", "incorrect"),
+    ]);
+    expect(result).toMatchObject({ ok: true, percent: 38 });
+    expect(mocks.postScore).toHaveBeenCalledWith(
+      expect.objectContaining({ issuer: ISSUER }),
+      ARRIVAL.lineitem,
+      {
+        userId: "42",
+        scoreGiven: 1.5,
+        scoreMaximum: 4,
+        comment: "Novedu quiz: 4 questions — 1 correct, 1 partly correct, 1 wrong, 1 not answered.",
+      },
+      expect.any(Date),
+    );
+    expect(mocks.markHandedIn).toHaveBeenCalledWith(ISSUER, "u1", TARGET, expect.any(Date));
+  });
+
+  it("refuses a forged receipt as a whole and posts nothing", async () => {
+    const result = await handIn([{ ...receipt(0, "q1", "incorrect"), verdict: "correct" }]);
+    expect(result).toEqual({ ok: false, message: "This result can't be handed in.", retry: false });
+    expect(mocks.postScore).not.toHaveBeenCalled();
+  });
+
+  it("refuses without receipts or with a malformed attempt id", async () => {
+    await expect(handIn([])).resolves.toMatchObject({ ok: false, retry: false });
+    await expect(
+      handInToMoodle({ code: "quiz-code1", attemptId: "nope", receipts: [] }),
+    ).resolves.toMatchObject({ ok: false, retry: false });
+    expect(mocks.postScore).not.toHaveBeenCalled();
+  });
+
+  it("refuses an ended quiz without a retry", async () => {
+    mocks.verifyAndLoadQuiz.mockResolvedValue({
+      ok: false,
+      message: "This activity's availability window has ended.",
+    });
+    await expect(handIn([receipt(0, "q1", "correct")])).resolves.toEqual({
+      ok: false,
+      message: "This quiz has ended, so the result can't be handed in.",
+      retry: false,
+    });
+  });
+
+  it("refuses a code switched off, and a student without a link or target", async () => {
+    mocks.verifyAndLoadQuiz.mockResolvedValue({
+      ok: true,
+      userId: "u1",
+      code: "quiz-code1",
+      quiz: QUIZ,
+      moodle: false,
+    });
+    await expect(handIn([receipt(0, "q1", "correct")])).resolves.toEqual({
+      ok: false,
+      message: "Hand-in to Moodle is switched off for this quiz.",
+      retry: false,
+    });
+    mocks.verifyAndLoadQuiz.mockResolvedValue({
+      ok: true,
+      userId: "u1",
+      code: "quiz-code1",
+      quiz: QUIZ,
+      moodle: true,
+    });
+    mocks.getOwnTarget.mockResolvedValue(null);
+    await expect(handIn([receipt(0, "q1", "correct")])).resolves.toMatchObject({
+      ok: false,
+      retry: false,
+    });
+    expect(mocks.postScore).not.toHaveBeenCalled();
+  });
+
+  it("maps Moodle's answers to messages with a retry, storing nothing on failure", async () => {
+    mocks.postScore.mockResolvedValue("not-found");
+    await expect(handIn([receipt(0, "q1", "correct")])).resolves.toEqual({
+      ok: false,
+      message: "This activity no longer exists in Moodle. Ask your teacher.",
+      retry: true,
+    });
+    mocks.postScore.mockResolvedValue("failed");
+    await expect(handIn([receipt(0, "q1", "correct")])).resolves.toEqual({
+      ok: false,
+      message: "Moodle could not be reached right now. Please try again.",
+      retry: true,
+    });
+    expect(mocks.markHandedIn).not.toHaveBeenCalled();
   });
 });

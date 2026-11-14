@@ -3,10 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { CODE_REJECTION_MESSAGES } from "@/lib/activity-gate";
+import { postScore } from "@/lib/moodle-ags";
 import { checkArrival } from "@/lib/moodle-arrival";
 import { moodleAvailable } from "@/lib/moodle-config";
 import { ARRIVAL_COOKIE, donePath } from "@/lib/moodle-launch";
-import { linkAndStoreTarget, storeTarget, unlinkOwn } from "@/lib/moodle-store";
+import { countReceipts, getReceiptSecret } from "@/lib/moodle-receipt";
+import { moodleComment, moodlePercent, moodleScore } from "@/lib/moodle-score";
+import {
+  getOwnLink,
+  getOwnTarget,
+  linkAndStoreTarget,
+  markHandedIn,
+  storeTarget,
+  unlinkOwn,
+} from "@/lib/moodle-store";
+import { attemptLength, verifyAndLoadQuiz } from "@/lib/quiz-verify";
 import { getSession } from "@/lib/session";
 import { emitEvent } from "@/lib/telemetry";
 
@@ -19,6 +31,17 @@ import { emitEvent } from "@/lib/telemetry";
 const NOT_SIGNED_IN = "Please sign in to continue.";
 
 export type UnlinkResult = { ok: true } | { ok: false; message: string };
+
+/** `retry`: whether "Try again" can help (Moodle unreachable, the activity gone). */
+export type HandInResult =
+  | { ok: true; handedInAt: string; percent: number }
+  | { ok: false; message: string; retry: boolean };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UNREACHABLE = "Moodle could not be reached right now. Please try again.";
+const ACTIVITY_GONE = "This activity no longer exists in Moodle. Ask your teacher.";
+const QUIZ_ENDED = "This quiz has ended, so the result can't be handed in.";
+const REFUSED = "This result can't be handed in.";
 
 function linkEvent(outcome: string): void {
   emitEvent("moodle.link", { "novedu.moodle.outcome": outcome });
@@ -66,6 +89,90 @@ export async function declineMoodleLink(): Promise<void> {
   linkEvent("declined");
   await clearArrival();
   redirect(donePath("declined", check.arrival?.code));
+}
+
+function handInEvent(outcome: string): void {
+  emitEvent("moodle.handin", { "novedu.moodle.outcome": outcome });
+}
+
+function refuse(outcome: string, message: string, retry: boolean): HandInResult {
+  handInEvent(outcome);
+  return { ok: false, message, retry };
+}
+
+/**
+ * The Finish page's "Hand in": counts the attempt from its signed receipts on
+ * the server and posts the score to the student's hand-in target. In order: the
+ * quiz preamble (session, the code re-checked, the quiz re-loaded); Moodle
+ * available, the code switched on, the session user linked with a target for
+ * this code; every receipt verified (the whole call is refused on any bad one,
+ * never clamped); the score posted; on Moodle's success, the time recorded.
+ */
+export async function handInToMoodle(input: {
+  code: string;
+  attemptId: string;
+  receipts: unknown;
+}): Promise<HandInResult> {
+  if (typeof input?.attemptId !== "string" || !UUID.test(input.attemptId)) {
+    return refuse("invalid", REFUSED, false);
+  }
+  const ctx = await verifyAndLoadQuiz({ code: input.code });
+  if (!ctx.ok) {
+    if (ctx.message === CODE_REJECTION_MESSAGES.expired) return refuse("ended", QUIZ_ENDED, false);
+    const retry = ctx.message === CODE_REJECTION_MESSAGES["lookup-failed"];
+    return refuse("quiz-refused", ctx.message, retry);
+  }
+
+  const connection = await moodleAvailable();
+  if (!connection) {
+    return refuse("unavailable", "Hand-in to Moodle is not set up on this Novedu.", false);
+  }
+  if (!ctx.moodle) {
+    return refuse("switched-off", "Hand-in to Moodle is switched off for this quiz.", false);
+  }
+  const [link, target] = await Promise.all([
+    getOwnLink(connection.issuer, ctx.userId),
+    getOwnTarget(connection.issuer, ctx.userId, ctx.code),
+  ]);
+  if (link === undefined || target === undefined) return refuse("store", UNREACHABLE, true);
+  if (!link || !target) {
+    return refuse("no-target", "Open this quiz from Moodle to hand in a result.", false);
+  }
+
+  const total = attemptLength(ctx.quiz);
+  const counted = countReceipts(
+    input.receipts,
+    { code: ctx.code, userId: ctx.userId, attemptId: input.attemptId.toLowerCase() },
+    { attemptLength: total, poolSize: ctx.quiz.questions.length },
+    getReceiptSecret(),
+  );
+  if (!counted.ok) return refuse("receipts", REFUSED, false);
+
+  const now = new Date();
+  const posted = await postScore(
+    connection,
+    target.lineitemUrl,
+    {
+      userId: link.moodleUserId,
+      scoreGiven: moodleScore(counted.counts),
+      scoreMaximum: total,
+      comment: moodleComment(counted.counts, total),
+    },
+    now,
+  );
+  if (posted === "not-found") return refuse("not-found", ACTIVITY_GONE, true);
+  if (posted === "failed") return refuse("failed", UNREACHABLE, true);
+
+  // Moodle has the score; a failed bookkeeping write only loses the "already
+  // handed in" note, never the hand-in itself.
+  await markHandedIn(
+    connection.issuer,
+    ctx.userId,
+    { code: ctx.code, lineitemUrl: target.lineitemUrl },
+    now,
+  );
+  handInEvent("ok");
+  return { ok: true, handedInAt: now.toISOString(), percent: moodlePercent(counted.counts, total) };
 }
 
 /** Settings → "Unlink my Moodle account": deletes the session user's link and all their targets. */
