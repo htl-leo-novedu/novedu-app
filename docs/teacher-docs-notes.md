@@ -341,3 +341,63 @@ prose carries everything an editor needs.
 - Don't promise what any specific assistant can do. Phrase abilities as "an
   assistant that can fetch web pages", and name products only as examples, never
   as a complete or guaranteed list.
+
+## 30-sharing-activities/11-moodle-hand-in
+
+- Reader: a teacher with a quiz code and a Moodle course. No commands beyond the
+  one pointer to `--moodle` and `moodle: true`; the setup of the connection is
+  the 50-develop-and-evaluate chapter's job.
+- Hand-in is ALWAYS the student's click, per attempt. Never imply Novedu sends
+  results on its own, or that a teacher can trigger a hand-in.
+- Quizzes only. Never generalise to tutors, writing, or coding.
+- Novedu sends a score and a comment, never a school grade or pass/fail. Partly
+  correct counts half; unanswered counts zero; the maximum is the attempt's
+  question count, which Moodle scales to the activity's maximum.
+- The deadline is the code's end date; there is no separate hand-in date.
+- The hand-in box needs a stored destination, which exists only after the
+  student once came to THIS code from Moodle and linked. A linked student who
+  never opened this quiz from Moodle sees no box. Do not write "every linked
+  student".
+- Stored: the Moodle user id, the grade column of the activity the student last
+  came from, the time of the last hand-in. NOT stored: Moodle name, username,
+  the score, the course or activity title. Teachers see nothing about hand-ins
+  inside Novedu; an anonymous quiz stays anonymous in Novedu.
+- Switching the option off keeps the stored destinations; switching it on again
+  brings the box back without a new link. Unlink (student's Settings) deletes
+  the link and every destination; nothing is sent to Moodle and Moodle grades stay.
+- A teacher (any non-learner role) opening the activity gets the quiz with no
+  linking page and no box.
+- The "Novedu opens inside the Moodle page" advice (ask for **New window**) is
+  from the spike's observation that an embedded frame has no Novedu session; the
+  activity-level launch container override was not checked in a real run.
+
+## 50-develop-and-evaluate/04-connecting-moodle
+
+- Readers: the Moodle administrator and the person who runs the school's Novedu
+  (audience `operator`). Settings and Moodle field labels are in scope. Generic
+  for any school: no school, stage, or resource names, no real Client IDs.
+- Field labels: English and German both read from the local Moodle 4.5's
+  language files, except these, which were NOT read from Moodle and are a
+  reviewer's check: the English menu path **Site administration → Plugins →
+  Activity modules → External tool → Manage tools**, the English **Do not use
+  this service** for *IMS LTI Names and Role Provisioning* (only Tool Settings'
+  string was read), and the English path to **HTTP security**
+  (**Site administration → General → Security**). The German HTTP-security path
+  was also not checked in the UI.
+- Moodle's own German label is **Öffentlicher Schüssel** (sic, missing "l") for
+  the pasted public key field. Quote it as Moodle shows it; do not "fix" it.
+- **Force SSL** (**SSL festlegen**) ticked on https is advice, not tested: the
+  local runs were on http with the box unticked.
+- The key setting accepts real line breaks or `\n` escapes. How a multi-line
+  key goes into a Compose `.env` for a local Novedu belongs to the
+  "Trying Novedu locally" chapter, once that sub-chapter exists.
+- Moodle fetches Novedu's key set only when Novedu asks for a grade-service
+  token, never at registration or launch; with the pasted key it never contacts
+  Novedu at all. Novedu's server must always reach Moodle (key set, token,
+  grades). Do not claim "no network needed".
+- One Novedu ↔ one Moodle ↔ one registration. Changing the four settings and
+  restarting switches Moodle; old links stay stored, unused. Never describe an
+  in-app form for the connection: it is server configuration only.
+- Moodle versions 4.5 and 5.3 are the checked ones (an exception to the
+  "no version numbers" rule: these are Moodle's versions, which the reader needs
+  to compare with their own).

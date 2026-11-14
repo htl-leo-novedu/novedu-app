@@ -41,7 +41,7 @@ function html(res: http.ServerResponse, body: string) {
   res.end(`<!doctype html><meta charset="utf-8">${body}`);
 }
 
-const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+const escapeAttr = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
 
 test.beforeAll(async () => {
   server = http.createServer(async (req, res) => {
@@ -65,9 +65,9 @@ test.beforeAll(async () => {
       );
       html(
         res,
-        `<form id="f" method="post" action="${escape(url.searchParams.get("redirect_uri") ?? "")}">
-          <input type="hidden" name="id_token" value="${escape(idToken)}">
-          <input type="hidden" name="state" value="${escape(url.searchParams.get("state") ?? "")}">
+        `<form id="f" method="post" action="${escapeAttr(url.searchParams.get("redirect_uri") ?? "")}">
+          <input type="hidden" name="id_token" value="${escapeAttr(idToken)}">
+          <input type="hidden" name="state" value="${escapeAttr(url.searchParams.get("state") ?? "")}">
         </form><script>document.getElementById("f").submit()</script>`,
       );
     } else if (url.pathname === "/mod/lti/token.php" && req.method === "POST") {

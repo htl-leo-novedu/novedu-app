@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "bb02ce46-91ff-4fb8-9a08-c500c7b3b865",
-  "prevIds": [
-    "d45a2165-7399-48fb-9661-b3a2cca489f9"
-  ],
+  "prevIds": ["d45a2165-7399-48fb-9661-b3a2cca489f9"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -2603,14 +2601,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "novedu_user",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "novedu_account_user_id_novedu_user_id_fkey",
@@ -2620,14 +2614,10 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "novedu_user",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "novedu_session_user_id_novedu_user_id_fkey",
@@ -2636,10 +2626,7 @@
       "table": "novedu_session"
     },
     {
-      "columns": [
-        "user_id",
-        "achievement_id"
-      ],
+      "columns": ["user_id", "achievement_id"],
       "nameExplicit": false,
       "name": "novedu_achievements_pkey",
       "entityType": "pks",
@@ -2647,10 +2634,7 @@
       "table": "novedu_achievements"
     },
     {
-      "columns": [
-        "code",
-        "user_id"
-      ],
+      "columns": ["code", "user_id"],
       "nameExplicit": false,
       "name": "novedu_coding_keys_pkey",
       "entityType": "pks",
@@ -2658,10 +2642,7 @@
       "table": "novedu_coding_keys"
     },
     {
-      "columns": [
-        "user_id",
-        "id"
-      ],
+      "columns": ["user_id", "id"],
       "nameExplicit": false,
       "name": "novedu_quiz_results_pkey",
       "entityType": "pks",
@@ -2669,10 +2650,7 @@
       "table": "novedu_quiz_results"
     },
     {
-      "columns": [
-        "user_id",
-        "code"
-      ],
+      "columns": ["user_id", "code"],
       "nameExplicit": false,
       "name": "novedu_recent_codes_pkey",
       "entityType": "pks",
@@ -2680,10 +2658,7 @@
       "table": "novedu_recent_codes"
     },
     {
-      "columns": [
-        "code",
-        "hour"
-      ],
+      "columns": ["code", "hour"],
       "nameExplicit": false,
       "name": "novedu_usage_by_code_pkey",
       "entityType": "pks",
@@ -2691,10 +2666,7 @@
       "table": "novedu_usage_by_code"
     },
     {
-      "columns": [
-        "user_id",
-        "hour"
-      ],
+      "columns": ["user_id", "hour"],
       "nameExplicit": false,
       "name": "novedu_usage_by_user_pkey",
       "entityType": "pks",
@@ -2702,10 +2674,7 @@
       "table": "novedu_usage_by_user"
     },
     {
-      "columns": [
-        "code",
-        "user_id"
-      ],
+      "columns": ["code", "user_id"],
       "nameExplicit": false,
       "name": "novedu_writing_submissions_pkey",
       "entityType": "pks",
@@ -2713,9 +2682,7 @@
       "table": "novedu_writing_submissions"
     },
     {
-      "columns": [
-        "code"
-      ],
+      "columns": ["code"],
       "nameExplicit": false,
       "name": "novedu_codes_pkey",
       "schema": "public",
@@ -2723,9 +2690,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_files_pkey",
       "schema": "public",
@@ -2733,9 +2698,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_images_pkey",
       "schema": "public",
@@ -2743,9 +2706,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_reports_pkey",
       "schema": "public",
@@ -2753,9 +2714,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "thread_id"
-      ],
+      "columns": ["thread_id"],
       "nameExplicit": false,
       "name": "novedu_user_chats_pkey",
       "schema": "public",
@@ -2763,9 +2722,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "nameExplicit": false,
       "name": "novedu_user_settings_pkey",
       "schema": "public",
@@ -2773,9 +2730,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_account_pkey",
       "schema": "public",
@@ -2783,9 +2738,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_session_pkey",
       "schema": "public",
@@ -2793,9 +2746,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_user_pkey",
       "schema": "public",
@@ -2803,9 +2754,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_verification_pkey",
       "schema": "public",
@@ -2813,9 +2762,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "novedu_device_code_pkey",
       "schema": "public",
@@ -2824,9 +2771,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "token"
-      ],
+      "columns": ["token"],
       "nullsNotDistinct": false,
       "name": "novedu_session_token_key",
       "schema": "public",
@@ -2835,9 +2780,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
+      "columns": ["email"],
       "nullsNotDistinct": false,
       "name": "novedu_user_email_key",
       "schema": "public",

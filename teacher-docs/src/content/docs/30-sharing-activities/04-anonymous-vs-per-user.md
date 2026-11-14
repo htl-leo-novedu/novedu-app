@@ -10,6 +10,7 @@ related:
   - 30-sharing-activities/02-viewing-usage
   - 30-sharing-activities/06-coding-special-case
   - 00-introduction/05-writing-overview
+  - 30-sharing-activities/11-moodle-hand-in
 ---
 
 Every activity runs in one of two modes: anonymous, where the app never links work to a student, or per-user, where it records who did what. The mode decides what you can see afterwards, so it's worth choosing deliberately, especially for graded work.
@@ -69,3 +70,6 @@ At the end of a quiz, a student can choose to save the result to their personal 
 
 Only the student sees their saved results. You cannot see them, not even as an aggregate, and they do not change what an anonymous quiz shows you. Students can delete their saved results under **Settings** at any time, and deleting a code removes every result saved for it.
 
+## Linking a Moodle account for hand-ins
+
+A quiz can let students hand in their results to Moodle. A student who opens such a quiz from Moodle and confirms that their Moodle and Novedu accounts belong together has that link stored with their account, together with where in Moodle their result goes, even in an anonymous quiz. You see nothing of it in Novedu, and the student can undo the link under **Settings**. The chapter on handing in quiz results to Moodle covers what is stored.
