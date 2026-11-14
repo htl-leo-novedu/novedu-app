@@ -132,6 +132,10 @@ test("login → launch → link → hand-in reaches the platform; a second accou
       timeout: 60_000,
     });
     await page.getByRole("button", { name: "Finish" }).click();
+    // Saving to the personal statistics first refreshes the page; the receipts
+    // of the attempt must survive it.
+    await page.getByRole("button", { name: "This time" }).click();
+    await expect(page.getByText(/Saved to your personal statistics/)).toBeVisible();
     const box = page.getByTestId("moodle-hand-in");
     await expect(box).toContainText("Moodle receives: 1 question — 1 correct (100 %).");
     await box.getByRole("button", { name: "Hand in" }).click();

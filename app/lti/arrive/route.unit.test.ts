@@ -14,11 +14,16 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   findLinkState: vi.fn(),
   storeTarget: vi.fn(),
+  getCode: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ getSession: mocks.getSession }));
 vi.mock("@/lib/moodle-store", () => ({
   findLinkState: mocks.findLinkState,
   storeTarget: mocks.storeTarget,
+}));
+vi.mock("@/lib/code-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/code-store")>()),
+  getCode: mocks.getCode,
 }));
 vi.mock("@/lib/app-origin", () => ({ resolveAppOriginOr: async () => "https://novedu.example" }));
 vi.mock("@/lib/telemetry", () => ({ emitEvent: vi.fn(), recordError: vi.fn() }));
@@ -51,6 +56,7 @@ beforeEach(() => {
   mocks.getSession.mockResolvedValue({ user: { id: "u1" } });
   mocks.findLinkState.mockResolvedValue({ ownMoodleUserId: null, moodleUserOwner: null });
   mocks.storeTarget.mockResolvedValue(true);
+  mocks.getCode.mockResolvedValue({ code: "quiz-code1", module: "quiz", moodle: true });
 });
 
 describe("GET /lti/arrive", () => {
@@ -110,6 +116,15 @@ describe("GET /lti/arrive", () => {
       expect(mocks.storeTarget).not.toHaveBeenCalled();
     },
   );
+
+  it("opens the quiz and stores nothing when the code was switched off since the launch", async () => {
+    mocks.findLinkState.mockResolvedValue({ ownMoodleUserId: "42", moodleUserOwner: "u1" });
+    mocks.getCode.mockResolvedValue({ code: "quiz-code1", module: "quiz", moodle: false });
+    const response = await arrive();
+    expect(location(response)).toBe("https://novedu.example/quiz-code1");
+    expect(mocks.storeTarget).not.toHaveBeenCalled();
+    expect(cleared(response)).toBe(true);
+  });
 
   it("treats an arrival as expired while Moodle is not available", async () => {
     vi.stubEnv("MOODLE_LTI_ISSUER", "");

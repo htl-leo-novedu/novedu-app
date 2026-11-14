@@ -423,3 +423,26 @@ test("Moodle: an attempt with nothing answered shows no hand-in box", async () =
   await expect.element(screen.getByRole("heading", { name: "Quiz summary" })).toBeVisible();
   expect(screen.getByTestId("moodle-hand-in").query()).toBeNull();
 });
+
+test("Moodle: the box promises only what the receipts hold", async () => {
+  submitAnswer
+    .mockResolvedValueOnce({
+      ok: true,
+      result: "correct",
+      feedback: "F",
+      receipt: { slot: 0, questionId: "q1", verdict: "correct", mac: "m" },
+    })
+    .mockResolvedValueOnce({ ok: true, result: "correct", feedback: "F" });
+  const screen = await render(
+    <QuizRunner code={CODE} quiz={quizOf(2)} moodle={{ handedInAt: null }} />,
+  );
+  await screen.getByRole("textbox").fill("a1");
+  await screen.getByRole("button", { name: "Submit answer" }).click();
+  await screen.getByRole("button", { name: "Next question" }).click();
+  await screen.getByRole("textbox").fill("a2");
+  await screen.getByRole("button", { name: "Submit answer" }).click();
+  await screen.getByRole("button", { name: "Finish" }).click();
+  await expect
+    .element(screen.getByText("Moodle receives: 2 questions — 1 correct, 1 not answered (50 %)."))
+    .toBeVisible();
+});

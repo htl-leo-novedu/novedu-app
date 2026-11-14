@@ -17,11 +17,17 @@ const SCOPE = {
   userId: "u1",
   attemptId: "6f1c2d3e-0000-4000-8000-000000000001",
 };
-const QUIZ = { attemptLength: 4, poolSize: 4 };
+const ids = (...list: string[]) => new Set(list);
+const QUIZ = { attemptLength: 4, questionIds: ids("q1", "q2", "q3", "q4") };
 const sign = (slot: number, questionId: string, verdict: Receipt["verdict"], scope = SCOPE) =>
   signReceipt(scope, { slot, questionId, verdict }, SECRET);
 
 describe("verifyReceipt", () => {
+  it("accepts a long question id (quiz ids have no length limit)", () => {
+    const long = `lib/${"x".repeat(400)}`;
+    expect(verifyReceipt(sign(0, long, "correct"), SCOPE, SECRET)).toBe(true);
+  });
+
   it("accepts a receipt for exactly its scope", () => {
     expect(verifyReceipt(sign(0, "q1", "correct"), SCOPE, SECRET)).toBe(true);
   });
@@ -70,6 +76,7 @@ describe("countReceipts", () => {
     ["a slot outside the attempt", [sign(4, "q1", "correct")]],
     ["a forged receipt", [{ ...sign(0, "q1", "incorrect"), verdict: "correct" }]],
     ["more receipts than slots", [0, 1, 2, 3, 4].map((slot) => sign(slot, `q${slot}`, "correct"))],
+    ["a question no longer in the quiz", [sign(0, "removed", "correct")]],
   ])("rejects the whole call for %s", (_label, receipts) => {
     expect(countReceipts(receipts, SCOPE, QUIZ, SECRET)).toEqual({ ok: false });
   });
@@ -78,7 +85,7 @@ describe("countReceipts", () => {
     const sameQuestion = [0, 1].map((slot) => sign(slot, "q1", "correct"));
     expect(countReceipts(sameQuestion, SCOPE, QUIZ, SECRET)).toEqual({ ok: false });
     // Drill mode: 4 slots from a pool of 2 → each question at most twice.
-    const drill = { attemptLength: 4, poolSize: 2 };
+    const drill = { attemptLength: 4, questionIds: ids("q1", "q2") };
     expect(countReceipts(sameQuestion, SCOPE, drill, SECRET).ok).toBe(true);
     const thrice = [0, 1, 2].map((slot) => sign(slot, "q1", "correct"));
     expect(countReceipts(thrice, SCOPE, drill, SECRET)).toEqual({ ok: false });

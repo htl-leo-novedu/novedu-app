@@ -45,14 +45,15 @@ export default async function SettingsPage() {
     );
   }
 
-  const [settings, saved, theme, teacher] = await Promise.all([
+  const [settings, saved, theme, moodle, moodleLink] = await Promise.all([
     getUserSettings(userId),
     countOwnQuizResults(userId),
     getTheme(),
-    effectiveTeacherForSession(session),
+    effectiveTeacherForSession(session).then((teacher) =>
+      teacher ? moodleConnectionView() : undefined,
+    ),
+    ownMoodleLink(userId),
   ]);
-  const moodle = teacher ? await moodleConnectionView() : undefined;
-  const moodleLink = await ownMoodleLink(userId);
 
   return (
     <Main>

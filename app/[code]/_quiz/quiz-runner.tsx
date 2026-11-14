@@ -16,6 +16,7 @@ import {
 } from "@/lib/image-normalize";
 import { onModEnter, SUBMIT_KEYSHORTCUTS, useShortcutHint } from "@/lib/keyboard-shortcuts";
 import type { Receipt } from "@/lib/moodle-receipt";
+import type { HandInCounts } from "@/lib/moodle-score";
 import { startDiscussion, submitAnswer } from "@/lib/quiz-actions";
 import {
   type AttemptState,
@@ -106,7 +107,17 @@ export function QuizRunner({
   const [ready, setReady] = useState(false);
   // The attempt's identity for a saved result: a repeated save of it is a no-op.
   const [attemptId, setAttemptId] = useState("");
+  // The signed receipt of each answered slot, for the Moodle hand-in. Memory only.
+  const receipts = useRef(new Map<number, Receipt>());
+  // A server action that revalidates (saving the result does) re-renders the page
+  // and hands the runner an equal but NEW `quiz` object. Only a change of the
+  // quiz's CONTENT starts a new attempt, so the Finish page keeps its attempt id
+  // and receipts.
+  const preparedFor = useRef<string | null>(null);
   useEffect(() => {
+    const key = JSON.stringify(quiz);
+    if (preparedFor.current === key) return;
+    preparedFor.current = key;
     const sequence = buildQuestionSequence(quiz.questions, {
       shuffle: quiz.shuffle,
       count: quiz.questionCount,
@@ -117,9 +128,6 @@ export function QuizRunner({
     receipts.current.clear();
     setReady(true);
   }, [quiz]);
-
-  // The signed receipt of each answered slot, for the Moodle hand-in. Memory only.
-  const receipts = useRef(new Map<number, Receipt>());
 
   // Drafts of skipped questions, keyed by SLOT (drill mode repeats a question in
   // several slots). Memory only — a reload drops them with the rest of the run.
@@ -207,7 +215,7 @@ export function QuizRunner({
               code={code}
               attemptId={attemptId}
               receipts={[...receipts.current.values()]}
-              counts={{ ...counts, unanswered: total - answered }}
+              counts={receiptCounts([...receipts.current.values()], total)}
               total={total}
               handedInAt={moodle.handedInAt}
             />
@@ -553,6 +561,18 @@ function AnswerThumbnails({
       ))}
     </div>
   );
+}
+
+/**
+ * What the server will count for a Moodle hand-in: the verdicts of the signed
+ * receipts, every other slot unanswered — so the box never promises more than
+ * the receipts hold (an answer graded without a receipt counts as unanswered).
+ */
+function receiptCounts(list: Receipt[], total: number): HandInCounts {
+  const counts: HandInCounts = { correct: 0, partial: 0, incorrect: 0, unanswered: 0 };
+  for (const receipt of list) counts[receipt.verdict] += 1;
+  counts.unanswered = Math.max(0, total - list.length);
+  return counts;
 }
 
 function Summary({

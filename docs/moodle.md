@@ -109,12 +109,19 @@ checks the cookie and both directions of the link (`checkArrival`,
 | no name (Moodle shares none) | clear, `/lti/done?state=no-name` |
 | no valid cookie, or the feature not available | clear, `/lti/done?state=expired` |
 | the link state could not be read | clear, `/lti/done?state=unavailable` |
+| the code deleted or its switch off since the launch | clear, `/<code>`, nothing stored |
 
 `/lti/link` shows both accounts (Novedu name and email, Moodle name and
 username) and the course, with the notice of what is stored. Its two buttons are
 server actions (`confirmMoodleLink`, `declineMoodleLink` in
-`lib/moodle-actions.ts`) that read the **cookie again**, never a form field,
-re-run the decision, act on the session user only and clear the cookie.
+`lib/moodle-actions.ts`) that read the **cookie again**, re-run the decision
+(including the code row), act on the session user only and clear the cookie.
+"Yes" sends only a fingerprint of the cookie the page showed
+(`arrivalFingerprint`); if another launch replaced the cookie meanwhile, the
+browser goes back through `/lti/arrive` and sees the confirmation for the new
+arrival instead of linking an account it never showed. A unique-key clash while
+linking is decided again from what is stored (a double submit lands on the quiz,
+a race on the fitting refusal).
 `/lti/done` only shows the message of its state; the address carries the state
 from a fixed list and the pattern-checked code, nothing personal. Accepted gap:
 on a shared computer, a cookie left by someone who never signed in to Novedu can
@@ -166,8 +173,8 @@ hand-in counts on the server:
   `verifyAndLoadQuiz`; the feature available, the switch on, a link and a target;
   every receipt verified for this user, code and attempt — the whole call is
   refused (never clamped) on a bad signature, a slot outside the attempt, two
-  receipts for one slot, or a question counted more than
-  `ceil(attemptLength / poolSize)` times; counts; the score posted; on Moodle's
+  receipts for one slot, a question no longer in the quiz, or a question counted
+  more than `ceil(attemptLength / poolSize)` times; counts; the score posted; on Moodle's
   success `handed_in_at` set. Answers `{ ok, handedInAt, percent }` or
   `{ ok: false, message, retry }` — `retry` only where "Try again" can help
   (Moodle unreachable, the activity gone in Moodle).
@@ -180,6 +187,11 @@ hand-in counts on the server:
   school grade or a pass/fail flag.
 - A student can still answer a slot again and keep the better receipt; with
   unlimited retakes that is accepted.
+- The box's "Moodle receives" line is computed from the receipts the runner
+  holds (an answer graded without one counts as unanswered), so it shows what the
+  server will count. The runner starts a new attempt only when the quiz's content
+  changes, so a page refresh by a server action (saving the result does one)
+  keeps the attempt id and the receipts.
 
 `lib/moodle-ags.ts` talks to Moodle: a token (a JWT signed with the tool key,
 `client_credentials` with the single `score` scope, kept in memory until shortly

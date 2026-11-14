@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { confirmMoodleLink, declineMoodleLink } from "@/lib/moodle-actions";
-import { checkArrival } from "@/lib/moodle-arrival";
+import { arrivalFingerprint, checkArrival } from "@/lib/moodle-arrival";
 import { ARRIVAL_COOKIE } from "@/lib/moodle-launch";
 import { getSession } from "@/lib/session";
 import { LtiCard } from "../lti-card";
@@ -11,7 +11,9 @@ import { LtiCard } from "../lti-card";
 // student's (docs/moodle.md). Shown only while the signed arrival cookie says
 // "confirm"; any other state goes back through `/lti/arrive`, which clears the
 // cookie and shows the matching message (a page cannot delete a cookie). The
-// two buttons are server actions that read the cookie AGAIN, never a form field.
+// two buttons are server actions that read the cookie AGAIN; "Yes" sends only the
+// fingerprint of the cookie this page showed, so a cookie replaced meanwhile by
+// another launch is shown again instead of being linked unseen.
 export const dynamic = "force-dynamic";
 
 export default async function LinkPage() {
@@ -19,7 +21,8 @@ export default async function LinkPage() {
   const user = session?.user;
   if (!user?.id) redirect("/sign-in?callbackURL=%2Flti%2Farrive");
 
-  const check = await checkArrival(user.id, (await cookies()).get(ARRIVAL_COOKIE)?.value);
+  const cookie = (await cookies()).get(ARRIVAL_COOKIE)?.value;
+  const check = await checkArrival(user.id, cookie);
   if (check.decision !== "confirm") redirect("/lti/arrive");
   const { arrival } = check;
 
@@ -50,6 +53,7 @@ export default async function LinkPage() {
       </p>
       <div className="mt-1 flex flex-wrap gap-3">
         <form action={confirmMoodleLink}>
+          <input type="hidden" name="arrival" value={arrivalFingerprint(cookie)} />
           <Button type="submit">Yes, these are both me</Button>
         </form>
         <form action={declineMoodleLink}>

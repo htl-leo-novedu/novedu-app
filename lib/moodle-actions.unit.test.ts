@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   getOwnTarget: vi.fn(),
   markHandedIn: vi.fn(),
   verifyAndLoadQuiz: vi.fn(),
+  getCode: vi.fn(),
   postScore: vi.fn(),
   revalidatePath: vi.fn(),
 }));
@@ -58,6 +59,10 @@ vi.mock("@/lib/activity-gate", () => ({
   },
 }));
 vi.mock("@/lib/moodle-ags", () => ({ postScore: mocks.postScore }));
+vi.mock("@/lib/code-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/code-store")>()),
+  getCode: mocks.getCode,
+}));
 vi.mock("@/lib/telemetry", () => ({ emitEvent: vi.fn(), recordError: vi.fn() }));
 
 import {
@@ -66,6 +71,7 @@ import {
   handInToMoodle,
   unlinkMoodleAccount,
 } from "./moodle-actions";
+import { arrivalFingerprint } from "./moodle-arrival";
 import { getReceiptSecret, signReceipt } from "./moodle-receipt";
 
 const ISSUER = "https://moodle.example.org";
@@ -98,49 +104,85 @@ beforeEach(async () => {
   mocks.linkAndStoreTarget.mockResolvedValue("linked");
   mocks.storeTarget.mockResolvedValue(true);
   mocks.unlinkOwn.mockResolvedValue(true);
+  mocks.getCode.mockResolvedValue({ code: "quiz-code1", module: "quiz", moodle: true });
 });
+
+/** The confirmation form as the page rendered it for the current cookie. */
+function shownForm(cookie = mocks.cookie): FormData {
+  const form = new FormData();
+  form.set("arrival", arrivalFingerprint(cookie));
+  return form;
+}
+const confirm = () => confirmMoodleLink(shownForm());
 
 describe("confirmMoodleLink", () => {
   it("links the session user to the cookie's Moodle account and opens the quiz", async () => {
-    expect(await redirectOf(confirmMoodleLink)).toBe("/quiz-code1");
+    expect(await redirectOf(confirm)).toBe("/quiz-code1");
     expect(mocks.linkAndStoreTarget).toHaveBeenCalledWith(ISSUER, "u1", "42", TARGET);
     expect(mocks.deleted).toEqual([{ name: ARRIVAL_COOKIE, path: "/lti" }]);
   });
 
   it("stores nothing without a valid cookie", async () => {
     mocks.cookie = "forged";
-    expect(await redirectOf(confirmMoodleLink)).toBe("/lti/done?state=expired");
+    expect(await redirectOf(confirm)).toBe("/lti/done?state=expired");
     expect(mocks.linkAndStoreTarget).not.toHaveBeenCalled();
     expect(mocks.deleted).toHaveLength(1);
   });
 
   it("re-runs the decision: a mismatch since the page opened stores nothing", async () => {
     mocks.findLinkState.mockResolvedValue({ ownMoodleUserId: null, moodleUserOwner: "u2" });
-    expect(await redirectOf(confirmMoodleLink)).toBe(
-      "/lti/done?state=mismatch-moodle&code=quiz-code1",
-    );
+    expect(await redirectOf(confirm)).toBe("/lti/done?state=mismatch-moodle&code=quiz-code1");
     expect(mocks.linkAndStoreTarget).not.toHaveBeenCalled();
   });
 
-  it("answers a unique violation as the refusal and a failure as unavailable", async () => {
+  it("answers a clash with the refusal that fits what is stored, a failure as unavailable", async () => {
     mocks.linkAndStoreTarget.mockResolvedValue("mismatch");
-    expect(await redirectOf(confirmMoodleLink)).toBe(
-      "/lti/done?state=mismatch-moodle&code=quiz-code1",
-    );
+    mocks.findLinkState
+      .mockResolvedValueOnce({ ownMoodleUserId: null, moodleUserOwner: null })
+      .mockResolvedValueOnce({ ownMoodleUserId: null, moodleUserOwner: "u2" });
+    expect(await redirectOf(confirm)).toBe("/lti/done?state=mismatch-moodle&code=quiz-code1");
+    mocks.findLinkState
+      .mockResolvedValueOnce({ ownMoodleUserId: null, moodleUserOwner: null })
+      .mockResolvedValueOnce({ ownMoodleUserId: "43", moodleUserOwner: null });
+    expect(await redirectOf(confirm)).toBe("/lti/done?state=mismatch-novedu&code=quiz-code1");
     mocks.linkAndStoreTarget.mockResolvedValue("error");
-    expect(await redirectOf(confirmMoodleLink)).toBe("/lti/done?state=unavailable&code=quiz-code1");
+    expect(await redirectOf(confirm)).toBe("/lti/done?state=unavailable&code=quiz-code1");
   });
 
   it("only stores the target when the accounts got linked meanwhile", async () => {
     mocks.findLinkState.mockResolvedValue({ ownMoodleUserId: "42", moodleUserOwner: "u1" });
-    expect(await redirectOf(confirmMoodleLink)).toBe("/quiz-code1");
+    expect(await redirectOf(confirm)).toBe("/quiz-code1");
     expect(mocks.storeTarget).toHaveBeenCalledWith(ISSUER, "u1", TARGET);
+    expect(mocks.linkAndStoreTarget).not.toHaveBeenCalled();
+  });
+
+  it("shows the confirmation again when another launch replaced the cookie", async () => {
+    const shown = shownForm();
+    mocks.cookie = await signMoodleToken("arrival", { ...ARRIVAL, sub: "99" });
+    expect(await redirectOf(() => confirmMoodleLink(shown))).toBe("/lti/arrive");
+    expect(mocks.linkAndStoreTarget).not.toHaveBeenCalled();
+    expect(mocks.deleted).toHaveLength(0);
+  });
+
+  it("decides again after a key clash: a double submit lands on the quiz", async () => {
+    mocks.linkAndStoreTarget.mockResolvedValue("mismatch");
+    mocks.findLinkState
+      .mockResolvedValueOnce({ ownMoodleUserId: null, moodleUserOwner: null })
+      .mockResolvedValueOnce({ ownMoodleUserId: "42", moodleUserOwner: "u1" });
+    expect(await redirectOf(confirm)).toBe("/quiz-code1");
+  });
+
+  it("stores nothing when the code was switched off or deleted since the launch", async () => {
+    mocks.getCode.mockResolvedValue({ code: "quiz-code1", module: "quiz", moodle: false });
+    expect(await redirectOf(confirm)).toBe("/quiz-code1");
+    mocks.getCode.mockResolvedValue(null);
+    expect(await redirectOf(confirm)).toBe("/quiz-code1");
     expect(mocks.linkAndStoreTarget).not.toHaveBeenCalled();
   });
 
   it("sends a signed-out caller to sign-in without touching anything", async () => {
     mocks.getSession.mockResolvedValue(null);
-    expect(await redirectOf(confirmMoodleLink)).toBe("/sign-in?callbackURL=%2Flti%2Farrive");
+    expect(await redirectOf(confirm)).toBe("/sign-in?callbackURL=%2Flti%2Farrive");
     expect(mocks.findLinkState).not.toHaveBeenCalled();
   });
 });
@@ -224,6 +266,12 @@ describe("handInToMoodle", () => {
       expect.any(Date),
     );
     expect(mocks.markHandedIn).toHaveBeenCalledWith(ISSUER, "u1", TARGET, expect.any(Date));
+  });
+
+  it("refuses a receipt for a question no longer in the quiz", async () => {
+    const result = await handIn([receipt(0, "removed-question", "correct")]);
+    expect(result).toMatchObject({ ok: false, retry: false });
+    expect(mocks.postScore).not.toHaveBeenCalled();
   });
 
   it("refuses a forged receipt as a whole and posts nothing", async () => {

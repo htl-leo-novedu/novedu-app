@@ -15,6 +15,8 @@ import { emitEvent } from "@/lib/telemetry";
 //   - this Novedu account is linked to this Moodle account → store the hand-in
 //     target, clear the cookie, open the quiz;
 //   - no link on either side → the confirmation page `/lti/link` (the cookie stays);
+//   - the code deleted or switched off since the launch → clear the cookie and
+//     open `/<code>`, storing nothing;
 //   - anything else → clear the cookie and show `/lti/done` with the matching message.
 // Nothing personal ever travels in the address.
 export const dynamic = "force-dynamic";
@@ -36,6 +38,9 @@ export async function GET(request: NextRequest) {
     });
     path = stored ? `/${arrival.code}` : donePath("unavailable", arrival.code);
     emitEvent("moodle.link", { "novedu.moodle.outcome": stored ? "arrived" : "unavailable" });
+  } else if (check.decision === "code-off") {
+    path = `/${check.arrival?.code ?? ""}`;
+    emitEvent("moodle.link", { "novedu.moodle.outcome": "code-off" });
   } else {
     path = donePath(check.decision, check.arrival?.code);
     emitEvent("moodle.link", { "novedu.moodle.outcome": check.decision });

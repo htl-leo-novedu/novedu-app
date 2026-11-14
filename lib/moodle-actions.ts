@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CODE_REJECTION_MESSAGES } from "@/lib/activity-gate";
 import { postScore } from "@/lib/moodle-ags";
-import { checkArrival } from "@/lib/moodle-arrival";
+import { arrivalFingerprint, checkArrival } from "@/lib/moodle-arrival";
 import { moodleAvailable } from "@/lib/moodle-config";
 import { ARRIVAL_COOKIE, donePath } from "@/lib/moodle-launch";
 import { countReceipts, getReceiptSecret } from "@/lib/moodle-receipt";
@@ -50,13 +50,19 @@ async function clearArrival(): Promise<void> {
   (await cookies()).delete({ name: ARRIVAL_COOKIE, path: "/lti" });
 }
 
-/** "Yes, these are both me": links the two accounts and stores the hand-in target. */
-export async function confirmMoodleLink(): Promise<void> {
+/**
+ * "Yes, these are both me": links the two accounts and stores the hand-in
+ * target. The form carries only the fingerprint of the arrival the page showed;
+ * a different cookie by now goes back through `/lti/arrive`.
+ */
+export async function confirmMoodleLink(formData: FormData): Promise<void> {
   const userId = (await getSession())?.user?.id;
   if (!userId) redirect("/sign-in?callbackURL=%2Flti%2Farrive");
 
-  const jar = await cookies();
-  const check = await checkArrival(userId, jar.get(ARRIVAL_COOKIE)?.value);
+  const cookie = (await cookies()).get(ARRIVAL_COOKIE)?.value;
+  if (formData.get("arrival") !== arrivalFingerprint(cookie)) redirect("/lti/arrive");
+
+  const check = await checkArrival(userId, cookie);
   let path: string;
   if (check.decision === "confirm" || check.decision === "linked") {
     const { connection, arrival } = check;
@@ -68,10 +74,27 @@ export async function confirmMoodleLink(): Promise<void> {
           : "error"
         : await linkAndStoreTarget(connection.issuer, userId, arrival.sub, target);
     linkEvent(outcome === "linked" ? "confirmed" : outcome);
-    path =
-      outcome === "linked"
-        ? `/${arrival.code}`
-        : donePath(outcome === "mismatch" ? "mismatch-moodle" : "unavailable", arrival.code);
+    if (outcome === "linked") {
+      path = `/${arrival.code}`;
+    } else if (outcome === "mismatch") {
+      // A unique key clashed: decide again from what is stored now (a double
+      // submit finds the link it just made; a race the right refusal).
+      const again = await checkArrival(userId, cookie);
+      path =
+        again.decision === "linked"
+          ? `/${arrival.code}`
+          : donePath(
+              again.decision === "confirm" || again.decision === "code-off"
+                ? "unavailable"
+                : again.decision,
+              arrival.code,
+            );
+    } else {
+      path = donePath("unavailable", arrival.code);
+    }
+  } else if (check.decision === "code-off") {
+    linkEvent("code-off");
+    path = `/${check.arrival?.code ?? ""}`;
   } else {
     linkEvent(check.decision);
     path = donePath(check.decision, check.arrival?.code);
@@ -142,7 +165,7 @@ export async function handInToMoodle(input: {
   const counted = countReceipts(
     input.receipts,
     { code: ctx.code, userId: ctx.userId, attemptId: input.attemptId.toLowerCase() },
-    { attemptLength: total, poolSize: ctx.quiz.questions.length },
+    { attemptLength: total, questionIds: new Set(ctx.quiz.questions.map((q) => q.id)) },
     getReceiptSecret(),
   );
   if (!counted.ok) return refuse("receipts", REFUSED, false);

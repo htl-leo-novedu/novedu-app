@@ -8,7 +8,10 @@ import { DONE_STATES } from "@/lib/moodle-launch";
 
 const mocks = vi.hoisted(() => ({ getSession: vi.fn(), checkArrival: vi.fn() }));
 vi.mock("@/lib/session", () => ({ getSession: mocks.getSession }));
-vi.mock("@/lib/moodle-arrival", () => ({ checkArrival: mocks.checkArrival }));
+vi.mock("@/lib/moodle-arrival", () => ({
+  checkArrival: mocks.checkArrival,
+  arrivalFingerprint: () => "fingerprint-1",
+}));
 vi.mock("@/lib/moodle-actions", () => ({
   confirmMoodleLink: vi.fn(),
   declineMoodleLink: vi.fn(),
@@ -50,6 +53,7 @@ describe("/lti/link", () => {
     expect(html).toContain("Novedu stores your Moodle user id (not your name)");
     expect(html).toContain("Yes, these are both me");
     expect(html).toContain("That&#x27;s not me");
+    expect(html).toContain('name="arrival" value="fingerprint-1"');
   });
 
   it("sends any other decision back through /lti/arrive", async () => {
