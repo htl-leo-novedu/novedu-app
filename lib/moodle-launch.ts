@@ -356,13 +356,17 @@ export function decideArrival(
   return "confirm";
 }
 
-/** The `/lti/done` states: every non-happy outcome of an arrival, plus a declined link. */
+/**
+ * The `/lti/done` states: every non-happy outcome of an arrival, a declined
+ * link, and a link that could not be checked or stored right now.
+ */
 export const DONE_STATES = [
   "expired",
   "mismatch-moodle",
   "mismatch-novedu",
   "no-name",
   "declined",
+  "unavailable",
 ] as const;
 export type DoneState = (typeof DONE_STATES)[number];
 

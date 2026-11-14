@@ -60,7 +60,7 @@ export async function POST(request: Request) {
   }
   const quizPath = `/${message.code}`;
   const entry = await getCode(message.code);
-  if (!entry || !entry.moodle) {
+  if (!entry?.moodle) {
     launchEvent(entry === undefined ? "code-unavailable" : "code-not-enabled");
     return seeOther(origin, quizPath);
   }

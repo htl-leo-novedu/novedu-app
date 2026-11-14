@@ -3,12 +3,19 @@ import { Notice } from "@/components/notice";
 import { Main, PageBody } from "@/components/page-main";
 import { cardVariants } from "@/components/ui/card";
 import { resolveAppOriginOr } from "@/lib/app-origin";
-import { moodleConnection, moodleKeyConfigured, publicKeyPem } from "@/lib/moodle-config";
+import {
+  moodleAvailable,
+  moodleConnection,
+  moodleKeyConfigured,
+  publicKeyPem,
+} from "@/lib/moodle-config";
+import { getOwnLink } from "@/lib/moodle-store";
 import { countOwnQuizResults } from "@/lib/quiz-result-store";
 import { getSession } from "@/lib/session";
 import { effectiveTeacherForSession } from "@/lib/student-mode";
 import { getTheme } from "@/lib/theme-server";
 import { getUserSettings } from "@/lib/user-settings-store";
+import { MoodleAccount } from "./moodle-account";
 import { MoodleConnection, type MoodleConnectionView } from "./moodle-connection";
 import { QuizResultsSettings } from "./quiz-results-settings";
 import { ThemeSettings } from "./theme-settings";
@@ -18,7 +25,8 @@ import { ThemeSettings } from "./theme-settings";
 // role. A list of sections: "Appearance" is this device's colour theme (a
 // cookie, lib/theme.ts); "Quiz results" is backed by a column of
 // `novedu_user_settings`; "Moodle connection" (effective teachers only) is the
-// read-only view of the Moodle server configuration (docs/moodle.md). Gated by the session like every page — the page
+// read-only view of the Moodle server configuration, and "Moodle account" (only
+// while the user has a link) offers the unlink (docs/moodle.md). Gated by the session like every page — the page
 // and its actions (lib/user-settings-actions.ts) act only on the session
 // user's own row. No teacher gate, no bearer route.
 
@@ -44,6 +52,7 @@ export default async function SettingsPage() {
     effectiveTeacherForSession(session),
   ]);
   const moodle = teacher ? await moodleConnectionView() : undefined;
+  const moodleLink = await ownMoodleLink(userId);
 
   return (
     <Main>
@@ -71,6 +80,20 @@ export default async function SettingsPage() {
               />
             )}
           </section>
+          {moodleLink && (
+            <section
+              aria-labelledby="settings-moodle-account"
+              className={cardVariants({ pad: "section" })}
+            >
+              <h2
+                id="settings-moodle-account"
+                className="mb-3 font-semibold text-base tracking-tight"
+              >
+                Moodle account
+              </h2>
+              <MoodleAccount linkedAtSeconds={Math.floor(moodleLink.linkedAt.getTime() / 1000)} />
+            </section>
+          )}
           {moodle && (
             <section aria-labelledby="settings-moodle" className={cardVariants({ pad: "section" })}>
               <h2 id="settings-moodle" className="mb-3 font-semibold text-base tracking-tight">
@@ -98,4 +121,10 @@ async function moodleConnectionView(): Promise<MoodleConnectionView> {
     jwksUrl: `${origin}/api/lti/jwks`,
     publicKeyPem: pem,
   };
+}
+
+/** The session user's Moodle link on the configured Moodle; nothing when there is none. */
+async function ownMoodleLink(userId: string) {
+  const connection = await moodleAvailable();
+  return connection ? ((await getOwnLink(connection.issuer, userId)) ?? undefined) : undefined;
 }

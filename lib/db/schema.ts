@@ -295,6 +295,56 @@ export const codingKeys = pgTable(
   ],
 );
 
+// Moodle hand-in (docs/moodle.md). FOURTH sanctioned user↔code link (after
+// reports, coding keys and saved quiz results): written only after the student
+// confirmed on /lti/link that the Novedu and the Moodle account are both theirs,
+// behind the notice on that page. lib/moodle-store.ts is the only access and
+// has NO teacher reader (guard-tested). Every row carries the Moodle site's
+// Plattform-ID (`issuer`) and every statement filters by the configured one, so
+// a local Moodle and a school's Moodle sharing one database never see each
+// other's rows. Moodle names and usernames are never stored — only the Moodle
+// user id. NO foreign keys; a code's targets are dropped with the code
+// (lib/code-stats-store.ts), a user's links and targets by their own unlink.
+export const moodleLinks = pgTable(
+  "novedu_moodle_links",
+  {
+    issuer: varchar("issuer", { length: 255 }).notNull(),
+    // The session user id (`novedu_user.id`).
+    userId: varchar("user_id", { length: 64 }).notNull(),
+    // Moodle's `sub` for this person on that Moodle.
+    moodleUserId: varchar("moodle_user_id", { length: 255 }).notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (t) => [
+    // One Moodle account per Novedu user on a Moodle site…
+    primaryKey({ columns: [t.issuer, t.userId] }),
+    // …and one Novedu user per Moodle account: the unique index is what refuses
+    // a second Novedu account for the same Moodle user.
+    uniqueIndex("ux_novedu_moodle_links_moodle_user").on(t.issuer, t.moodleUserId),
+  ],
+);
+
+// Where a student's hand-in of a code goes: the grade column (AGS line item) of
+// the Moodle activity they last arrived from. Overwritten on each arrival; an
+// arrival from a different activity clears `handed_in_at`. No score, no course
+// or activity title.
+export const moodleTargets = pgTable(
+  "novedu_moodle_targets",
+  {
+    issuer: varchar("issuer", { length: 255 }).notNull(),
+    userId: varchar("user_id", { length: 64 }).notNull(),
+    code: varchar("code", { length: 32 }).notNull(),
+    lineitemUrl: text("lineitem_url").notNull(),
+    arrivedAt: timestamp("arrived_at", { withTimezone: true, mode: "date" }).notNull(),
+    handedInAt: timestamp("handed_in_at", { withTimezone: true, mode: "date" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.issuer, t.userId, t.code] }),
+    // The code delete drops a code's targets across users and sites.
+    index("ix_novedu_moodle_targets_code").on(t.code),
+  ],
+);
+
 // App-hosted YAML files (tutor definitions and fragment libraries) that teachers
 // author in-app instead of hosting on GitHub/S3/Azure Blob. The public GET
 // endpoint (`/api/files/<name>`) serves the latest version as raw YAML, so such a
