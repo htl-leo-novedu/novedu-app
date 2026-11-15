@@ -410,7 +410,8 @@ at their custom domain (*The staging concept*).
 
 RBAC mode, soft delete 90 days, no purge protection. The `novedu-dev` group is
 Key Vault Secrets Officer, the stage's app identity is Key Vault Secrets User.
-It holds the five secrets of *Configuration* below; a secret value is never
+It holds the five secrets of *Configuration* below (dev also the Moodle key,
+*Moodle hand-in*); a secret value is never
 displayed, logged or written to a file on its way in (*Access*, "What stays
 with a human").
 
@@ -515,6 +516,8 @@ versionless, so a new secret version needs no change to the app.
 | `OPENROUTER-API-KEY` | `openrouter-api-key` | `OPENROUTER_API_KEY` | each stage its own key in the OpenRouter workspace `rs-htl-leonding` — dev `novedu-dev`, prod `novedu-prod` (*OpenRouter* below) |
 | `APPLICATIONINSIGHTS-CONNECTION-STRING` | `appinsights-connection-string` | `APPLICATIONINSIGHTS_CONNECTION_STRING` | the stage's own `appi-novedu-<stage>` |
 
+Dev's vault also holds the Moodle key (*Moodle hand-in*).
+
 Apart from the SCCH key no secret is shared between the stages, so
 compromising dev's vault tells nobody anything about prod.
 
@@ -527,7 +530,8 @@ app reads. The stages configure none (*Deliberately not set*).
 
 ### Environment variables
 
-Plain values on the container app, beside the five secret references:
+Plain values on the container app, beside the five secret references (dev's
+Moodle settings: *Moodle hand-in*):
 
 | Variable | Value |
 |---|---|
@@ -553,6 +557,35 @@ hostname therefore means changing `AUTH_URL` and `CODE_ORIGIN`, the stage's
 registration, and rewriting `novedu_codes.file_url` (*Data in the dev
 stage*).
 
+### Moodle hand-in
+
+On **dev only** (`docs/moodle.md`). Novedu is registered in the school's Moodle
+(`https://edufs.edu.htl-leonding.ac.at/moodle`) as a **course tool** of the test
+course "Testkurs Novedu-Integration", so only that course can launch dev's
+Novedu; a site-wide registration by the Moodle admin replaces it, with its own
+client id and deployment id.
+
+| Setting | Value |
+|---|---|
+| Key Vault secret `MOODLE-LTI-PRIVATE-KEY` → app secret `moodle-lti-private-key` → `MOODLE_LTI_PRIVATE_KEY` | dev's own RSA key (PKCS#8 PEM), wired as a Key Vault reference like the secrets above |
+| `MOODLE_LTI_ISSUER` | `https://edufs.edu.htl-leonding.ac.at/moodle` |
+| `MOODLE_LTI_CLIENT_ID` | `mfBK2Cwh2JjRqTO` |
+| `MOODLE_LTI_DEPLOYMENT_ID` | `4` (the course tool's type id) |
+
+The key is generated straight into the vault, so no value is ever displayed:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null \
+  | az keyvault secret set --vault-name kv-novedu-<stage> --name MOODLE-LTI-PRIVATE-KEY \
+      --file /dev/stdin --encoding utf-8 --content-type application/x-pem-file -o none
+```
+
+Moodle reads the public half from `https://<the stage's hostname>/api/lti/jwks`;
+the stage's Settings page shows it and the addresses Moodle needs. Changing a
+registration's values takes `az containerapp update --set-env-vars` (a new
+revision); the account links students made survive it, because they are keyed
+by the issuer, not the client id.
+
 ### Deliberately not set
 
 - **`AZURE_FOUNDRY_ENDPOINT` (and the `AZURE_FOUNDRY_*` service-principal
@@ -567,12 +600,10 @@ stage*).
 - **`STORAGE_TENANT_ID`** — it only pins the tenant of a local `az` credential
   and means nothing to a managed identity.
 - **`MOODLE_LTI_PRIVATE_KEY`, `MOODLE_LTI_ISSUER`, `MOODLE_LTI_CLIENT_ID`,
-  `MOODLE_LTI_DEPLOYMENT_ID`** — Moodle hand-in is off on both stages
-  (`docs/moodle.md`). Switching it on for a stage takes its own key — a person
-  creates it and stores the PKCS#8 PEM as the Key Vault secret
-  `MOODLE-LTI-PRIVATE-KEY`, wired as a Key Vault reference like the secrets above;
-  dev and prod never share a key — plus the three values Moodle shows after its
-  admin registered that stage's Novedu, as plain settings.
+  `MOODLE_LTI_DEPLOYMENT_ID`** on **prod** — Moodle hand-in is off there
+  (`docs/moodle.md`). Switching it on takes prod's own key, set up as on dev
+  (*Moodle hand-in*) — dev and prod never share a key — plus the three values of
+  the Moodle admin's registration of `app.novedu.at`.
 - **`OTEL_EXPORTER_OTLP_ENDPOINT`** — it would win over the Application
   Insights connection string; telemetry goes to Azure Monitor
   (`docs/telemetry.md`).
