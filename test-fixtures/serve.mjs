@@ -396,6 +396,15 @@ async function handleCodes(req, res, codes, nextCode) {
     sendJson(res, 400, { message: "module and fileUrl are required." });
     return;
   }
+  // Mirrors the real route: the Moodle switch is a boolean, and a quiz's only.
+  if (body.moodle !== undefined && typeof body.moodle !== "boolean") {
+    sendJson(res, 400, { message: "moodle must be true or false." });
+    return;
+  }
+  if (body.moodle === true && body.module !== "quiz") {
+    sendJson(res, 400, { message: "Only quiz codes can hand in results to Moodle." });
+    return;
+  }
 
   const code = nextCode();
   const entry = {
@@ -408,6 +417,7 @@ async function handleCodes(req, res, codes, nextCode) {
     validFrom: wholeSeconds(body.validFrom),
     validUntil: wholeSeconds(body.validUntil),
     llm: body.llm ?? null,
+    moodle: body.moodle === true,
     createdBy: "fixtures-teacher",
     createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, codes.length)).toISOString(),
   };

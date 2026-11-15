@@ -96,7 +96,18 @@ describe("createCodeForUser", () => {
       origin: "http://localhost:3000",
       anonymous: true,
       llm: null,
+      moodle: false,
     });
+  });
+
+  it("refuses the Moodle switch on a non-quiz before validating the file", async () => {
+    const result = await createCodeForUser("teacher-1", input({ moodle: true }));
+    expect(result).toEqual({
+      ok: false,
+      reason: "invalid",
+      message: "Only quiz codes can hand in results to Moodle.",
+    });
+    expect(mocks.createCode).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown module without validating or storing", async () => {

@@ -199,7 +199,10 @@ Finer-grained access is by Entra **group** membership, but the result is a plain
   in and to run the device flow the CLI polls), `/sign-in` (redirecting it to itself
   would loop), the public `/api/version` build-identity probe, `/api/files` (the
   teacher-bearer YAML routes, self-gated like the bearer routes below), the public `/api/coding` routes (gated by the per-user API key —
-  `docs/coding.md`), the CLI/API bearer routes (`/api/me`, `/api/codes`, `/api/reports`,
+  `docs/coding.md`), the public Moodle LTI routes `/api/lti` and the code picker
+  `/lti/pick` (called by Moodle or from inside its dialog, without a session — they
+  verify signed messages and tokens instead; the arrival pages `/lti/arrive`,
+  `/lti/link` and `/lti/done` stay gated, `docs/moodle.md`), the CLI/API bearer routes (`/api/me`, `/api/codes`, `/api/reports`,
   `/api/images`, `/api/eval` — each self-gates via `requireBearerUser`/`requireBearerTeacher`,
   `docs/api.md`), and static assets. The former teacher-guide paths `/docs/*` need no
   exclusion: `next.config.ts` 308-redirects them to docs.novedu.at, and redirects run

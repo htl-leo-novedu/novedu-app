@@ -49,6 +49,7 @@ activities:
         validUntil: null,
         note: "Creative Coding: Welcome",
         llm: null,
+        moodle: false,
       },
       {
         key: "sorting",
@@ -58,6 +59,7 @@ activities:
         validUntil: null,
         note: null,
         llm: null,
+        moodle: false,
       },
       {
         key: "essay",
@@ -67,6 +69,7 @@ activities:
         validUntil: null,
         note: null,
         llm: null,
+        moodle: false,
       },
       {
         key: "kata",
@@ -76,6 +79,7 @@ activities:
         validUntil: null,
         note: null,
         llm: null,
+        moodle: false,
       },
     ]);
   });
@@ -210,6 +214,53 @@ activities:
 `);
 
     expect(entries(result)).toHaveLength(2);
+  });
+});
+
+describe("parseRegistry — the Moodle switch", () => {
+  it("accepts `moodle: true` under quizzes", () => {
+    const [entry] = entries(
+      parseRegistry(`
+base-url: "${BASE}"
+activities:
+  quizzes:
+    exam:
+      file: exam.yaml
+      moodle: true
+`),
+    );
+    expect(entry?.moodle).toBe(true);
+  });
+
+  it("rejects it in any other group", () => {
+    const [issue] = errors(
+      parseRegistry(`
+base-url: "${BASE}"
+activities:
+  tutors:
+    helper:
+      file: tutor.yaml
+      moodle: true
+`),
+    );
+    expect(issue).toMatchObject({
+      path: "activities.tutors.helper.moodle",
+      message: "is allowed under `quizzes` only",
+    });
+  });
+
+  it("rejects a value that is not a boolean", () => {
+    const [issue] = errors(
+      parseRegistry(`
+base-url: "${BASE}"
+activities:
+  quizzes:
+    exam:
+      file: exam.yaml
+      moodle: "yes"
+`),
+    );
+    expect(issue?.path).toBe("activities.quizzes.exam.moodle");
   });
 });
 

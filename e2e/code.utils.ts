@@ -78,6 +78,8 @@ export async function mintCode(
      * level); omitted leaves the model's own default in place.
      */
     llm?: { provider: string; model: string; reasoning?: string };
+    /** The Moodle hand-in switch (a quiz only) — omitted = off. */
+    moodle?: boolean;
   } = {},
 ): Promise<string> {
   const code = Array.from(
@@ -92,8 +94,8 @@ export async function mintCode(
     options.endOffset === null ? null : new Date((now + (options.endOffset ?? 3600)) * 1000);
 
   await query(
-    `INSERT INTO novedu_codes (code, module, created_by, file_url, valid_from, valid_until, note, origin, anonymous, llm_provider, llm_model, llm_reasoning, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'e2e', $8, $9, $10, $11, now())`,
+    `INSERT INTO novedu_codes (code, module, created_by, file_url, valid_from, valid_until, note, origin, anonymous, llm_provider, llm_model, llm_reasoning, moodle_enabled, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'e2e', $8, $9, $10, $11, $12, now())`,
     [
       code,
       options.module ?? "tutor",
@@ -106,6 +108,7 @@ export async function mintCode(
       options.llm?.provider ?? null,
       options.llm?.model ?? null,
       options.llm?.reasoning ?? null,
+      options.moodle === true,
     ],
   );
 
@@ -154,6 +157,7 @@ export async function purgeCodes(codes: string[]): Promise<void> {
     "novedu_recent_codes",
     "novedu_writing_submissions",
     "novedu_quiz_results",
+    "novedu_moodle_targets",
     "novedu_coding_keys",
     "novedu_codes",
   ]) {

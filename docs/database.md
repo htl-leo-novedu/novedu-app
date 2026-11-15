@@ -369,6 +369,8 @@ Tables (details in `docs/codes.md`):
 | `novedu_usage_by_user` | PK (`user_id`, `hour`) | per-hour token/tool/activity counts by user, no code (details in `docs/usage-metering.md`) |
 | `novedu_achievements` | PK (`user_id`, `achievement_id`) | a user's earned start-page badges: generic catalog ids (never a code), the Vienna-local `qualified_on` date, `seen_at` (null = new); never deleted (details in `docs/home.md`) |
 | `novedu_quiz_results` | PK (`user_id`, `id`); indexes on (`user_id`, `code`, `finished_at`, `id`) and `code` | a student's saved quiz attempts — slot counts only, written only on the student's explicit choice; the third sanctioned user↔code link, read only by the student (details in `docs/home.md`) |
+| `novedu_moodle_links` | PK (`issuer`, `user_id`); unique index on (`issuer`, `moodle_user_id`) | a user's confirmed link to their account on one Moodle (the Moodle user id only, never a name) — part of the fourth sanctioned user↔code link, read only by the user's own paths (details in `docs/moodle.md`) |
+| `novedu_moodle_targets` | PK (`issuer`, `user_id`, `code`); index on `code` | where a student's Moodle hand-in of a code goes (the grade column URL) and when they last handed in; written only after the confirmed link (details in `docs/moodle.md`) |
 | `novedu_user_settings` | PK `user_id` | per-user preferences of the Settings page (`save_quiz_results`); a missing row means every default (details in `docs/home.md`) |
 | `novedu_drizzle_migrations` | — | Drizzle migration bookkeeping (schema `public`) |
 | `novedu_user` | PK `id` | one row per signed-in person: display name, email, `is_teacher`; the id every `user_id`/`created_by` column across the tables above stores by value (details in `docs/auth.md`) |
@@ -409,7 +411,8 @@ only delete path). The bulk delete (`deleteCodesAndData` in
    `novedu_coding_keys` rows (one batched statement for the whole selection —
    the only path that ever deletes them), then per code `novedu_user_chats`,
    `novedu_recent_codes`, `novedu_writing_submissions`, `novedu_reports`,
-   `novedu_quiz_results` (through `deleteResultsForCode`), and
+   `novedu_quiz_results` (through `deleteResultsForCode`),
+   `novedu_moodle_targets` (through `deleteTargetsForCode`), and
    finally the `novedu_codes` row LAST (so a mid-way failure leaves the code
    still listed and the operation safe to retry; it is idempotent).
 

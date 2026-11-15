@@ -45,9 +45,12 @@ vi.mock("@/lib/telemetry", () => ({ emitEvent }));
 vi.mock("next/server", () => ({ after: (callback: () => unknown) => callback() }));
 
 import { QUIZ_EVAL_CONTEXT } from "@/lib/llm-context";
+import { resetMoodleConfigForTests } from "@/lib/moodle-config";
+import { getReceiptSecret, verifyReceipt } from "@/lib/moodle-receipt";
 import { saveQuizResult, startDiscussion, submitAnswer } from "@/lib/quiz-actions";
 import { getThreadTokenSecret, verifyThreadToken } from "@/lib/thread-token";
 import { USAGE_CODE, USAGE_MODULE, USAGE_USER_ID } from "@/lib/usage-context-keys";
+import { stubMoodleEnv } from "@/tests/fake-moodle";
 
 const entry = {
   code: "a1b2c3d4e5",
@@ -116,6 +119,63 @@ describe("submitAnswer LLM selection", () => {
     expect(result).toMatchObject({ ok: true });
     expect(gradedContext().get(QUIZ_EVAL_CONTEXT.model)).toBe("gpt-5.4-mini");
     expect(gradedContext().get(QUIZ_EVAL_CONTEXT.provider)).toBe("Azure Foundry");
+  });
+});
+
+describe("submitAnswer Moodle receipts", () => {
+  const ATTEMPT = "6f1c2d3e-0000-4000-8000-000000000001";
+  const moodleEntry = { ...entry, moodle: true };
+
+  beforeEach(() => {
+    resetMoodleConfigForTests();
+    stubMoodleEnv(vi.stubEnv, {
+      issuer: "https://moodle.example.org",
+      clientId: "c",
+      deploymentId: "1",
+    });
+    checkCode.mockResolvedValue({ ok: true, entry: moodleEntry });
+  });
+
+  it("signs a receipt for the session user, the code, the attempt, the slot and the verdict", async () => {
+    const result = await submitAnswer({
+      code: entry.code,
+      questionId: "q1",
+      answer: "4",
+      attemptId: ATTEMPT,
+      slot: 0,
+    });
+    assert(result.ok && result.receipt);
+    expect(result.receipt).toMatchObject({ slot: 0, questionId: "q1", verdict: "correct" });
+    expect(
+      verifyReceipt(
+        result.receipt,
+        { code: entry.code, userId: "student-1", attemptId: ATTEMPT },
+        getReceiptSecret(),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["without the attempt id and slot", {}],
+    ["with a slot outside the attempt", { attemptId: ATTEMPT, slot: 1 }],
+    ["with a malformed attempt id", { attemptId: "x", slot: 0 }],
+  ])("returns the answer unchanged %s", async (_label, extra) => {
+    const result = await submitAnswer({
+      code: entry.code,
+      questionId: "q1",
+      answer: "4",
+      ...extra,
+    });
+    expect(result).toEqual({ ok: true, result: "correct", feedback: "Well done." });
+  });
+
+  it("mints nothing for a code without the switch, or while Moodle is not available", async () => {
+    const input = { code: entry.code, questionId: "q1", answer: "4", attemptId: ATTEMPT, slot: 0 };
+    checkCode.mockResolvedValue({ ok: true, entry: { ...entry, moodle: false } });
+    expect(await submitAnswer(input)).not.toHaveProperty("receipt");
+    checkCode.mockResolvedValue({ ok: true, entry: moodleEntry });
+    vi.stubEnv("MOODLE_LTI_ISSUER", "");
+    expect(await submitAnswer(input)).not.toHaveProperty("receipt");
   });
 });
 

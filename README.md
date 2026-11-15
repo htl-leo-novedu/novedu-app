@@ -45,6 +45,7 @@ See [`docs/azure-runtime-env.md`](docs/azure-runtime-env.md).
 | **Usage metering** (`lib/usage-store.ts`, `app/mastra/usage-exporter.ts`) | Per-hour token / tool-call / activity counts written off the response path into two anonymity-preserving tables (`novedu_usage_by_code`, `novedu_usage_by_user`), surfaced on the teacher `/usage` dashboard. See [`docs/usage-metering.md`](docs/usage-metering.md) and [`docs/dashboard.md`](docs/dashboard.md). |
 | **LLM providers** (`lib/llm/`, `app/mastra/scch.ts`, `lib/scch-endpoint.ts`) | Three OpenAI-compatible upstreams behind one server-only seam: a self-hosted vLLM GPU server ("SCCH", the default) plus two optional ones — **Azure Foundry** when `AZURE_FOUNDRY_ENDPOINT` is set (Entra auth via managed identity / `az login` or a Foundry service principal, no API key) and **OpenRouter** when `OPENROUTER_API_KEY` is set. The activity YAML's `llm:` block picks provider + model + an optional reasoning level, and a code can override the whole block; endpoints, keys, and tokens stay server-side. See [`docs/ai-models.md`](docs/ai-models.md). |
 | **Auth** (`auth.ts`, `proxy.ts`, `lib/api-auth.ts`) | **better-auth** with Microsoft Entra ID as the sign-in provider (the gate is `proxy.ts`, Next 16's name for middleware, which checks only for a session cookie). Any signed-in user passes the gate; teacher-only operations are gated by `TEACHER_GROUP_ID` membership (`session.user.isTeacher`), enforced server-side via `requireEffectiveTeacher()` (which honors "view as student" mode). Sessions are database-backed (`novedu_session`, no cookie cache). See [`docs/auth.md`](docs/auth.md). A second, cookie-free channel serves CLI/API clients: the same **session token as a bearer**, obtained by the CLI's own OAuth device flow, validated on every request by `lib/api-auth.ts` (`requireBearerUser` / `requireBearerTeacher`; no student mode on this channel). See [`docs/api.md`](docs/api.md). |
+| **Moodle hand-in** (`lib/moodle-*.ts`, `app/lti/**`, `app/api/lti/**`) | Optional LTI 1.3 tool with the grade service: a quiz code switched on for Moodle can be added as a Moodle activity through Novedu's code picker; a student links their Moodle account once and hands a quiz result in to the gradebook with one click, counted on the server from signed receipts. See [`docs/moodle.md`](docs/moodle.md). |
 | **Teacher docs** (`teacher-docs/`) | The teacher-facing guide as a **hand-maintained Markdown corpus** (`teacher-docs/src/content/docs/` — human-owned chapters, kept current from code changes by hand or via the `novedu-teacher-docs` skill) and an **Astro Starlight site** that renders it (the rest of `teacher-docs/`, an npm workspace) — as HTML pages plus an [llms.txt](https://llmstxt.org) surface for AI agents (`/llms.txt`, `/llms-full.txt`, and a `.md` twin of every chapter). Served **publicly at `https://docs.novedu.at`** from an Azure Static Web App, released by `promote.yml` from the promoted image's commit; the app 308-redirects `/docs/*` there. `npm run docs:dev` for local authoring; the corpus-contract test + site build are the consistency checks. See [`docs/teacher-docs.md`](docs/teacher-docs.md). |
 | **API routes** (`app/api/`) | `copilotkit` (chat runtime), `coding/v1/chat/completions` + `coding/v1/models` (**public** OpenAI-compatible endpoints, per-user API key auth), `files/<name>` (**bearer**, teacher-only: GET the raw YAML for `novedu-cli`, PUT to upsert for `novedu-cli files upload`), `files` + `codes` (**bearer**, teacher-only: list/create/sync for the CLI — see [`docs/api.md`](docs/api.md)), `codes/<code>/conversations` (**bearer**, the code's creator only: the conversation export behind `novedu-cli codes export`, with no student identity), `images` + `images/<name>` (**bearer**, teacher-only: image upload/list for the CLI), `image-content/<id>` (cookie session: serves an image's bytes to any signed-in user), `eval/grade` + `eval/judge` + `eval/respond` (**bearer**, teacher-only: stateless one-shot grading / judging / tutor turns for `novedu-cli eval`), `reports` + `reports/<id>` + `reports/resolve` (**bearer**, teacher-only: report triage for the CLI; a chat report's detail embeds the conversation transcript), `auth` (sign-in), `me` (**bearer-token** identity probe backing `novedu-cli whoami`), `version` (public build-identity probe), `health` (teacher-gated probe). |
 
@@ -156,6 +157,16 @@ OPENROUTER_API_KEY=your-openrouter-api-key
 # gateway). It already includes /v1. Default: https://openrouter.ai/api/v1
 # OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
+# --- Moodle hand-in (optional) — LTI 1.3, docs/moodle.md ---
+# Off unless all four are set. The key is Novedu's RSA private key (PKCS#8 PEM;
+# one line with \n escapes works); the three values are what Moodle shows after
+# its admin registered Novedu. Settings → "Moodle connection" shows the addresses
+# and the public key the admin needs.
+# MOODLE_LTI_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+# MOODLE_LTI_ISSUER=https://moodle.example.org
+# MOODLE_LTI_CLIENT_ID=moodle-client-id
+# MOODLE_LTI_DEPLOYMENT_ID=1
+
 # --- Microsoft Entra ID sign-in (better-auth) ---
 AZURE_TENANT_ID=your-entra-tenant-id
 AZURE_CLIENT_ID=your-entra-app-client-id
@@ -250,6 +261,9 @@ Notes:
   authoring time and gated at runtime with a readable reason, never a raw
   missing-env error (`docs/ai-models.md`). `/health` shows a provider's rows only
   when it is configured.
+- Moodle hand-in is **optional** and off unless the four `MOODLE_LTI_*` variables
+  are set; one or two of the three connection values alone is logged once by name
+  and treated as off (`docs/moodle.md`).
 - Telemetry is **optional** and off unless a destination is set:
   `OTEL_EXPORTER_OTLP_ENDPOINT` selects standard OTLP export (Aspire locally, any
   receiver or Collector elsewhere), `APPLICATIONINSIGHTS_CONNECTION_STRING` selects

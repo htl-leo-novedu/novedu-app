@@ -9,6 +9,7 @@ related:
   - 30-sharing-activities/01-creating-codes
   - 30-sharing-activities/02-viewing-usage
   - 30-sharing-activities/03-time-limitation
+  - 30-sharing-activities/11-moodle-hand-in
 ---
 
 A code never disappears on its own. Even after its time window closes, it stays in your **Codes** list (marked **expired**) with all of its data, until a teacher deletes it. Deleting is how you tidy up after a unit is finished, and it's permanent: the code and everything recorded under it are gone for good.
@@ -34,6 +35,7 @@ Deleting a code removes the code and everything that was recorded under it:
 - For a coding activity, every personal key issued for the code is deleted, so any coding tool still using one stops working immediately.
 - Student reports on the code are deleted.
 - Quiz results that students saved for themselves are deleted. Badges they already earned stay, and so do yours.
+- For a quiz that students hand in to Moodle, Novedu forgets where their results go. Grades already in Moodle stay there, and the Moodle activity then leads to an unknown-code page.
 - The code's statistics page is gone, along with its interaction counts and per-student view.
 
 Review the code's statistics and read or copy anything you still need before you delete: there's no way to open a deleted code's conversations, saved texts, or statistics afterwards.

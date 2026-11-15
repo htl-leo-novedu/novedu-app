@@ -11,6 +11,7 @@ import {
   userChats,
   writingSubmissions,
 } from "@/lib/db/schema";
+import { deleteTargetsForCode } from "@/lib/moodle-store";
 import { deleteResultsForCode } from "@/lib/quiz-result-store";
 import { THREAD_ID_PATTERN } from "@/lib/thread-token";
 
@@ -298,8 +299,8 @@ async function deleteCodeConversations(code: string): Promise<boolean> {
  * Deletes ONE code's app-owned Drizzle rows on the given executor — user_chats
  * (attribution), recent_codes (shortcuts), writing_submissions (the writing
  * module's saved texts), reports (student-submitted reports, which have NO FK
- * to the code and so must be dropped explicitly) and saved quiz results (through
- * their store, which reveals nothing about them) first, then the code row LAST
+ * to the code and so must be dropped explicitly), saved quiz results and Moodle
+ * hand-in targets (each through its store, which reveals nothing about them) first, then the code row LAST
  * (while it exists the code still appears in the list, so a mid-way failure is
  * safe to retry). The coding module's key rows are NOT here — `deleteCodesAndData`
  * drops them for the whole batch in one statement before this loop. Throws on a
@@ -311,6 +312,7 @@ async function deleteCodeRows(executor: DbExecutor, code: string): Promise<void>
   await executor.delete(writingSubmissions).where(eq(writingSubmissions.code, code));
   await executor.delete(reports).where(eq(reports.code, code));
   await deleteResultsForCode(executor, code);
+  await deleteTargetsForCode(executor, code);
   await executor.delete(codesTable).where(eq(codesTable.code, code));
 }
 

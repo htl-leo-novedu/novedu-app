@@ -5,7 +5,8 @@ import { render } from "vitest-browser-react";
 const push = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
-import { CodeEntryForm, extractCode } from "@/app/code-entry";
+import { CodeEntryForm } from "@/app/code-entry";
+import { extractCode } from "@/lib/code-input";
 
 test("extractCode accepts bare codes, full URLs, and rejects garbage", () => {
   expect(extractCode("a1b2c3d4e5")).toBe("a1b2c3d4e5");

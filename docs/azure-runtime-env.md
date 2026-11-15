@@ -566,6 +566,13 @@ stage*).
   allowlist lives in the workspace, not in a proxy (*OpenRouter* below).
 - **`STORAGE_TENANT_ID`** — it only pins the tenant of a local `az` credential
   and means nothing to a managed identity.
+- **`MOODLE_LTI_PRIVATE_KEY`, `MOODLE_LTI_ISSUER`, `MOODLE_LTI_CLIENT_ID`,
+  `MOODLE_LTI_DEPLOYMENT_ID`** — Moodle hand-in is off on both stages
+  (`docs/moodle.md`). Switching it on for a stage takes its own key — a person
+  creates it and stores the PKCS#8 PEM as the Key Vault secret
+  `MOODLE-LTI-PRIVATE-KEY`, wired as a Key Vault reference like the secrets above;
+  dev and prod never share a key — plus the three values Moodle shows after its
+  admin registered that stage's Novedu, as plain settings.
 - **`OTEL_EXPORTER_OTLP_ENDPOINT`** — it would win over the Application
   Insights connection string; telemetry goes to Azure Monitor
   (`docs/telemetry.md`).

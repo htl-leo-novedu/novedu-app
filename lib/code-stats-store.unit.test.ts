@@ -88,6 +88,7 @@ import {
 import {
   codes,
   codingKeys,
+  moodleTargets,
   quizResults,
   recentCodes,
   reports,
@@ -368,12 +369,14 @@ describe("deleteCodesAndData", () => {
       writingSubmissions,
       reports,
       quizResults,
+      moodleTargets,
       codes,
       userChats,
       recentCodes,
       writingSubmissions,
       reports,
       quizResults,
+      moodleTargets,
       codes,
     ]);
   });
@@ -398,12 +401,14 @@ describe("deleteCodesAndData", () => {
       writingSubmissions,
       reports,
       quizResults,
+      moodleTargets,
       codes,
       userChats,
       recentCodes,
       writingSubmissions,
       reports,
       quizResults,
+      moodleTargets,
       codes,
     ]);
   });
@@ -421,6 +426,7 @@ describe("deleteCodesAndData", () => {
       writingSubmissions,
       reports,
       quizResults,
+      moodleTargets,
       codes,
     ]);
   });

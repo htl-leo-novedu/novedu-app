@@ -27,6 +27,8 @@ vi.mock("@/lib/quiz-actions", () => ({
   saveQuizResult,
 }));
 vi.mock("next/link", () => import("@/tests/mocks/next-link"));
+const handInToMoodle = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/moodle-actions", () => ({ handInToMoodle }));
 
 const buildQuestionSequence = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/quiz-sequence", () => ({ buildQuestionSequence }));
@@ -359,5 +361,88 @@ test("finishing with skipped questions left reports them in the summary", async 
     .element(
       screen.getByText("You answered 1 of 3 questions. 2 skipped questions were not answered."),
     )
+    .toBeVisible();
+});
+
+test("Moodle: without the prop nothing is sent and no hand-in box appears", async () => {
+  const screen = await render(<QuizRunner code={CODE} quiz={quizOf(1)} />);
+  await screen.getByRole("textbox").fill("a1");
+  await screen.getByRole("button", { name: "Submit answer" }).click();
+  await screen.getByRole("button", { name: "Finish" }).click();
+  await expect.element(screen.getByRole("heading", { name: "Quiz summary" })).toBeVisible();
+  expect(submitAnswer.mock.calls[0]?.[0]).not.toHaveProperty("attemptId");
+  expect(submitAnswer.mock.calls[0]?.[0]).not.toHaveProperty("slot");
+  expect(screen.getByTestId("moodle-hand-in").query()).toBeNull();
+});
+
+test("Moodle: with the prop it sends attempt id and slot, keeps receipts and hands them in", async () => {
+  const receipt = (slot: number) => ({
+    slot,
+    questionId: `q${slot + 1}`,
+    verdict: "correct",
+    mac: "m",
+  });
+  submitAnswer
+    .mockResolvedValueOnce({ ok: true, result: "correct", feedback: "F", receipt: receipt(0) })
+    .mockResolvedValueOnce({ ok: true, result: "correct", feedback: "F", receipt: receipt(1) });
+  handInToMoodle.mockResolvedValue({
+    ok: true,
+    handedInAt: new Date().toISOString(),
+    percent: 100,
+  });
+  const screen = await render(
+    <QuizRunner code={CODE} quiz={quizOf(2)} moodle={{ handedInAt: null }} />,
+  );
+  await screen.getByRole("textbox").fill("a1");
+  await screen.getByRole("button", { name: "Submit answer" }).click();
+  await screen.getByRole("button", { name: "Next question" }).click();
+  await screen.getByRole("textbox").fill("a2");
+  await screen.getByRole("button", { name: "Submit answer" }).click();
+  await screen.getByRole("button", { name: "Finish" }).click();
+
+  const first = submitAnswer.mock.calls[0]?.[0];
+  expect(first.slot).toBe(0);
+  expect(first.attemptId).toMatch(/^[0-9a-f-]{36}$/);
+  expect(submitAnswer.mock.calls[1]?.[0]).toMatchObject({ slot: 1, attemptId: first.attemptId });
+
+  await screen.getByRole("button", { name: "Hand in" }).click();
+  expect(handInToMoodle).toHaveBeenCalledWith({
+    code: CODE,
+    attemptId: first.attemptId,
+    receipts: [receipt(0), receipt(1)],
+  });
+  await expect.element(screen.getByText(/Handed in to Moodle on/)).toBeVisible();
+});
+
+test("Moodle: an attempt with nothing answered shows no hand-in box", async () => {
+  const screen = await render(
+    <QuizRunner code={CODE} quiz={quizOf(3)} moodle={{ handedInAt: null }} />,
+  );
+  await expect.element(screen.getByText("QUESTION-1")).toBeVisible();
+  await screen.getByRole("button", { name: "Finish" }).click();
+  await expect.element(screen.getByRole("heading", { name: "Quiz summary" })).toBeVisible();
+  expect(screen.getByTestId("moodle-hand-in").query()).toBeNull();
+});
+
+test("Moodle: the box promises only what the receipts hold", async () => {
+  submitAnswer
+    .mockResolvedValueOnce({
+      ok: true,
+      result: "correct",
+      feedback: "F",
+      receipt: { slot: 0, questionId: "q1", verdict: "correct", mac: "m" },
+    })
+    .mockResolvedValueOnce({ ok: true, result: "correct", feedback: "F" });
+  const screen = await render(
+    <QuizRunner code={CODE} quiz={quizOf(2)} moodle={{ handedInAt: null }} />,
+  );
+  await screen.getByRole("textbox").fill("a1");
+  await screen.getByRole("button", { name: "Submit answer" }).click();
+  await screen.getByRole("button", { name: "Next question" }).click();
+  await screen.getByRole("textbox").fill("a2");
+  await screen.getByRole("button", { name: "Submit answer" }).click();
+  await screen.getByRole("button", { name: "Finish" }).click();
+  await expect
+    .element(screen.getByText("Moodle receives: 2 questions — 1 correct, 1 not answered (50 %)."))
     .toBeVisible();
 });

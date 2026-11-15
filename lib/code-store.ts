@@ -125,6 +125,8 @@ export type CodeRequestValidation =
         validUntil: Date | null;
         note: string;
         llm: CodeLlmOverride | null;
+        /** The Moodle hand-in switch; only ever `true` for a quiz. */
+        moodle: boolean;
       };
     }
   | { ok: false; message: string };
@@ -154,6 +156,13 @@ export function validateCodeRequest(input: {
   llmModel: unknown;
   /** Optional third member of the override — only meaningful with the pair. */
   llmReasoning: unknown;
+  /**
+   * The Moodle hand-in switch: a boolean (API), `"on"` (a ticked checkbox) or
+   * absent/blank for off. Needs `module` to tell whether it is allowed.
+   */
+  moodle?: unknown;
+  /** The code's module — only a quiz may switch Moodle hand-in on. */
+  module?: string;
 }): CodeRequestValidation {
   let url: URL;
   try {
@@ -242,7 +251,27 @@ export function validateCodeRequest(input: {
     llm = { provider, model: modelText, ...(reasoning ? { reasoning } : {}) };
   }
 
-  return { ok: true, payload: { fileUrl: url.href, validFrom, validUntil, note, llm } };
+  const moodle = parseMoodleSwitch(input.moodle);
+  if (moodle === undefined) {
+    return { ok: false, message: "The Moodle switch must be true or false." };
+  }
+  if (moodle && input.module !== "quiz") {
+    return {
+      ok: false,
+      message: "Only quiz codes can hand in results to Moodle.",
+    };
+  }
+
+  return { ok: true, payload: { fileUrl: url.href, validFrom, validUntil, note, llm, moodle } };
+}
+
+// Booleans from the JSON API, "on" from a ticked checkbox; absent or blank is
+// off. Anything else is invalid (`undefined`).
+function parseMoodleSwitch(value: unknown): boolean | undefined {
+  if (value === undefined || value === null || value === "" || value === false) return false;
+  if (value === true || value === "on" || value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
 }
 
 /** A code's stored data, as read back from `novedu_codes`. */
@@ -279,6 +308,11 @@ export interface CodeEntry {
    * it via `effectiveLlm` — never read its members directly.
    */
   llm: CodeLlmOverride | null;
+  /**
+   * The Moodle hand-in switch (docs/moodle.md). Only a quiz code has it on;
+   * editable on /codes/edit. Inert while the Moodle feature is not available.
+   */
+  moodle: boolean;
   createdAt: Date;
 }
 
@@ -303,10 +337,11 @@ function toEntry(row: typeof codes.$inferSelect): CodeEntry | null {
     console.error(`code-store: code ${row.code} has unknown module ${JSON.stringify(row.module)}`);
     return null;
   }
-  const { llmProvider, llmModel, llmReasoning, ...rest } = row;
+  const { llmProvider, llmModel, llmReasoning, moodleEnabled, ...rest } = row;
   return {
     ...rest,
     module: row.module,
+    moodle: moodleEnabled === true && row.module === "quiz",
     llm: toLlmOverride(row.code, llmProvider, llmModel, llmReasoning),
   };
 }
@@ -369,6 +404,8 @@ export async function createCode(
     anonymous: boolean;
     /** The per-code LLM override (pair + optional reasoning), or `null` for none. */
     llm: CodeLlmOverride | null;
+    /** The Moodle hand-in switch (validated: a quiz only). */
+    moodle: boolean;
   },
 ): Promise<CreateCodeResult> {
   for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
@@ -389,6 +426,7 @@ export async function createCode(
           llmProvider: data.llm?.provider ?? null,
           llmModel: data.llm?.model ?? null,
           llmReasoning: data.llm?.reasoning ?? null,
+          moodleEnabled: data.moodle,
           createdAt: new Date(),
         });
       return { stored: true, code: candidate };
@@ -635,8 +673,9 @@ export async function getCode(code: string): Promise<CodeEntry | null | undefine
 export type UpdateCodeResult = { ok: true } | { ok: false; reason: "not-found" | "error" };
 
 /**
- * Updates the editable fields of a code: the availability window, the note, and
- * the LLM override (set or cleared as a whole, its reasoning level included). The file URL is
+ * Updates the editable fields of a code: the availability window, the note, the
+ * LLM override (set or cleared as a whole, its reasoning level included) and,
+ * for a quiz, the Moodle hand-in switch (validated by the caller). The file URL is
  * INTENTIONALLY not updatable here — and neither is the frozen `anonymous` flag
  * (which is tied to that URL): editing them would break the documented
  * "anonymous frozen at create time" invariant. `not-found` if no row matches
@@ -649,6 +688,7 @@ export async function updateCode(
     validUntil: Date | null;
     note: string;
     llm: CodeLlmOverride | null;
+    moodle: boolean;
   },
 ): Promise<UpdateCodeResult> {
   if (!CODE_PATTERN.test(code)) return { ok: false, reason: "not-found" };
@@ -662,6 +702,7 @@ export async function updateCode(
         llmProvider: data.llm?.provider ?? null,
         llmModel: data.llm?.model ?? null,
         llmReasoning: data.llm?.reasoning ?? null,
+        moodleEnabled: data.moodle,
       })
       .where(eq(codes.code, code));
     if (affectedRows(updated) < 1) return { ok: false, reason: "not-found" };

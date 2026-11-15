@@ -11,6 +11,7 @@ related:
   - 30-sharing-activities/06-coding-special-case
   - 20-building-activities/02-available-llms
   - 40-ai-llms/01-novedu-cli
+  - 30-sharing-activities/11-moodle-hand-in
 ---
 
 Once an activity is ready, you hand it to a class as a code: a short link that opens the activity for anyone who has it. Creating one takes a minute, and you can create as many codes for the same activity as you like, for example one per class.
@@ -32,7 +33,8 @@ Novedu checks the activity file before storing anything. If the file has errors,
 4. Add a **Note** for yourself, for example "3AHIF linked lists exercise". Only teachers see it; it labels the code in your list.
 5. Set **Available from** and **Available until** if the code should only work during a certain time. Both fields use your local time, and either may stay blank to leave that side open. The **Now**, **+1h**, **+1d**, and **+1w** buttons fill common values.
 6. Fill in the **LLM override** only if this one code should run on different AI settings than the activity file names.
-7. Select **Create code**.
+7. For a quiz, tick **Students can hand in results to Moodle** if students should hand in their results to your Moodle course. The option appears only when your Novedu is connected to Moodle; the chapter on handing in quiz results to Moodle explains it.
+8. Select **Create code**.
 
 ## The LLM override section
 
@@ -56,11 +58,12 @@ For a coding activity, opening that same link is how a student picks up the pers
 
 ## What you can change later, and what's fixed
 
-You can reopen any code from the list and edit three things at any time:
+You can reopen any code from the list and edit these things at any time:
 
 - the note,
 - the availability window,
-- the model override.
+- the model override,
+- for a quiz, the option **Students can hand in results to Moodle**.
 
 Three things are fixed when the code is created and never change: the kind of activity, the activity file's address, and whether the activity records who did what (anonymous or per-user, taken from the activity file at creation time). To share a different file, create a new code.
 
@@ -83,4 +86,4 @@ npx @novedu/cli codes create --module quiz \
   --start 2026-07-07T08:00:00Z --end 2026-07-07T10:00:00Z
 ```
 
-`--start` and `--end` take ISO 8601 times with an explicit offset (the `Z` above means UTC) and may be left out for an open-ended code. `--llm-provider` and `--llm-model` set the model override, always together, and `--llm-reasoning` adds a thinking-effort level (`none`, `minimal`, `low`, `medium`, `high`, or `xhigh`) on top of that pair; without the pair it is rejected, and left out it drops whatever level the activity file sets. `novedu-cli codes list` shows your codes.
+`--start` and `--end` take ISO 8601 times with an explicit offset (the `Z` above means UTC) and may be left out for an open-ended code. `--llm-provider` and `--llm-model` set the model override, always together, and `--llm-reasoning` adds a thinking-effort level (`none`, `minimal`, `low`, `medium`, `high`, or `xhigh`) on top of that pair; without the pair it is rejected, and left out it drops whatever level the activity file sets. For a quiz, `--moodle` ticks **Students can hand in results to Moodle**. `novedu-cli codes list` shows your codes.

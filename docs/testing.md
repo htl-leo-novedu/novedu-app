@@ -300,6 +300,34 @@ locally").
 for the database, SCCH (the fake) and the image root must pass. Run it locally
 the same way against `docker compose up -d --wait`.
 
+## Moodle
+
+Moodle hand-in (`docs/moodle.md`) is tested against a **fake platform**, never a
+real Moodle in CI:
+
+- `tests/fake-moodle.ts` is a Moodle stand-in with its own key pair: it signs
+  `id_token`s with chosen claims (a learner's launch, a deep-linking request) and
+  serves its key set. The unit tests of the launch, the LTI route handlers and the
+  receipts use it with **real crypto** (`lib/moodle-launch.ts`,
+  `lib/moodle-receipt.ts` and the tool key stay real); only the database, the
+  session and Moodle's HTTP endpoints are stand-ins.
+- `playwright.config.ts` boots the e2e server with a throwaway tool key generated
+  at every config load (never committed) and the three connection variables
+  pointing at `e2e/moodle.constants.ts`'s fixed local address, so the feature is
+  available in every e2e run. `e2e/moodle.spec.ts` (hermetic) covers the key set,
+  the expired arrival and picker messages and both Settings views.
+- `e2e/moodle-roundtrip.live.spec.ts` (`@live @live-db`) starts the fake platform
+  as an HTTP server on that address (key set, authorization endpoint, token and
+  score endpoints) and drives the real browser flow: login → launch → the arrival
+  cookie → confirmation → a graded answer → "Hand in" → the fake receives score and
+  comment; then a second Novedu account with the same Moodle user is refused and
+  unlink removes the rows. Its rows carry the fake's issuer and are removed after.
+- Against a **real** local Moodle (moodle-docker, 4.5 or 5.3), the
+  `novedu-moodle-test` skill (`.agents/skills/novedu-moodle-test/`) tells an agent
+  how to register Novedu, add an activity through the picker and walk a student
+  through the hand-in in Chromium and Firefox. It is run by hand when asked, never
+  in CI — it is the only check of a real Moodle's forms, cookies and grade service.
+
 ## Demo login `@demo`
 
 The demo login (`docs/auth.md`, "Demo mode") exists only in a demo build, so its specs
@@ -606,3 +634,4 @@ invariant, not a convenience — see **`docs/ci-security.md`**.
 - **Auth & e2e session cookies** → `docs/auth.md`.
 - **Telemetry** → `docs/telemetry.md` (and the "Telemetry tests" section above).
 - **LLM diagnostics** → `docs/diagnostics.md` (Testing section).
+- **Moodle hand-in** → the "Moodle" section above and `docs/moodle.md`.

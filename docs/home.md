@@ -386,6 +386,10 @@ the Finish page store the attempt's **counts** — never an answer — in
   `lib/quiz-actions.ts`, `lib/student-facts-store.ts`, `lib/code-stats-store.ts`,
   `lib/user-settings-actions.ts`, `app/settings/page.tsx` — and fails if any other
   module under `lib/` or `app/` names the table.
+- **Hand in to Moodle**: where a Moodle hand-in is possible (the code switched on
+  and the student arrived from Moodle once), a second, independent box below this
+  one sends the attempt's score to Moodle on the student's click (`hand-in.tsx`,
+  `docs/moodle.md`). It never touches the saved results.
 
 ## Settings page
 
@@ -404,6 +408,11 @@ teacher gate, no bearer route.
   (`save_quiz_results`, the Finish page's "Always") with the same privacy notice,
   the number of saved results, and "Delete my saved results", confirmed first.
   Deleting results never revokes an earned badge.
+- **Moodle account** (only while the user has a link to the configured Moodle):
+  since when, and "Unlink my Moodle account", confirmed first (`docs/moodle.md`).
+- **Moodle connection** (effective teachers only): the read-only view of the
+  server's Moodle configuration — Novedu's three addresses and public key for
+  Moodle's admin, and whether the connection is set (`docs/moodle.md`).
 - **Actions** (`lib/user-settings-actions.ts`): `updateUserSettings` validates a
   strict schema (unknown fields reject the call) and upserts;
   `deleteMyQuizResults` deletes the user's rows.

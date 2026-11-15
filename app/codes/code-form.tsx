@@ -4,7 +4,7 @@ import { type ReactNode, useActionState, useCallback, useEffect, useRef, useStat
 import { BackLink } from "@/components/back-link";
 import { PageBody } from "@/components/page-main";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel, FieldSuccess } from "@/components/ui/field";
+import { Field, FieldError, FieldHint, FieldLabel, FieldSuccess } from "@/components/ui/field";
 import { Input, inputVariants, Select } from "@/components/ui/input";
 import { ErrorList } from "@/components/validation-result";
 import type { ActivityLlm } from "@/lib/activity-load";
@@ -122,6 +122,13 @@ export interface CodeFormProps {
   /** Edit mode only: the code being edited. */
   code?: string;
   /**
+   * Whether the Moodle feature is available on this server (docs/moodle.md). The
+   * "hand in to Moodle" checkbox renders only then, and only for a quiz.
+   */
+  moodleAvailable?: boolean;
+  /** Edit mode: the stored Moodle hand-in switch. */
+  initialMoodle?: boolean;
+  /**
    * Edit mode only: the module's result body (server-rendered), shown above the form —
    * tutor/quiz/writing render the share link, coding its little-coder connection config.
    */
@@ -133,7 +140,7 @@ export interface CodeFormProps {
 // to unix seconds — a conversion that MUST happen in the browser, the only place
 // the teacher's timezone is known. Create picks the activity (`module`) + file and
 // redirects to the new code's edit page on success (which shows the module's result
-// body — `resultSlot`). Edit changes the note/window only — the module + file URL are frozen
+// body — `resultSlot`). Edit changes the note/window/override (and a quiz's Moodle switch) — the module + file URL are frozen
 // (shown read-only), so there is no YAML re-validation. Both modes READ the YAML's
 // `llm:` block for display only (the "Activity's LLM" field above the override).
 export function CodeForm({
@@ -148,12 +155,18 @@ export function CodeForm({
   initialLlmReasoning = "",
   code,
   resultSlot,
+  moodleAvailable = false,
+  initialMoodle = false,
 }: CodeFormProps) {
   const isEdit = mode === "edit";
   const action: (state: CodeFormState, formData: FormData) => Promise<CodeFormState> = isEdit
     ? updateCodeAction.bind(null, code ?? "")
     : createCodeAction;
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
+  // The chosen activity — controlled so the Moodle checkbox can follow it (it
+  // exists for a quiz only). Frozen in edit mode.
+  const [module, setModule] = useState<CodeModule>(initialModule);
+  const showMoodle = moodleAvailable && module === "quiz";
   const [start, setStart] = useState(
     initialStartSeconds ? unixSecondsToDatetimeLocal(initialStartSeconds) : "",
   );
@@ -234,7 +247,8 @@ export function CodeForm({
                 <Select
                   id="code-module"
                   name="module"
-                  defaultValue={initialModule}
+                  value={module}
+                  onChange={(event) => setModule(event.target.value as CodeModule)}
                   className="font-mono"
                   disabled={pending}
                 >
@@ -292,6 +306,34 @@ export function CodeForm({
               disabled={pending}
             />
           </Field>
+
+          {/* Moodle hand-in (docs/moodle.md): a quiz only, and only while this
+              server has a Moodle connection. The hidden marker tells the edit
+              action the checkbox was shown, so a save without it keeps the
+              stored switch. */}
+          {showMoodle ? (
+            <div className="flex items-start gap-2">
+              <input type="hidden" name="moodleField" value="1" />
+              <input
+                id="code-moodle"
+                type="checkbox"
+                name="moodle"
+                defaultChecked={initialMoodle}
+                aria-describedby="code-moodle-hint"
+                className="mt-0.5 size-4 accent-foreground"
+                disabled={pending}
+              />
+              <div className="flex flex-col gap-0.5">
+                <label htmlFor="code-moodle" className="font-medium text-sm">
+                  Students can hand in results to Moodle
+                </label>
+                <FieldHint id="code-moodle-hint">
+                  Students can hand in while the code is valid. To set a deadline, set the
+                  code&apos;s end date.
+                </FieldHint>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* The LLM: the activity YAML's own (read-only), then the optional per-code

@@ -21,6 +21,11 @@ const NON_BEARER_HANDLERS: Record<string, string> = {
   "POST /api/copilotkit/[[...slug]]": "cookie-session chat runtime (checkCode + thread token)",
   "GET /api/image-content/[id]": "cookie-session image bytes (getSession per request)",
   "GET /api/health": "cookie-session teacher probe (requireEffectiveTeacher)",
+  "GET /api/lti/jwks": "public Moodle key set, the public key only",
+  "GET /api/lti/login": "public LTI login start (Moodle sends the browser), no session",
+  "POST /api/lti/login": "public LTI login start (Moodle sends the browser), no session",
+  "POST /api/lti/launch": "public LTI launch, verified against Moodle's signed message",
+  "POST /api/lti/pick": "public code picker answer, gated by the signed pick token",
 };
 
 describe("proxy.ts matcher", () => {
@@ -38,12 +43,20 @@ describe("proxy.ts matcher", () => {
     ["/api/image-content/abc", true],
     ["/api/copilotkit/info", true],
     ["/codes", true],
+    ["/api/lti-x", true],
+    ["/lti/arrive", true],
+    ["/lti/link", true],
+    ["/lti/done", true],
+    ["/lti/picker", true],
     ["/api/version", false],
     ["/api/files/x.yaml", false],
     ["/api/codes/abc/conversations", false],
     ["/api/coding/v1/models", false],
     ["/api/auth/sign-in/social", false],
     ["/sign-in", false],
+    ["/api/lti/jwks", false],
+    ["/api/lti/launch", false],
+    ["/lti/pick", false],
   ])("%s runs the proxy: %s", (url, runs) => {
     expect(unstable_doesMiddlewareMatch({ config, url })).toBe(runs);
   });

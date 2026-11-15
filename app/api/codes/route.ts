@@ -45,6 +45,7 @@ function toWire(entry: CodeEntry, origin: string, ownerName: string | null) {
     validFrom: entry.validFrom?.toISOString() ?? null,
     validUntil: entry.validUntil?.toISOString() ?? null,
     llm: entry.llm,
+    moodle: entry.moodle,
     createdBy: entry.createdBy,
     ownerName,
     createdAt: entry.createdAt.toISOString(),
@@ -131,7 +132,13 @@ export async function POST(request: Request) {
     if (typeof body !== "object" || body === null) {
       return json({ message: "The request body must be a JSON object." }, 400);
     }
-    const { module, fileUrl, validFrom, validUntil, note, llm } = body as Record<string, unknown>;
+    const { module, fileUrl, validFrom, validUntil, note, llm, moodle } = body as Record<
+      string,
+      unknown
+    >;
+    if (moodle !== undefined && typeof moodle !== "boolean") {
+      return json({ message: "moodle must be true or false." }, 400);
+    }
 
     const start = isoToUnixSeconds(validFrom, "validFrom");
     if (!start.ok) return json({ message: start.message }, 400);
@@ -152,6 +159,7 @@ export async function POST(request: Request) {
       llmProvider: override.provider ?? "",
       llmModel: override.model ?? "",
       llmReasoning: override.reasoning ?? "",
+      moodle: moodle ?? false,
     });
     if (!result.ok) {
       if (result.reason === "validation") return json({ errors: result.errors }, 400);

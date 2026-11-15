@@ -2,6 +2,8 @@ import { Notice } from "@/components/notice";
 import { Main, PageBody } from "@/components/page-main";
 import type { CodeEntry } from "@/lib/code-store";
 import { resolveImageRef } from "@/lib/image-resolve";
+import { moodleAvailable } from "@/lib/moodle-config";
+import { getOwnTarget } from "@/lib/moodle-store";
 import { loadQuiz } from "@/lib/quiz-fetch";
 import type { ResolvedQuiz, ResolvedQuizQuestion } from "@/lib/quiz-types";
 import { toPublicQuiz } from "@/lib/quiz-yaml";
@@ -24,7 +26,11 @@ export async function RenderQuiz({
 }) {
   // The user's quiz-save setting only picks what the Finish page shows first;
   // `saveQuizResult` re-reads it inside its transaction. A failed read asks.
-  const [loaded, settings] = await Promise.all([loadQuiz(entry.fileUrl), getUserSettings(userId)]);
+  const [loaded, settings, moodle] = await Promise.all([
+    loadQuiz(entry.fileUrl),
+    getUserSettings(userId),
+    moodleHandIn(entry, userId),
+  ]);
   if (!loaded.ok) {
     return (
       <Main>
@@ -52,8 +58,29 @@ export async function RenderQuiz({
       {/* PageBody gives the runner the shared page canvas + window-edge
           scrollbar; the runner column centers itself (block flow). */}
       <PageBody className="block">
-        <QuizRunner code={code} quiz={quiz} autoSave={settings?.saveQuizResults ?? false} />
+        <QuizRunner
+          code={code}
+          quiz={quiz}
+          autoSave={settings?.saveQuizResults ?? false}
+          moodle={moodle}
+        />
       </PageBody>
     </Main>
   );
+}
+
+/**
+ * Whether a Moodle hand-in is possible here (docs/moodle.md): Moodle available,
+ * the code switched on, and a hand-in target of the session user for this code.
+ * Only then does the runner keep receipts and show the box. A failed read hides it.
+ */
+async function moodleHandIn(
+  entry: CodeEntry,
+  userId: string,
+): Promise<{ handedInAt: string | null } | undefined> {
+  if (!entry.moodle) return undefined;
+  const connection = await moodleAvailable();
+  if (!connection) return undefined;
+  const target = await getOwnTarget(connection.issuer, userId, entry.code);
+  return target ? { handedInAt: target.handedInAt?.toISOString() ?? null } : undefined;
 }

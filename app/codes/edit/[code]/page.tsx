@@ -3,12 +3,14 @@ import { Main } from "@/components/page-main";
 import { requireTeacherPage } from "@/components/require-teacher-page";
 import { resolveAppOriginOr } from "@/lib/app-origin";
 import { getCode } from "@/lib/code-store";
+import { moodleAvailable } from "@/lib/moodle-config";
 import { CodeForm } from "../../code-form";
 import { ShareLinkResult } from "../../share-link-result";
 
 const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
 
-// Teacher-only: edit a code's note and availability window. The module + file URL
+// Teacher-only: edit a code's note, availability window, LLM override and (for a
+// quiz, while Moodle is connected) its Moodle hand-in switch. The module + file URL
 // are frozen (shown read-only). Any effective teacher may edit any code (RBAC
 // planned) — the lookup is `getCode`, not the owner-gated one; the server action
 // re-checks. The page resolves the shareable URL for the copy row.
@@ -58,6 +60,8 @@ export default async function EditCodePage({ params }: { params: Promise<{ code:
         initialLlmModel={entry.llm?.model}
         initialLlmReasoning={entry.llm?.reasoning}
         resultSlot={resultSlot}
+        moodleAvailable={(await moodleAvailable()) !== undefined}
+        initialMoodle={entry.moodle}
       />
     </Main>
   );

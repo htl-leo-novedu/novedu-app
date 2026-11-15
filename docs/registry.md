@@ -90,6 +90,7 @@ activities:
 | `url` | ” | absolute `http(s)` URL |
 | `start` / `end` | no | ISO 8601 **with an explicit offset or `Z`** (the rule `POST /api/codes` enforces), **whole seconds** (see below); `end` must be after `start` |
 | `note` | no | ≤ 200 chars, trimmed like the server trims it, passed as the code's note at mint time; no behavioral effect |
+| `moodle` | no | `true` lets students hand in results to Moodle (`docs/moodle.md`). **Under `quizzes` only** — in any other group it is a validation error. Sent when the code is minted, never part of the match (like `note`) |
 | `llm` | no | `{provider, model, reasoning?}` — provider and model both required when present (the API's both-or-nothing rule); `provider` is `SCCH`, `Azure Foundry` or `OpenRouter`; `reasoning` an optional `none`/`minimal`/`low`/`medium`/`high`/`xhigh` (docs/ai-models.md) |
 
 Resolved URLs are normalized with `URL.href` — the same form
@@ -184,14 +185,17 @@ same bearer plumbing as the other `codes` commands.
      **instants** (epoch), not strings, so `+02:00` and `Z` spellings of the same
      moment match; an absent bound matches only `null`. **`note` is excluded** —
      it is a label for the teacher, not part of the code's behavior, so editing
-     it must not fork a new code.
+     it must not fork a new code. **`moodle` is excluded** too: adding it to an
+     existing entry keeps the published code.
    - **Selection claims.** Every key that still matches the code the previous
      lock gave it keeps that code — all of them, before any key takes a free one
      — and each remaining key then takes the newest code no other key has
      claimed. So a key's published code never moves while a matching code
      exists, and two entries describing one activity keep one code each instead
      of both being handed the newest. Matches left over are reported as
-     duplicates; a differing note is reported as info, never a mismatch.
+     duplicates; a differing note is reported as info, never a mismatch, and so
+     is a differing `moodle` switch ("moodle differs — change it on the code's
+     edit page"): sync never modifies a code.
    - **No match left** → `POST /api/codes` with the entry's parameters (the server
      fetches and validates the activity YAML right then, exactly as `codes
      create` does). A failure for one entry is recorded and the run continues.

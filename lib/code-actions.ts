@@ -51,6 +51,7 @@ export async function createCodeAction(
     llmProvider: formData.get("llmProvider"),
     llmModel: formData.get("llmModel"),
     llmReasoning: formData.get("llmReasoning"),
+    moodle: formData.get("moodle"),
   });
   if (!result.ok) {
     return result.reason === "validation"
@@ -129,7 +130,8 @@ export async function deleteSelectedCodesAction(codes: string[]): Promise<Delete
 }
 
 /**
- * Saves edits to a code's availability window and note. Teacher-only (any
+ * Saves edits to a code's availability window, note, LLM override and (for a
+ * quiz) the Moodle hand-in switch. Teacher-only (any
  * effective teacher, RBAC planned). The file URL is NOT editable — it is read
  * from the stored row (frozen, along with the `anonymous` flag it implies), so no
  * YAML re-validation is needed; only the window + note are re-validated. `code` is
@@ -167,6 +169,11 @@ export async function updateCodeAction(
     llmProvider: formData.get("llmProvider"),
     llmModel: formData.get("llmModel"),
     llmReasoning: formData.get("llmReasoning"),
+    // The form renders the Moodle checkbox (with the `moodleField` marker) only
+    // for a quiz while the Moodle feature is available; without it the stored
+    // switch is kept, so an edit never silently switches it off.
+    moodle: formData.has("moodleField") ? formData.get("moodle") : entry.moodle,
+    module: entry.module,
   });
   if (!validation.ok) return { status: "error", message: validation.message };
 
@@ -181,6 +188,7 @@ export async function updateCodeAction(
     validUntil: validation.payload.validUntil,
     note: validation.payload.note,
     llm: validation.payload.llm,
+    moodle: validation.payload.moodle,
   });
   if (!result.ok) {
     return {

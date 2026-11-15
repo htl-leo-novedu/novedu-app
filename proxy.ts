@@ -38,6 +38,13 @@ export const config = {
   // anchored with a path boundary (`api/coding(?:/|$)`) so the exclusion covers the
   // routes under `/api/coding/` without silently widening to a future, unrelated
   // `/api/coding-*` route.
+  // The public Moodle LTI routes (docs/moodle.md) are called by Moodle's server
+  // (the key set) or by a browser Moodle sends over (login, launch, the code
+  // picker's answer, and the picker page `/lti/pick` inside Moodle's dialog,
+  // where there is no Novedu session) — so `api/lti(?:/|$)` and
+  // `lti/pick(?:/|$)` are excluded. None of them reads or creates a session.
+  // The arrival pages `/lti/arrive`, `/lti/link` and `/lti/done` stay gated:
+  // they act for the signed-in student.
   // The /api/me identity probe, the /api/codes list/create endpoints and the
   // per-code conversation export under them (creator-only), the
   // /api/reports list/detail/resolve endpoints, the /api/eval eval endpoints —
@@ -64,6 +71,6 @@ export const config = {
   // /api/files-export must NOT ride the /api/files exclusion past the cookie
   // gate).
   matcher: [
-    "/((?!api/auth(?:/|$)|sign-in(?:/|$)|api/version(?:/|$)|api/files(?:/|$)|api/coding(?:/|$)|api/me(?:/|$)|api/codes(?:/|$)|api/reports(?:/|$)|api/images(?:/|$)|api/eval(?:/|$)|_next/static|_next/image|favicon.ico|icon\\.svg$|apple-icon\\.png$).*)",
+    "/((?!api/auth(?:/|$)|sign-in(?:/|$)|api/version(?:/|$)|api/files(?:/|$)|api/coding(?:/|$)|api/lti(?:/|$)|lti/pick(?:/|$)|api/me(?:/|$)|api/codes(?:/|$)|api/reports(?:/|$)|api/images(?:/|$)|api/eval(?:/|$)|_next/static|_next/image|favicon.ico|icon\\.svg$|apple-icon\\.png$).*)",
   ],
 };

@@ -19,6 +19,8 @@ const GATED_PATHS = [
   // Anonymous users cannot use the app even with a genuine code (any module) —
   // the code only authorizes the activity + window, never the user.
   "/a1b2c3d4e5",
+  // The Moodle arrival needs a session; Moodle's own routes do not (docs/moodle.md).
+  "/lti/arrive",
 ] as const;
 
 for (const path of GATED_PATHS) {
