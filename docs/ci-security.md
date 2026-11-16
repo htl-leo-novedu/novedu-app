@@ -25,6 +25,7 @@ run untrusted PR code.**
 | **`docs.yml`** | `pull_request` to `main` (teacher-docs paths) | **Yes** | **No** — secret-free |
 | **`docker-publish.yml`** | `push` to `main`, `workflow_dispatch` | No | **No stored secret** — `GITHUB_TOKEN` + OIDC |
 | **`promote.yml`** | `workflow_dispatch`; job `promote` in the environment `production` | No | **No stored secret** — OIDC only |
+| **`cla.yml`** | `pull_request_target`, `issue_comment` on PRs | **No** — never checks out PR code | **No stored secret** — `GITHUB_TOKEN` with write access |
 
 - **`qa.yml`** is the per-PR quality gate (biome, typecheck, unit + component
   tests, `next build`, Playwright e2e — hermetic + DB-backed `@live-db` — and a
@@ -101,6 +102,17 @@ run untrusted PR code.**
   and uses it for the upload — the token is long-lived on Azure's side but
   **never stored in GitHub**. Rule: **no job that can obtain the production
   Azure identity runs `npm ci` or a build.**
+- **`cla.yml`** is the CLA bot: it checks that every author of a PR has signed
+  `CLA.md`, posts the signing instructions on the PR and records a signature
+  when a contributor comments the signing sentence. To comment on fork PRs,
+  set the check and commit signatures it needs a write token there, which only
+  `pull_request_target` and `issue_comment` give — both run the workflow file
+  from `main`, never the PR's. That is safe only because the job **never checks
+  out or runs PR code**: its single step is the third-party
+  `contributor-assistant/github-action`, pinned to a commit hash, which reads PR
+  metadata (authors, comments) through the API. It references no `secrets.*`
+  beyond the built-in `GITHUB_TOKEN`, and signatures go to the separate branch
+  `cla-signatures`, never to `main`.
 
 ## Azure deploys: OIDC federation, no stored credential
 
@@ -144,10 +156,12 @@ access token, against a user-assigned identity per stage.
    from a fork, and the `GITHUB_TOKEN` is read-only there. This is automatic — even
    if `qa.yml` *did* reference a secret, a fork PR run wouldn't receive it. We don't
    rely on that alone (qa.yml references none), but it is the backstop.
-2. **`pull_request_target` is banned here.** That trigger runs in the *base* repo
-   context **with** secrets; it is only safe while it checks out the base ref. It
-   becomes a secret-leak the moment it checks out and runs PR head code. **Do not
-   introduce `pull_request_target`** in this repo.
+2. **`pull_request_target` is allowed only in `cla.yml`.** That trigger runs in
+   the *base* repo context **with** secrets and a write token; it is only safe
+   while it checks out the base ref. It becomes a secret-leak the moment it checks
+   out and runs PR head code. `cla.yml` checks out nothing (see above). **Do not
+   introduce `pull_request_target`** in any other workflow, and never add a
+   checkout of PR code or a step that runs it to `cla.yml`.
 3. **External-contributor approval is required.** In repo/org Settings → Actions →
    General → *Fork pull request workflows*, the setting is
    **"Require approval for all external contributors"** — a maintainer must click
@@ -178,7 +192,8 @@ access token, against a user-assigned identity per stage.
 - **Keep `permissions:` least-privilege.** `qa.yml` only reads code and runs
   tests, so `contents: read`. Any workflow that needs more should request the
   minimum it needs, scoped to the job.
-- **No `pull_request_target`.** See protection 2 above.
+- **No `pull_request_target` outside `cla.yml`**, and `cla.yml` never checks out
+  or runs PR code. See protection 2 above.
 - **Azure deploys stay credential-free.** Never store an Azure client secret or
   publish profile in GitHub, never widen a federated subject, and never loosen
   the `production` environment's `main`-only deployment branches — that

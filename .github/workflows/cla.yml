@@ -1,0 +1,57 @@
+name: CLA
+
+# Checks that every author of a pull request has signed the Novedu CLA
+# (CLA.md) and records new signatures. A contributor signs by posting the
+# sentence below as a comment on their pull request; the action then marks the
+# check as passed. "recheck" re-runs the check by hand.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, synchronize]
+
+# Two signatures arriving at once would both rewrite the signature file —
+# queue them instead of running them in parallel.
+concurrency:
+  group: cla
+  cancel-in-progress: false
+
+# contents: write  -> commit new signatures to the signature branch
+# pull-requests    -> post the "please sign" / "all signed" comments
+# statuses         -> set the CLA check on the pull request
+# actions          -> re-run the check after a signature comment
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+# SECURITY: pull_request_target runs with a write token, also on fork PRs.
+# This is safe only because the job never checks out or runs PR code — keep it
+# that way (no actions/checkout of the PR head, no scripts from the PR). This
+# is the repo's only pull_request_target workflow; see docs/ci-security.md.
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    # issue_comment also fires on plain issues; only PR comments count here.
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+        (github.event.comment.body == 'recheck' ||
+         github.event.comment.body == 'I have read the Novedu CLA and I hereby sign it.'))
+    steps:
+      # Pinned to the commit of v2.6.1, not the tag: a third-party action running
+      # with a write token, so a moved tag must not change what runs here.
+      - uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-document: https://github.com/htl-leo-novedu/novedu-app/blob/main/CLA.md
+          custom-pr-sign-comment: I have read the Novedu CLA and I hereby sign it.
+          # Signatures live on their own branch, so normal PRs to main never
+          # touch them. The branch must exist before the first run.
+          branch: cla-signatures
+          path-to-signatures: signatures/version1/cla.json
+          # Bot accounts (Dependabot, GitHub Actions, ...) can't sign; their
+          # names all end in "[bot]", which no human GitHub username can contain.
+          allowlist: '*[bot]'
