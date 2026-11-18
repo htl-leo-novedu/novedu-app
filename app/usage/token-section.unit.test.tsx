@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { TokenBucket } from "@/lib/usage-range";
+import type { TokenBucket, UsageRange } from "@/lib/usage-range";
 
 // `TokenSection` reads the time series ONCE and renders both the (stubbed here) bar
 // chart and the shared server `ListTable` from it. Assert the table reflects the
@@ -30,10 +30,8 @@ const bucket = (
   output,
 });
 
-async function render() {
-  return renderToStaticMarkup(
-    await TokenSection({ range: "24h", now: new Date("2026-07-04T14:30:00Z") }),
-  );
+async function render(range: UsageRange = "24h") {
+  return renderToStaticMarkup(await TokenSection({ range, now: new Date("2026-07-04T14:30:00Z") }));
 }
 
 it("renders the bar chart and a table row with the summed total", async () => {
@@ -60,6 +58,34 @@ it("ends the table in a Total row summed over the buckets", async () => {
   expect(footer).toContain("750"); // output
   expect(footer).toContain("6,250"); // total
   expect(footer).toContain("sticky"); // pinned while the rows scroll
+});
+
+it("lists the newest bucket first", async () => {
+  getTokenTimeSeries.mockResolvedValue([
+    bucket("12:00", 1, 0, 0),
+    bucket("13:00", 2, 0, 0),
+    bucket("14:00", 3, 0, 0),
+  ]);
+  const html = await render();
+  const body = html.slice(html.indexOf("<tbody"), html.indexOf("</tbody>"));
+  expect(body.indexOf("14:00")).toBeLessThan(body.indexOf("13:00"));
+  expect(body.indexOf("13:00")).toBeLessThan(body.indexOf("12:00"));
+});
+
+describe("time column", () => {
+  // The server render of an hourly table is UTC; the browser switches the header
+  // and labels to local time after hydration (local-hour.tsx).
+  it.each([
+    ["24h", "Time (UTC)"],
+    ["7d", "Date (UTC)"],
+    ["30d", "Date (UTC)"],
+    ["365d", "Month (UTC)"],
+  ] as const)("is headed for the %s range's grain", async (range, header) => {
+    getTokenTimeSeries.mockResolvedValue([bucket("Jul 4", 1, 0, 0)]);
+    const html = await render(range);
+    const head = html.slice(html.indexOf("<thead"), html.indexOf("</thead>"));
+    expect(head).toContain(header);
+  });
 });
 
 describe("degraded", () => {

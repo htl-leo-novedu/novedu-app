@@ -34,11 +34,11 @@ An anonymous code shows the same counts and the same conversations, but no stude
 
 Select **Usage** in the menu to see how much AI the whole installation has used. A time filter (**Last 24 hours**, **7 days**, **30 days**, or **365 days**) applies to everything on the page:
 
-- **Token usage over time**: a bar chart of how much the AI models processed per hour, day, or month, with the same numbers in a table below it.
+- **Token usage over time**: a bar chart of how much the AI models processed per hour, day, or month, with the same numbers in a table below it. The table lists the most recent hour, day, or month first.
 - **Four breakdowns**: tokens by category (tutor, quiz, writing, coding), by code (labelled with the note you gave each code), by model, and by provider.
 - **Two cost estimates**, both at OpenRouter's list prices and both rough figures rather than a bill. **OpenRouter spend (estimate)** prices what ran through OpenRouter, which is billed. **Estimated cost at OpenRouter prices** shows what the free SCCH tokens would cost on the open market. A model without a matching price is left out and named beneath the chart.
 - **Two totals**: **Chats** (conversations where a student wrote at least one message) and **Quiz answers graded**.
 
-All times on the usage view are UTC, so during the school year the labels sit one or two hours behind Austrian clock time.
+Hours on the usage view are shown in your device's time zone. Days and months are counted in UTC, so a day's figures run from 1 or 2 a.m. Austrian time to the same time the next day.
 
 The usage view never shows student names or message content; it is about volume, not people. To read what was said under a specific code, use that code's own statistics page.
