@@ -22,11 +22,32 @@ export function useLocalTime(): boolean {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
+const HOUR_MS = 3_600_000;
 
-/** The viewer's local `HH:MM` for an hourly bucket, from its UTC start (ISO key). */
+const wallClock = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+/** The local offset from UTC at an instant, e.g. `UTC+2`, `UTC+5:30`, `UTC-3`. */
+function utcOffset(d: Date): string {
+  const minutes = -d.getTimezoneOffset();
+  const abs = Math.abs(minutes);
+  const sign = minutes < 0 ? "-" : "+";
+  const rest = abs % 60 ? `:${pad(abs % 60)}` : "";
+  return `UTC${sign}${Math.floor(abs / 60)}${rest}`;
+}
+
+/**
+ * The viewer's local `HH:MM` for an hourly bucket, from its UTC start (ISO key).
+ * When the clocks go back, one local hour happens twice (two UTC buckets share a
+ * wall-clock label), so such a label carries its UTC offset to tell them apart:
+ * `02:00 (UTC+2)`, then `02:00 (UTC+1)`.
+ */
 export function localHourLabel(bucketKey: string): string {
   const d = new Date(bucketKey);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const label = wallClock(d);
+  const repeated =
+    wallClock(new Date(d.getTime() - HOUR_MS)) === label ||
+    wallClock(new Date(d.getTime() + HOUR_MS)) === label;
+  return repeated ? `${label} (${utcOffset(d)})` : label;
 }
 
 /** An hourly bucket's label: its UTC label until hydrated, the viewer's local time after. */

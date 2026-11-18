@@ -55,7 +55,9 @@ in the browser: **hourly** buckets (the 24h range) are relabelled in the **viewe
 time zone** by `app/usage/local-hour.tsx` — from the bucket's ISO key, so the
 server is never told the zone — in the table (its header then reads **Time
 (local)**) and on the bar chart's axis and tooltip. A whole UTC hour is a whole
-local hour (for whole-hour offsets), so boundary and label still line up. **Day and
+local hour (for whole-hour offsets), so boundary and label still line up; when the
+clocks go back, the local hour that happens twice carries its UTC offset (`02:00
+(UTC+2)`, then `02:00 (UTC+1)`), so two buckets never share a label. **Day and
 month** buckets keep their UTC labels (**Date (UTC)** / **Month (UTC)**): a UTC day
 is not a local day, and relabelling it would misdate the hours around midnight.
 The server render and hydration use the UTC labels (a `useSyncExternalStore`
