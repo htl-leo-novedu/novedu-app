@@ -80,8 +80,10 @@ test("the usage dashboard renders seeded token metrics", { tag: ["@live", "@live
     await expect(page.getByRole("heading", { name: "Tokens by model" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Tokens by provider" })).toBeVisible();
 
-    // The time-series query ran and the shared table rendered.
+    // The time-series query ran and the shared table rendered; once hydrated, the
+    // hourly table is labelled in the browser's time zone.
     await expect(page.getByRole("columnheader", { name: "Total" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Time (local)" })).toBeVisible();
 
     // The token AGGREGATE actually summed: both seeds land in the same UTC hour
     // bucket, so that bucket's cells (New input 18M, Total 28M, …) dwarf everything

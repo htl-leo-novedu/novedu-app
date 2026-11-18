@@ -1,9 +1,11 @@
 // Pure time-range helpers for the usage dashboard (docs/dashboard.md). No I/O and
 // no `new Date()` inside — `now` is always injected, so every function is
 // deterministic and unit-testable. EVERYTHING here is UTC: the `hour` column of
-// `novedu_usage_by_code` is a top-of-hour UTC bucket, and the dashboard displays
-// UTC labels (no per-viewer timezone), so bucket boundaries and labels line up by
-// construction. Safe to import from client or server (no DB, no secrets).
+// `novedu_usage_by_code` is a top-of-hour UTC bucket, and the labels made here are
+// UTC, so bucket boundaries and labels line up by construction. (The dashboard
+// relabels HOURLY buckets in the viewer's time zone in the browser —
+// `app/usage/local-hour.tsx`; day and month labels stay these UTC ones.) Safe to
+// import from client or server (no DB, no secrets).
 
 /** The four dashboard time windows. */
 export type UsageRange = "24h" | "7d" | "30d" | "365d";
@@ -122,6 +124,11 @@ const SPEC: Record<UsageRange, { grain: Grain; count: number }> = {
   "30d": { grain: "day", count: 30 },
   "365d": { grain: "month", count: 12 },
 };
+
+/** The bucket grain a range renders at. */
+export function grainOf(range: UsageRange): Grain {
+  return SPEC[range].grain;
+}
 
 function step(d: Date, grain: Grain, n: number): Date {
   if (grain === "hour") return addHours(d, n);

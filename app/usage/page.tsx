@@ -20,7 +20,8 @@ import { TokenSection } from "./token-section";
 // Suspense boundary, so they stream in independently (a slow query never blocks the
 // others). The Suspense boundaries are keyed by range so switching the filter shows
 // the skeletons again while the new window streams. "Effective" teacher: a teacher
-// in student mode is denied like a student. All windows/labels are UTC.
+// in student mode is denied like a student. All windows are UTC; only the hourly
+// labels are shown in the viewer's time zone (by the browser, `local-hour.tsx`).
 export const dynamic = "force-dynamic";
 
 export default async function UsagePage({

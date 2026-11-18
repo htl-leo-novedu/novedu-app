@@ -15,7 +15,10 @@ the shared chart building blocks in `components/charts/**` and
 ## What it shows
 
 - A **stacked bar chart** of token usage over time — cached input, new input, output
-  — with a **data table** of the same buckets beneath it. The table ends in a
+  — with a **data table** of the same buckets beneath it. The chart runs oldest →
+  newest left to right; the table lists the **newest bucket first**, so the current
+  hour/day/month needs no scrolling, and its first column is headed for the grain
+  (**Time** / **Date** / **Month**). The table ends in a
   **Total** row (each column summed over the range's buckets, from the same read);
   its header and Total row stay in place while only the bucket rows scroll
   (`ListTable`'s `footer` + `sticky`, docs/filtered-lists.md).
@@ -43,12 +46,21 @@ its raw code — and it can never collide with a minted 10-character code.
 A single **time filter** — `Last 24 hours / 7 days / 30 days / 365 days` — governs
 **every** panel, including the KPIs.
 
-## Time model — UTC
+## Time model — UTC, hourly labels local
 
-Everything is **UTC**: the `hour` column of `novedu_usage_by_code` is a top-of-hour
-UTC bucket, and the dashboard labels and bucket boundaries are UTC too (axes say so).
-There is no per-viewer timezone conversion, so a bucket boundary and its label always
-line up. `lib/usage-range.ts` is the pure, deterministic core (it takes `now` as an
+Everything on the server is **UTC**: the `hour` column of `novedu_usage_by_code` is a
+top-of-hour UTC bucket, and the windows, bucket boundaries and labels built by
+`lib/usage-range.ts` are UTC too. The one exception is presentation-only and lives
+in the browser: **hourly** buckets (the 24h range) are relabelled in the **viewer's
+time zone** by `app/usage/local-hour.tsx` — from the bucket's ISO key, so the
+server is never told the zone — in the table (its header then reads **Time
+(local)**) and on the bar chart's axis and tooltip. A whole UTC hour is a whole
+local hour (for whole-hour offsets), so boundary and label still line up. **Day and
+month** buckets keep their UTC labels (**Date (UTC)** / **Month (UTC)**): a UTC day
+is not a local day, and relabelling it would misdate the hours around midnight.
+The server render and hydration use the UTC labels (a `useSyncExternalStore`
+server snapshot), and the first client render after hydration switches to local
+time — no hydration mismatch. `lib/usage-range.ts` is the pure, deterministic core (it takes `now` as an
 argument — no `new Date()` inside — so it is trivially unit-testable):
 
 | range | grain | buckets |
@@ -272,6 +284,6 @@ ids to Hugging Face (and fetch OpenRouter's public list).
 - **Single-code stats page**: call `getTokenTimeSeries({ code })` from a server
   component and render `<TokenUsageBarChart>` with the result — the seam already
   exists.
-- **Exact-local windows** (if the user base ever leaves CET): the only change is
-  anchoring the window/labels to a viewer timezone; the store filter stays `hour >=
+- **Local day/month buckets**: would need the viewer's time zone on the server
+  (bucketing days and months in that zone in SQL); the store filter stays `hour >=
   start`.
