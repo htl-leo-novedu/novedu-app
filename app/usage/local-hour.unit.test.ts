@@ -1,17 +1,14 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { localHourLabel } from "./local-hour";
 
 // The hourly usage labels in the viewer's time zone (docs/dashboard.md, "Time
-// model"). Pinned to Europe/Vienna — Node re-reads `process.env.TZ` on assignment —
-// so the clock changes are deterministic on any machine. No DB, runs in CI.
+// model"). Pinned to Europe/Vienna — Node re-reads `process.env.TZ` on assignment,
+// which `vi.stubEnv` does (and the config's `unstubEnvs` undoes before every test,
+// hence `beforeEach`) — so the clock changes are deterministic on any machine.
+// No DB, runs in CI.
 
-const previousTz = process.env.TZ;
-beforeAll(() => {
-  process.env.TZ = "Europe/Vienna";
-});
-afterAll(() => {
-  if (previousTz === undefined) delete process.env.TZ;
-  else process.env.TZ = previousTz;
+beforeEach(() => {
+  vi.stubEnv("TZ", "Europe/Vienna");
 });
 
 describe("localHourLabel", () => {
