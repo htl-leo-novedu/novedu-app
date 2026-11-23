@@ -36,7 +36,7 @@ vi.mock("@/app/_tutor/board/render", async (importOriginal) => {
 
 import { BoardFrame } from "@/app/_tutor/board/board-frame";
 import { renderBoard } from "@/app/_tutor/board/render";
-import { apply, emptyBoard, MARK } from "@/lib/board";
+import { apply, type BoardTheme, emptyBoard, PALETTES } from "@/lib/board";
 
 const DRAW = {
   steps: [
@@ -67,6 +67,16 @@ function reply(id: string, input: unknown, ok = true) {
   ];
 }
 
+/** The colour of an image's top-left pixel (the padding around the drawing: the sheet). */
+async function cornerColour(src: string | null): Promise<string> {
+  const bitmap = await createImageBitmap(await (await fetch(src ?? "")).blob());
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
+  ctx.drawImage(bitmap, 0, 0);
+  const d = ctx.getImageData(1, 1, 1, 1).data;
+  return `#${[d[0], d[1], d[2]].map((v) => (v ?? 0).toString(16).padStart(2, "0")).join("")}`;
+}
+
 /** The chat stand-in: renders the marker for each board call, as CopilotChat would. */
 function StubChat({ ids }: { ids: string[] }) {
   return (
@@ -92,6 +102,7 @@ function frame(ids: string[]) {
 afterEach(async () => {
   ck.messages = [];
   ck.failRender = false;
+  document.documentElement.classList.remove("dark");
   await page.viewport(1280, 800);
 });
 
@@ -193,6 +204,20 @@ describe("laptop", () => {
     expect(screen.container.querySelector('[data-testid="board-fullscreen"]')).toBeNull();
   });
 
+  test("a theme switch draws the board again in the other palette", async () => {
+    ck.messages = reply("t1", DRAW);
+    const screen = await render(frame(["t1"]));
+    const image = screen.getByTestId("board-image");
+    await expect.element(image).toBeVisible();
+    const lightSrc = image.element().getAttribute("src");
+    expect(await cornerColour(lightSrc)).toBe(PALETTES.light.paper);
+
+    // What the pre-paint script does on a switch (lib/theme.ts).
+    document.documentElement.classList.add("dark");
+    await expect.poll(() => image.element().getAttribute("src")).not.toBe(lightSrc);
+    expect(await cornerColour(image.element().getAttribute("src"))).toBe(PALETTES.dark.paper);
+  });
+
   test("a failed render keeps the last good image", async () => {
     ck.messages = reply("t1", DRAW);
     const screen = await render(frame(["t1"]));
@@ -243,26 +268,30 @@ describe("phone", () => {
 });
 
 describe("rendering", () => {
-  test("the highlighted part's bounds land on its marker pixels in the PNG", async () => {
-    const state = [DRAW, HIGHLIGHT].reduce((s, call) => apply(s, call).state ?? s, emptyBoard());
-    const out = await renderBoard(state, 2);
-    expect(out.focus).not.toBeNull();
-    const bitmap = await createImageBitmap(out.blob);
-    // The image is the drawing at scale 2.
-    expect(bitmap.width / out.width).toBeCloseTo(2, 1);
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
-    ctx.drawImage(bitmap, 0, 0);
-    const scale = bitmap.width / out.width;
-    const pixel = (x: number, y: number) => {
-      const d = ctx.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data;
-      return `#${[d[0], d[1], d[2]].map((v) => (v ?? 0).toString(16).padStart(2, "0")).join("")}`;
-    };
-    const f = out.focus as NonNullable<typeof out.focus>;
-    // Inside the highlighted box, away from its centred label and rough outline: the marker fill.
-    expect(pixel(f.x + f.w * 0.12, f.y + f.h * 0.25)).toBe(MARK);
-    expect(pixel(f.x + f.w * 0.88, f.y + f.h * 0.75)).toBe(MARK);
-    // Just outside it: the white sheet.
-    expect(pixel(f.x + f.w + 12, f.y + f.h / 2)).toBe("#ffffff");
-  });
+  test.each<BoardTheme>(["light", "dark"])(
+    "%s: the highlighted part's bounds land on its marker pixels in the PNG",
+    async (theme) => {
+      const { mark, paper } = PALETTES[theme];
+      const state = [DRAW, HIGHLIGHT].reduce((s, call) => apply(s, call).state ?? s, emptyBoard());
+      const out = await renderBoard(state, 2, theme);
+      expect(out.focus).not.toBeNull();
+      const bitmap = await createImageBitmap(out.blob);
+      // The image is the drawing at scale 2.
+      expect(bitmap.width / out.width).toBeCloseTo(2, 1);
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
+      ctx.drawImage(bitmap, 0, 0);
+      const scale = bitmap.width / out.width;
+      const pixel = (x: number, y: number) => {
+        const d = ctx.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data;
+        return `#${[d[0], d[1], d[2]].map((v) => (v ?? 0).toString(16).padStart(2, "0")).join("")}`;
+      };
+      const f = out.focus as NonNullable<typeof out.focus>;
+      // Inside the highlighted box, away from its centred label and rough outline: the marker fill.
+      expect(pixel(f.x + f.w * 0.12, f.y + f.h * 0.25)).toBe(mark);
+      expect(pixel(f.x + f.w * 0.88, f.y + f.h * 0.75)).toBe(mark);
+      // Just outside it: the sheet.
+      expect(pixel(f.x + f.w + 12, f.y + f.h / 2)).toBe(paper);
+    },
+  );
 });

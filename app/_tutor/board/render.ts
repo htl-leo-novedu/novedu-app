@@ -1,14 +1,15 @@
 // The board's renderer: board state → Excalidraw elements → a PNG (never SVG,
-// docs/tutor-board.md "Rendering"). Excalidraw is loaded with a dynamic import
-// on the first board, so a tutor that never draws never loads it. Its fonts
-// come from Excalidraw's default CDN; text must only be measured once they are
-// loaded, or labels overflow their boxes — hence the one-time warm-up export.
+// docs/tutor-board.md "Rendering"), in the colours of the app's theme.
+// Excalidraw is loaded with a dynamic import on the first board, so a tutor
+// that never draws never loads it. Its fonts come from Excalidraw's default
+// CDN; text must only be measured once they are loaded, or labels overflow
+// their boxes — hence the one-time warm-up export.
 //
 // The export's origin is `getCommonBounds(elements) − padding` (Excalidraw's
 // `exportToCanvas`), so part bounds land on the image's pixels; pinned by
 // tests/component/tutor-board.browser.test.tsx.
 
-import { type BoardState, finish, layout, markedIds } from "@/lib/board";
+import { type BoardState, type BoardTheme, finish, layout, markedIds, PALETTES } from "@/lib/board";
 import type { Rect } from "./sheet";
 
 /** Empty space around the drawing in the image, in drawing pixels. */
@@ -54,11 +55,15 @@ export interface RenderedBoard {
 /** The bounds of each part, by id (boxes, arrows with their label, group frames). */
 type Bounds = [number, number, number, number];
 
-/** Renders the board as a PNG at `scale` (device pixels per drawing pixel). */
-export async function renderBoard(state: BoardState, scale: number): Promise<RenderedBoard> {
+/** Renders the board as a PNG at `scale` (device pixels per drawing pixel) for `theme`. */
+export async function renderBoard(
+  state: BoardState,
+  scale: number,
+  theme: BoardTheme = "light",
+): Promise<RenderedBoard> {
   const lib = await loadExcalidraw();
   const converted = lib.convertToExcalidrawElements(
-    layout(state) as unknown as Parameters<Excalidraw["convertToExcalidrawElements"]>[0],
+    layout(state, theme) as unknown as Parameters<Excalidraw["convertToExcalidrawElements"]>[0],
     { regenerateIds: false },
   );
   // `finish` writes label positions and arrow points into the fresh elements.
@@ -73,7 +78,7 @@ export async function renderBoard(state: BoardState, scale: number): Promise<Ren
     elements,
     files: null,
     exportPadding: EXPORT_PADDING,
-    appState: { exportBackground: true, viewBackgroundColor: "#ffffff" },
+    appState: { exportBackground: true, viewBackgroundColor: PALETTES[theme].paper },
     getDimensions: (w: number, h: number) => ({
       width: Math.round(w * pixelScale),
       height: Math.round(h * pixelScale),
