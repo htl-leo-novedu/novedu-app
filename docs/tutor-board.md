@@ -154,6 +154,13 @@ output appears in the chat.
   board runs a one-time warm-up export and waits for `document.fonts.ready`.
 - **Scale.** One image per change at device pixel ratio × 2 (`ZOOM_MAX`, the
   largest zoom a student can pick), capped at 4× and at 16 M canvas pixels for iOS.
+- **Theme.** The drawing follows the app's theme (`docs/styling.md`, "Theme"):
+  `layout(state, theme)` takes its colours from `PALETTES` (`layout.ts`) — white
+  paper with Excalidraw's pastels in light, the dark card (`#171717`) with deep
+  fills and light ink in dark; the geometry is the same in both. The pane reads
+  `useIsDark()`, so a theme switch renders the drawing again and crossfades to
+  it; the new image counts as a change, so the view returns to the highlight
+  (on a phone, the zoom to it too).
 - **Geometry.** `exportToCanvas` places the drawing at `getCommonBounds − padding`,
   so the highlighted parts' bounds (`focus`) are in image pixels — pinned by the
   browser test that finds the marker colour inside them.
@@ -164,21 +171,22 @@ A highlight is plain shape properties, drawn by Excalidraw itself (`layout.ts`):
 
 | part | highlighted | everything else |
 | --- | --- | --- |
-| box | marker-yellow fill `#ffe066`, outline 3 | 30% opacity |
+| box | marker fill (`#ffe066` in light, `#f0c040` in dark), outline 3 | 30% opacity |
 | arrow | marker patch behind its label, line 3 | 30% opacity |
 | group | marker patch behind its label, frame 2.5 (its boxes are marked too) | 30% opacity |
 
 Parts the same call added or changed stay at full strength without the marker. The
-marker yellow belongs to the drawing, not to Novedu's chrome (DESIGN.md's amber
+marker colour belongs to the drawing, not to Novedu's chrome (DESIGN.md's amber
 rule governs the chrome only). The highlight is not colour-only: the rest fades
-and the line gets thicker.
+and the line gets thicker. The marker is bright in both themes, so text on it is
+dark in both (`markInk`, and `markRed` for a highlighted problem arrow's label).
 
 ## Layout and behaviour
 
 **Laptop and up (≥ `md`):** no board yet → the chat as always. The first drawing
 opens the pane on the right (chat : board ≈ 1 : 1.35): "Board", a one-line status
 ("Drawn just now", "Highlighted 1 part", "Added 2 parts, highlighted 3 parts"), a
-full-screen button (⤢), a hide button, and the drawing fit onto a white sheet over
+full-screen button (⤢), a hide button, and the drawing fit onto a sheet (`bg-card`: white, or the dark card) over
 the slate canvas (never above 1.1×), with the zoom controls. Hidden,
 it is a 44px rail with a vertical "Board" label; an ink dot means it changed while
 hidden. A change crossfades the new image over the old one (about 300 ms); the
@@ -240,7 +248,8 @@ camera animation.
 ## Tests
 
 - `lib/board/model.unit.test.ts` — every board kind, errors vs warnings, limits,
-  the marker properties, layout stability (adding a part moves nothing), the call
+  the marker properties, the dark palette (no light colour, every text coloured,
+  the light geometry), layout stability (adding a part moves nothing), the call
   extraction from stored and AG-UI messages, the chat-marker rule, status and alt
   text.
 - `lib/tutor-tools/catalog.unit.test.ts` — the executor on prior calls.
@@ -250,8 +259,9 @@ camera animation.
 - `app/_tutor/board/sheet.unit.test.ts` — the sheet rules, the camera and the zoom
   steps.
 - `tests/component/tutor-board.browser.test.tsx` — the pane at both breakpoints
-  with the real renderer (zoom steps and limits, full screen with ✕ and Escape),
-  and the geometry pin.
+  with the real renderer (zoom steps and limits, full screen with ✕ and Escape,
+  a theme switch re-rendering in the dark palette), and the geometry pin in both
+  themes.
 - `e2e/tutor-board.spec.ts` — laptop and phone against the fake LLM's
   `[tool:board {…}]` marker, and the metered drawings of the laptop run; `e2e/tutor-reload-roundtrip.spec.ts` — the board
   comes back after a reload, once.

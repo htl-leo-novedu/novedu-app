@@ -6,7 +6,15 @@ import {
   isAppliedResult,
 } from "./calls";
 import { changeStatus, describeBoard } from "./describe";
-import { type BoardElementSkeleton, finish, layout, MARK, markedIds, wrap } from "./layout";
+import {
+  type BoardElementSkeleton,
+  finish,
+  layout,
+  MARK,
+  markedIds,
+  PALETTES,
+  wrap,
+} from "./layout";
 import { apply, type BoardState, emptyBoard, LIMITS, replay, summary } from "./model";
 
 // The hand-written boards of the drawings spike (one per board kind and the
@@ -422,6 +430,79 @@ describe("layout: the highlight marker", () => {
   it("draws nothing faded without a highlight", () => {
     const s = ok(emptyBoard(), CASES.flowchart);
     expect(layout(s).some((e) => e.opacity !== undefined)).toBe(false);
+  });
+});
+
+describe("layout: the dark theme", () => {
+  const dark = PALETTES.dark;
+  const light = PALETTES.light;
+  const KINDS = ["vnet", "sequence", "bits", "flowchart", "uml"] as const;
+  // The marker's dark text is the one colour both themes share.
+  const lightOnly = new Set(
+    [
+      light.paper,
+      light.ink,
+      light.muted,
+      light.frame,
+      light.red,
+      light.mark,
+      ...Object.values(light.fill),
+      ...Object.values(light.tint),
+    ].filter((c) => c !== "transparent" && c !== dark.markInk),
+  );
+  const labelColour = (e: BoardElementSkeleton) =>
+    (e.label as { strokeColor?: string } | undefined)?.strokeColor;
+  const colours = (els: BoardElementSkeleton[]) =>
+    els.flatMap((e) => [e.backgroundColor, e.strokeColor, labelColour(e)]);
+
+  it("uses no light colour on any kind of board", () => {
+    for (const name of KINDS) {
+      const els = layout(ok(emptyBoard(), CASES[name]), "dark");
+      for (const c of colours(els)) expect(lightOnly.has(c as string), `${name}: ${c}`).toBe(false);
+    }
+  });
+
+  it("gives every text its colour, so none falls back to Excalidraw's black", () => {
+    for (const name of KINDS) {
+      for (const e of layout(ok(emptyBoard(), CASES[name]), "dark")) {
+        if (e.type === "text") expect(e.strokeColor, `${name}: ${e.id}`).toBeDefined();
+        if (e.label) expect(labelColour(e), `${name}: ${e.id}`).toBeDefined();
+      }
+    }
+  });
+
+  it("marks with the dark marker and writes on it in the marker's ink", () => {
+    const s = ok(emptyBoard(), CASES.vnet); // highlights "db-subnet"
+    const els = layout(s, "dark");
+    expect(byId(els, "db")).toMatchObject({ backgroundColor: dark.mark, strokeWidth: 3 });
+    expect(labelColour(byId(els, "db"))).toBe(dark.markInk);
+    expect(byId(els, "db-subnet:label")).toMatchObject({ strokeColor: dark.markInk });
+    expect(labelColour(byId(els, "web"))).toBe(dark.ink);
+
+    const seq = layout(ok(emptyBoard(), CASES.sequence), "dark"); // highlights "offer"
+    expect(byId(seq, "offer:label")).toMatchObject({ strokeColor: dark.markInk });
+    expect(byId(seq, "discover:label")).toMatchObject({ strokeColor: dark.ink });
+  });
+
+  it("writes a highlighted problem arrow's label in the marker's red", () => {
+    let s = ok(emptyBoard(), CASES.vnet);
+    s = ok(s, {
+      steps: [
+        { op: "change", id: "users-gateway", style: "problem" },
+        { op: "highlight", ids: ["users-gateway"] },
+      ],
+    });
+    expect(byId(layout(s, "dark"), "users-gateway:label")).toMatchObject({
+      strokeColor: dark.markRed,
+    });
+  });
+
+  it("keeps the geometry of the light layout", () => {
+    for (const name of KINDS) {
+      const s = ok(emptyBoard(), CASES[name]);
+      const pos = (e: BoardElementSkeleton) => [e.id, e.x, e.y, e.width, e.height];
+      expect(layout(s, "dark").map(pos), name).toEqual(layout(s).map(pos));
+    }
   });
 });
 

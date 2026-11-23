@@ -23,6 +23,7 @@ import {
   describeBoard,
   replay,
 } from "@/lib/board";
+import { useIsDark } from "@/lib/use-is-dark";
 import { cn } from "@/lib/utils";
 import { BoardImageStack } from "./board-image";
 import {
@@ -116,7 +117,8 @@ function useBoardFromMessages() {
 export function BoardFrame({ children }: { children: ReactNode }) {
   const wide = useWide();
   const { key, derived, pills, sent } = useBoardFromMessages();
-  const { layers, current } = useBoardImage(derived?.state ?? null, key);
+  const theme = useIsDark() ? "dark" : "light";
+  const { layers, current } = useBoardImage(derived?.state ?? null, key, theme);
   const [collapsed, setCollapsed] = useState(false);
   const [laptopFull, setLaptopFull] = useState(false);
   const [railUnseen, setRailUnseen] = useState(false);
@@ -304,7 +306,7 @@ function LaptopPane({
           ›
         </button>
       </header>
-      <div className="mx-4 mb-4 flex min-h-0 flex-1 overflow-hidden rounded-lg border border-foreground/15 bg-white">
+      <div className="mx-4 mb-4 flex min-h-0 flex-1 overflow-hidden rounded-lg border border-foreground/15 bg-card">
         {current ? (
           <ZoomBoard
             layers={layers}
@@ -389,7 +391,7 @@ function PhoneSheet({
         data-state="peek"
         className="flex h-[60px] shrink-0 items-center gap-3 border-foreground/15 border-b bg-canvas px-4"
       >
-        <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded border border-foreground/15 bg-white">
+        <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded border border-foreground/15 bg-card">
           {current ? (
             // biome-ignore lint/performance/noImgElement: a blob: URL thumbnail.
             <img src={current.url} alt="" className="h-full w-full object-cover object-left-top" />
@@ -523,7 +525,7 @@ function CameraBoard({
     <div
       ref={ref}
       data-testid="board-camera"
-      className="relative mx-3 mb-3 min-h-0 flex-1 overflow-hidden rounded-lg border border-foreground/15 bg-white"
+      className="relative mx-3 mb-3 min-h-0 flex-1 overflow-hidden rounded-lg border border-foreground/15 bg-card"
     >
       {current ? (
         <div
@@ -620,7 +622,7 @@ function FullScreenBoard({
           {status}
         </p>
       </header>
-      <div className="flex min-h-0 flex-1 bg-white">
+      <div className="flex min-h-0 flex-1 bg-card">
         {current ? (
           <ZoomBoard layers={layers} current={current} alt={alt} autoScale={autoScale} />
         ) : null}

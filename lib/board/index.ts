@@ -15,11 +15,14 @@ export {
 export { changeStatus, describeBoard } from "./describe";
 export {
   type BoardElementSkeleton,
+  type BoardPalette,
+  type BoardTheme,
   type FinishableElement,
   finish,
   layout,
   MARK,
   markedIds,
+  PALETTES,
   wrap,
 } from "./layout";
 export {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { BoardState } from "@/lib/board";
+import type { BoardState, BoardTheme } from "@/lib/board";
 import { type RenderedBoard, renderBoard } from "./render";
 import { type Rect, ZOOM_MAX } from "./sheet";
 
@@ -24,12 +24,13 @@ function renderScale(): number {
 }
 
 /**
- * Renders the board whenever `stateKey` changes and keeps the last two images:
+ * Renders the board whenever `stateKey` or `theme` changes (a theme switch
+ * crossfades to the same drawing in the other colours) and keeps the last two images:
  * `layers.at(-1)` is the current one, an older one stays underneath until the
  * crossfade has ended. A failed render keeps the last good image — a
  * student never sees a board error.
  */
-export function useBoardImage(state: BoardState | null, stateKey: string) {
+export function useBoardImage(state: BoardState | null, stateKey: string, theme: BoardTheme) {
   const [layers, setLayers] = useState<BoardImageLayer[]>([]);
   const counter = useRef(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -46,7 +47,7 @@ export function useBoardImage(state: BoardState | null, stateKey: string) {
       return;
     }
     let cancelled = false;
-    renderBoard(current, renderScale()).then(
+    renderBoard(current, renderScale(), theme).then(
       (r: RenderedBoard) => {
         if (cancelled) return;
         const layer: BoardImageLayer = {
@@ -79,7 +80,7 @@ export function useBoardImage(state: BoardState | null, stateKey: string) {
       cancelled = true;
       clearTimeout(settleTimer.current);
     };
-  }, [stateKey]);
+  }, [stateKey, theme]);
 
   // Revoke everything on unmount (Start over remounts the whole chat).
   const latest = useRef(layers);

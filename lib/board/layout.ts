@@ -10,6 +10,7 @@
 
 import {
   type ArrowDef,
+  type BoardColor,
   type BoardDef,
   type BoardState,
   type BoxDef,
@@ -19,20 +20,90 @@ import {
   isInside,
 } from "./model";
 
-/** The highlight marker: stronger than the yellow box fill, so a yellow box still changes. */
-export const MARK = "#ffe066";
-const RED = "#e03131";
-const INK = "#1e1e1e";
-const MUTED = "#868e96";
-const FRAME = "#495057";
-const GROUP_TINT = {
-  blue: "#e7f5ff",
-  green: "#ebfbee",
-  yellow: "#fff9db",
-  red: "#fff5f5",
-  gray: "#f1f3f5",
-  white: "transparent",
-} as const;
+/** The app's colour theme the board is drawn for (docs/styling.md, "Theme"). */
+export type BoardTheme = "light" | "dark";
+
+/** Every colour of a drawing; one set per theme. */
+export interface BoardPalette {
+  /** The sheet behind the drawing, and the patch behind an arrow's label. */
+  paper: string;
+  /** Box outlines, arrows, box and board text. */
+  ink: string;
+  /** Lifelines, bit offsets, "(cont.)" labels. */
+  muted: string;
+  /** Group frames and their labels. */
+  frame: string;
+  /** A "problem" arrow. */
+  red: string;
+  /** The highlight marker: stronger than the yellow box fill, so a yellow box still changes. */
+  mark: string;
+  /** Text on the marker: box, arrow and group labels of a highlighted part. */
+  markInk: string;
+  /** A highlighted "problem" arrow's label, on the marker. */
+  markRed: string;
+  /** Box fills, by the model's colour names. */
+  fill: Record<BoardColor, string>;
+  /** Group frame tints: lighter than the box fills, so boxes stand out inside a group. */
+  tint: Record<BoardColor, string>;
+}
+
+/**
+ * The light set is white paper with Excalidraw's own pastels. The dark set
+ * sits on the dark card (`--card`, #171717): deep fills that keep the light ink
+ * at 7:1 or more, and faint group tints. The marker is bright in both themes and
+ * carries dark text (`markInk` 9.8:1 in dark, `markRed` 4.8:1), so a highlighted
+ * part stays readable and stands out from the yellow fill.
+ */
+export const PALETTES: Record<BoardTheme, BoardPalette> = {
+  light: {
+    paper: "#ffffff",
+    ink: "#1e1e1e",
+    muted: "#868e96",
+    frame: "#495057",
+    red: "#e03131",
+    mark: "#ffe066",
+    markInk: "#1e1e1e",
+    markRed: "#e03131",
+    fill: COLORS,
+    tint: {
+      blue: "#e7f5ff",
+      green: "#ebfbee",
+      yellow: "#fff9db",
+      red: "#fff5f5",
+      gray: "#f1f3f5",
+      white: "transparent",
+    },
+  },
+  dark: {
+    paper: "#171717",
+    ink: "#ececec",
+    muted: "#909296",
+    frame: "#adb5bd",
+    red: "#ff6b6b",
+    mark: "#f0c040",
+    markInk: "#1e1e1e",
+    markRed: "#9b1b1b",
+    fill: {
+      blue: "#1d4268",
+      green: "#1e4d2b",
+      yellow: "#5a4a0f",
+      red: "#5c2526",
+      gray: "#343a40",
+      white: "#232323",
+    },
+    tint: {
+      blue: "#16273a",
+      green: "#16291c",
+      yellow: "#2b2510",
+      red: "#2e1b1b",
+      gray: "#222528",
+      white: "transparent",
+    },
+  },
+};
+
+/** The light theme's highlight marker. */
+export const MARK = PALETTES.light.mark;
 
 type Point = [number, number];
 type Align = "center" | "above" | "below" | "left" | "right";
@@ -173,7 +244,7 @@ const ACT_W = 180;
 const MSG_H = 66;
 const PITCH = 270; // fixed, so participants never move when messages are added
 
-function sequenceLayout(s: BoardState, b: BoardDef, x0: number): BoardLayout {
+function sequenceLayout(s: BoardState, b: BoardDef, x0: number, p: BoardPalette): BoardLayout {
   const actors = s.order.map((id) => s.boxes.get(id)).filter((x): x is BoxDef => x?.board === b.id);
   const msgs = s.order
     .map((id) => s.arrows.get(id))
@@ -226,7 +297,7 @@ function sequenceLayout(s: BoardState, b: BoardDef, x0: number): BoardLayout {
         y: TOP + h,
         width: 0.01,
         height: y - TOP - h,
-        strokeColor: MUTED,
+        strokeColor: p.muted,
         strokeStyle: "dashed",
         strokeWidth: 1,
         customData: {
@@ -247,7 +318,7 @@ const ROW_W = 640;
 const ROW_H = 64;
 const GUTTER = 56;
 
-function bitsLayout(s: BoardState, b: BoardDef, x0: number): BoardLayout {
+function bitsLayout(s: BoardState, b: BoardDef, x0: number, p: BoardPalette): BoardLayout {
   const fields = s.order.map((id) => s.boxes.get(id)).filter((x): x is BoxDef => x?.board === b.id);
   const n = b.rowBits ?? 32;
   const U = ROW_W / n;
@@ -287,15 +358,15 @@ function bitsLayout(s: BoardState, b: BoardDef, x0: number): BoardLayout {
           y: g.y,
           width: g.w,
           height: g.h,
-          backgroundColor: COLORS[f.color],
+          backgroundColor: p.fill[f.color],
           fillStyle: "solid",
-          strokeColor: INK,
+          strokeColor: p.ink,
           strokeWidth: 2,
           strokeStyle: f.bits ? "solid" : "dashed",
           label: {
             text: wrap(`${f.text} (cont.)`, Math.max(3, Math.floor((g.w - 8) / 8))),
             fontSize: 14,
-            strokeColor: MUTED,
+            strokeColor: p.muted,
           },
         })),
     );
@@ -309,7 +380,7 @@ function bitsLayout(s: BoardState, b: BoardDef, x0: number): BoardLayout {
       y: TOP + 8,
       text: String(bit),
       fontSize: 14,
-      strokeColor: MUTED,
+      strokeColor: p.muted,
     });
   }
   for (let r = 0; r < rowsUsed; r++) {
@@ -320,7 +391,7 @@ function bitsLayout(s: BoardState, b: BoardDef, x0: number): BoardLayout {
       y: top + r * ROW_H + ROW_H / 2 - 9,
       text: `+${(r * n) / 8}`,
       fontSize: 14,
-      strokeColor: MUTED,
+      strokeColor: p.muted,
     });
   }
   // fields touch each other, so arrows between fields always run in a channel right of the header
@@ -565,7 +636,10 @@ function snap(r: Rect, p: Point, q: Point): Point {
   return p;
 }
 
-const LAYOUTS = { grid: gridLayout, sequence: sequenceLayout, bits: bitsLayout };
+const LAYOUTS: Record<
+  BoardDef["kind"],
+  (s: BoardState, b: BoardDef, x0: number, p: BoardPalette) => BoardLayout
+> = { grid: gridLayout, sequence: sequenceLayout, bits: bitsLayout };
 
 /** The ids the latest call highlighted, with group members (what the marker paints). */
 export function markedIds(s: BoardState): Set<string> {
@@ -582,9 +656,11 @@ export function markedIds(s: BoardState): Set<string> {
  * The element skeletons for the whole board. Highlight = a marker: a
  * highlighted box gets the marker fill and outline 3, a highlighted arrow or
  * group a marker patch behind its label and a stronger line; everything else
- * fades to 30% opacity, except what the same call added or changed.
+ * fades to 30% opacity, except what the same call added or changed. `theme`
+ * picks the colours (`PALETTES`); the geometry is the same in both.
  */
-export function layout(s: BoardState): BoardElementSkeleton[] {
+export function layout(s: BoardState, theme: BoardTheme = "light"): BoardElementSkeleton[] {
+  const pal = PALETTES[theme];
   const lit = new Set(s.highlight.length ? [...s.highlight, ...s.fresh] : []);
   for (const g of s.groups.values()) {
     if (!lit.has(g.id) || !groupCells(s, g)) continue;
@@ -602,7 +678,7 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
   const per = new Map<string, BoardLayout & { x0: number }>();
   let x0 = 0;
   for (const b of s.boards.values()) {
-    const r = LAYOUTS[b.kind](s, b, x0);
+    const r = LAYOUTS[b.kind](s, b, x0, pal);
     per.set(b.id, { ...r, x0 });
     x0 += r.width + BOARD_GAP;
   }
@@ -618,21 +694,30 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
     if (board) {
       const p = per.get(id);
       if (!p) continue;
-      out.push({ type: "text", id, x: p.x0, y: 0, text: board.title, fontSize: 24, ...dim(id) });
+      out.push({
+        type: "text",
+        id,
+        x: p.x0,
+        y: 0,
+        text: board.title,
+        fontSize: 24,
+        strokeColor: pal.ink,
+        ...dim(id),
+      });
       for (const d of p.deco) out.push({ ...d, ...dim(id) });
       for (const { id: gid, r } of p.frames ?? []) {
         const g = s.groups.get(gid);
         if (!g) continue;
-        const tint = GROUP_TINT[g.color];
+        const tint = pal.tint[g.color];
         // the label patch takes the nearest tinted ancestor's colour, so the frame line never shows through
-        let under = "#ffffff";
+        let under = pal.paper;
         for (
           let q = g.in ? s.groups.get(g.in) : undefined;
           q;
           q = q.in ? s.groups.get(q.in) : undefined
         ) {
-          if (GROUP_TINT[q.color] !== "transparent") {
-            under = GROUP_TINT[q.color];
+          if (pal.tint[q.color] !== "transparent") {
+            under = pal.tint[q.color];
             break;
           }
         }
@@ -645,7 +730,7 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
           height: r.h,
           backgroundColor: tint,
           fillStyle: "solid",
-          strokeColor: FRAME,
+          strokeColor: pal.frame,
           strokeStyle: "dashed",
           strokeWidth: marked.has(gid) ? 2.5 : 1.5,
           roundness: { type: 3 },
@@ -658,7 +743,7 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
           y: r.y,
           width: 1,
           height: 1,
-          backgroundColor: marked.has(gid) ? MARK : tint === "transparent" ? under : tint,
+          backgroundColor: marked.has(gid) ? pal.mark : tint === "transparent" ? under : tint,
           strokeColor: "transparent",
           fillStyle: "solid",
           roughness: 0,
@@ -671,7 +756,7 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
           y: r.y,
           text: g.text,
           fontSize: 16,
-          strokeColor: FRAME,
+          strokeColor: marked.has(gid) ? pal.markInk : pal.frame,
           customData: { anchor: [r.x + 12, r.y], align: "left" },
           ...dim(gid),
         });
@@ -692,10 +777,14 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
         y: r.y,
         width: r.w,
         height: r.h,
-        label: { text: r.label ?? boxLines(b), fontSize: r.fontSize ?? 20 },
-        backgroundColor: marked.has(id) ? MARK : COLORS[b.color],
+        label: {
+          text: r.label ?? boxLines(b),
+          fontSize: r.fontSize ?? 20,
+          strokeColor: marked.has(id) ? pal.markInk : pal.ink,
+        },
+        backgroundColor: marked.has(id) ? pal.mark : pal.fill[b.color],
         fillStyle: "solid",
-        strokeColor: INK,
+        strokeColor: pal.ink,
         strokeWidth: marked.has(id) ? 3 : 2,
         strokeStyle: r.dashed ? "dashed" : "solid",
         groupIds,
@@ -711,7 +800,7 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
     const { pts, label, align } = rt;
     const first = pts[0] as Point;
     const last = pts.at(-1) as Point;
-    const color = a.style === "problem" ? RED : INK;
+    const color = a.style === "problem" ? pal.red : pal.ink;
     const rel = pts.map((q): Point => [q[0] - first[0], q[1] - first[1]]);
     const relLast = rel.at(-1) as Point;
     const groupIds = [`${id}:group`];
@@ -743,7 +832,7 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
         y: label[1],
         width: 1,
         height: 1,
-        backgroundColor: marked.has(id) ? MARK : "#ffffff",
+        backgroundColor: marked.has(id) ? pal.mark : pal.paper,
         strokeColor: "transparent",
         fillStyle: "solid",
         roughness: 0,
@@ -757,7 +846,7 @@ export function layout(s: BoardState): BoardElementSkeleton[] {
         y: label[1],
         text: wrap(text, align === "above" && Math.abs(last[0] - first[0]) < 200 ? 14 : 26),
         fontSize: 16,
-        strokeColor: color,
+        strokeColor: marked.has(id) ? (a.style === "problem" ? pal.markRed : pal.markInk) : color,
         groupIds,
         customData: { anchor: label, align },
         ...dim(id),
